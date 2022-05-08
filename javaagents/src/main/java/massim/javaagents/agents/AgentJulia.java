@@ -2,6 +2,7 @@ package massim.javaagents.agents;
 
 import eis.iilang.*;
 import massim.javaagents.MailService;
+import massim.javaagents.agents.g2utils.*;
 
 import java.util.*;
 
@@ -20,16 +21,12 @@ public class AgentJulia extends Agent {
     String blockRequested = "";
 
 
-    Percept actionIDpercept = null;
-    List<Percept> thingPercepts = new ArrayList<>();
-    List<Percept> taskPercepts = new ArrayList<>();
     List<Percept> attachedThingsPercepts = new ArrayList<>();
-    List<Percept> goalZonePercepts = new ArrayList<>();
-    List<Map> dispensers = new ArrayList<>();
-    List<Map> blocks = new ArrayList<>();
-    List<Map> goalZoneFields = new ArrayList<>();
-    List<Map> tasks = new ArrayList<>();
-    List<Map> attachedThings = new ArrayList<>();
+    List<Dispenser> dispensers = new ArrayList<>();
+    List<Block> blocks = new ArrayList<>();
+    List<RelativeCoordinate> goalZoneFields = new ArrayList<>();
+    List<Task> tasks = new ArrayList<>();
+    List<Block> attachedBlocks = new ArrayList<>();
 
 
     /**
@@ -56,20 +53,20 @@ public class AgentJulia extends Agent {
             return new Action("attach", new Identifier(direction));
         }
         // This only works for tasks with one block
-        if (checkIfBlockAttached()) {
+        if (!attachedBlocks.isEmpty()) {
             if (!checkIfTaskComplete(tasks.get(0))) {
                 return new Action("rotate", new Identifier("cw"));
             }
             if (taskSubmissionPossible(tasks.get(0))) {
-                String taskName = (String) tasks.get(0).get("name");
+                String taskName = tasks.get(0).getName();
                 return new Action("submit", new Identifier(taskName));
             }
             // Walk to goal zone
             // TODO: look for closest goal zone
             if (!goalZoneFields.isEmpty()) {
-                for (Map goalZoneField : goalZoneFields) {
-                    int x = (Integer) goalZoneField.get("x");
-                    int y = (Integer) goalZoneField.get("y");
+                for (RelativeCoordinate goalZoneField : goalZoneFields) {
+                    int x = goalZoneField.getX();
+                    int y = goalZoneField.getY();
                     if (y != 0) {
                         return new Action("move", new Identifier("n"));
                     } else {
@@ -81,6 +78,7 @@ public class AgentJulia extends Agent {
         }
         // At the moment limited to one type of dispenser/block ('b0')
         String result = checkIfDispenserNext("b0");
+        // TODO: add check whether block already lies on top of dispenser
         if (!result.equals("x")) {
             return requestBlock(result);
         }
@@ -95,16 +93,12 @@ public class AgentJulia extends Agent {
         // Delete previous percepts
         lastAction = "";
         lastActionResult = "";
-        actionIDpercept = null;
-        thingPercepts = new ArrayList<>();
-        taskPercepts = new ArrayList<>();
         attachedThingsPercepts = new ArrayList<>();
-        goalZonePercepts = new ArrayList<>();
         dispensers = new ArrayList<>();
         blocks = new ArrayList<>();
         goalZoneFields = new ArrayList<>();
         tasks = new ArrayList<>();
-        attachedThings = new ArrayList<>();
+        attachedBlocks = new ArrayList<>();
         
         // Allocate percepts to variables
         for (Percept percept : percepts) {
@@ -113,8 +107,7 @@ public class AgentJulia extends Agent {
                 currentStep = ((Numeral) param).getValue().intValue();
             }
             if (percept.getName().equals("actionID")) {
-                actionIDpercept = percept;
-                Parameter param = actionIDpercept.getParameters().get(0);
+                Parameter param = percept.getParameters().get(0);
                 if (param instanceof Numeral) {
                     int id = ((Numeral) param).getValue().intValue();
                     if (id > lastActionID) {
@@ -131,41 +124,33 @@ public class AgentJulia extends Agent {
                 lastActionResult = ((Identifier) param).getValue();
             }
             if (percept.getName().equals("thing")) {
-                thingPercepts.add(percept);
-                Parameter paramType = percept.getParameters().get(2);
-                if (((Identifier) paramType).getValue().equals("dispenser")) {
+                Parameter paramThingType = percept.getParameters().get(2);
+                if (((Identifier) paramThingType).getValue().equals("dispenser")) {
                     Parameter paramCoordinateX = percept.getParameters().get(0);
                     Parameter paramCoordinateY = percept.getParameters().get(1);
-                    Parameter paramBlockType = percept.getParameters().get(3);
+                    Parameter paramType = percept.getParameters().get(3);
 
-                    int coordinateX = ((Numeral) paramCoordinateX).getValue().intValue();
-                    int coordinateY = ((Numeral) paramCoordinateY).getValue().intValue();
-                    String blockType = ((Identifier) paramBlockType).getValue();
+                    int x = ((Numeral) paramCoordinateX).getValue().intValue();
+                    int y = ((Numeral) paramCoordinateY).getValue().intValue();
+                    String type = ((Identifier) paramType).getValue();
 
-                    Map dispenser = new HashMap();
-                    dispenser.put("x", coordinateX);
-                    dispenser.put("y", coordinateY);
-                    dispenser.put("type", blockType);
+                    Dispenser dispenser = new Dispenser(new RelativeCoordinate(x, y), type);
                     dispensers.add(dispenser);
                 }
-                if (((Identifier) paramType).getValue().equals("block")) {
+                if (((Identifier) paramThingType).getValue().equals("block")) {
                     Parameter paramCoordinateX = percept.getParameters().get(0);
                     Parameter paramCoordinateY = percept.getParameters().get(1);
                     Parameter paramBlockType = percept.getParameters().get(3);
 
-                    int coordinateX = ((Numeral) paramCoordinateX).getValue().intValue();
-                    int coordinateY = ((Numeral) paramCoordinateY).getValue().intValue();
+                    int x = ((Numeral) paramCoordinateX).getValue().intValue();
+                    int y = ((Numeral) paramCoordinateY).getValue().intValue();
                     String blockType = ((Identifier) paramBlockType).getValue();
 
-                    Map block = new HashMap();
-                    block.put("x", coordinateX);
-                    block.put("y", coordinateY);
-                    block.put("type", blockType);
+                    Block block = new Block(new RelativeCoordinate(x, y), blockType);
                     blocks.add(block);
                 }
             }
             if (percept.getName().equals("task")) {
-                taskPercepts.add(percept);
                 Parameter paramName = percept.getParameters().get(0);
                 Parameter paramDeadline = percept.getParameters().get(1);
                 Parameter paramReward = percept.getParameters().get(2);
@@ -174,14 +159,9 @@ public class AgentJulia extends Agent {
                 String name = ((Identifier) paramName).getValue();
                 int deadline = ((Numeral) paramDeadline).getValue().intValue();
                 int reward = ((Numeral) paramReward).getValue().intValue();
-                
-                Map task = new HashMap();
-                task.put("name", name);
-                task.put("deadline", deadline);
-                task.put("reward", reward);
 
                 List<Parameter> params = new ArrayList<>();
-                List<Map> requirements = new ArrayList<>();
+                List<TaskRequirement> requirements = new ArrayList<>();
                 for (int i = 0; i < ((ParameterList) paramRequirements).size(); i++) {
                     params.add(((ParameterList) paramRequirements).get(i));
                 }
@@ -190,33 +170,27 @@ public class AgentJulia extends Agent {
                     Parameter paramCoordinateY = ((Function)param).getParameters().get(1);
                     Parameter paramBlockType = ((Function)param).getParameters().get(2);
 
-                    int coordinateX = ((Numeral) paramCoordinateX).getValue().intValue();
-                    int coordinateY = ((Numeral) paramCoordinateY).getValue().intValue();
+                    int x = ((Numeral) paramCoordinateX).getValue().intValue();
+                    int y = ((Numeral) paramCoordinateY).getValue().intValue();
                     String blockType = ((Identifier) paramBlockType).getValue();
 
-                    Map requirement = new HashMap();
-                    requirement.put("x", coordinateX);
-                    requirement.put("y", coordinateY);
-                    requirement.put("type", blockType);
+                    TaskRequirement requirement = new TaskRequirement(new RelativeCoordinate(x, y), blockType);
                     requirements.add(requirement);
                 }
-                task.put("requirements", requirements);
+                Task task = new Task(name, deadline, reward, requirements);
                 tasks.add(task);
             }
             if (percept.getName().equals("attached")) {
                 attachedThingsPercepts.add(percept);
             }
             if (percept.getName().equals("goalZone")) {
-                goalZonePercepts.add(percept);
                 Parameter paramCoordinateX = percept.getParameters().get(0);
                 Parameter paramCoordinateY = percept.getParameters().get(1);
 
-                int coordinateX = ((Numeral) paramCoordinateX).getValue().intValue();
-                int coordinateY = ((Numeral) paramCoordinateY).getValue().intValue();
+                int x = ((Numeral) paramCoordinateX).getValue().intValue();
+                int y = ((Numeral) paramCoordinateY).getValue().intValue();
 
-                Map goalZoneField = new HashMap();
-                goalZoneField.put("x", coordinateX);
-                goalZoneField.put("y", coordinateY);
+                RelativeCoordinate goalZoneField = new RelativeCoordinate(x, y);
                 goalZoneFields.add(goalZoneField);
             }
         }
@@ -224,25 +198,18 @@ public class AgentJulia extends Agent {
             Parameter paramCoordinateX = percept.getParameters().get(0);
             Parameter paramCoordinateY = percept.getParameters().get(1);
 
-            int coordinateX = ((Numeral) paramCoordinateX).getValue().intValue();
-            int coordinateY = ((Numeral) paramCoordinateY).getValue().intValue();
+            int x = ((Numeral) paramCoordinateX).getValue().intValue();
+            int y = ((Numeral) paramCoordinateY).getValue().intValue();
+            RelativeCoordinate relativeCoordinateAttachedThing = new RelativeCoordinate(x, y);
 
-            Map attachedThing = new HashMap();
-            attachedThing.put("x", coordinateX);
-            attachedThing.put("y", coordinateY);
-            for (Map block : blocks) {
-                int x = (Integer) block.get("x");
-                int y = (Integer) block.get("y");
-                if (x == coordinateX && y == coordinateY) {
-                    String blockType = (String) block.get("type");
-                    attachedThing.put("type", blockType);
+            for (Block block : blocks) {
+                RelativeCoordinate relativeCoordinate = block.getRelativeCoordinate();
+                if (relativeCoordinate.equals(relativeCoordinateAttachedThing)) {
+                    String blockType = block.getType();
+                    attachedBlocks.add(block);
                 }
             }
             // Same should be done with entity and obstacle once variables are implemented
-            if (!attachedThing.containsKey("type")) {
-                attachedThing.put("type", null);
-            }
-            attachedThings.add(attachedThing);
         }
     }
 
@@ -253,39 +220,27 @@ public class AgentJulia extends Agent {
      */
     private String checkIfDispenserNext(String blockType) {
         if (!dispensers.isEmpty()) {
-            for (Map dispenser : dispensers) {
-                String type = (String) dispenser.get("type");
+            for (Dispenser dispenser : dispensers) {
+                String type = dispenser.getType();
                 if (type.equals(blockType)) {
-                    int x = (Integer) dispenser.get("x");
-                    int y = (Integer) dispenser.get("y");
-                    if (x == 0 && y == -1) {
+                    RelativeCoordinate relativeCoordinate = dispenser.getRelativeCoordinate();
+
+                    if (relativeCoordinate.isOneStepNorth()) {
                         return "n";
                     }
-                    if (x == 1 && y == 0) {
+                    if (relativeCoordinate.isOneStepEast()) {
                         return "e";
                     }
-                    if (x == 0 && y == 1) {
+                    if (relativeCoordinate.isOneStepSouth()) {
                         return "s";
                     }
-                    if (x == -1 && y == 0) {
+                    if (relativeCoordinate.isOneStepWest()) {
                         return "w";
                     }
                 }  
             } 
         }
         return "x";
-    }
-
-    private boolean checkIfBlockAttached() {
-        for (Map attachedThing : attachedThings) {
-            String type = (String) attachedThing.get("type");
-            if (type != null) {
-                if (type.startsWith("b")) {
-                    return true;
-                }
-            } 
-        }
-        return false;
     }
 
     private Action requestBlock(String direction) {
@@ -318,21 +273,19 @@ public class AgentJulia extends Agent {
         }
     }
 
-    private boolean checkIfTaskComplete(Map task) {
+    private boolean checkIfTaskComplete(Task task) {
         // Check if all required blocks are attached
-        List<Map> requirements = (List) task.get("requirements");
-        for (Map requirement : requirements) {
+        List<TaskRequirement> requirements = task.getRequirements();
+        for (TaskRequirement requirement : requirements) {
             boolean requirementFulfilled = false;
-            int xR = (Integer) requirement.get("x");
-            int yR = (Integer) requirement.get("y");
-            String blockTypeR = (String) requirement.get("type");
+            RelativeCoordinate relativeCoordinateR = requirement.getRelativeCoordinate(); 
+            String blockTypeR = requirement.getBlockType();
 
-            for (Map attachedThing : attachedThings) {
-                int xA = (Integer) attachedThing.get("x");
-                int yA = (Integer) attachedThing.get("y");
-                String blockTypeA = (String) attachedThing.get("type");
+            for (Block attachedBlock : attachedBlocks) {
+                RelativeCoordinate relativeCoordinateA = attachedBlock.getRelativeCoordinate();
+                String blockTypeA = attachedBlock.getType();
 
-                if (xR == xA && yR == yA && blockTypeR.equals(blockTypeA)) {
+                if (relativeCoordinateR.equals(relativeCoordinateA) && blockTypeR.equals(blockTypeA)) {
                     requirementFulfilled = true;
                     break;
                 }
@@ -343,18 +296,16 @@ public class AgentJulia extends Agent {
         }
 
         // Check if all attached blocks are really needed
-        for (Map attachedThing : attachedThings) {
+        for (Block attachedBlock : attachedBlocks) {
             boolean thingIsRequired = false;
-            int xA = (Integer) attachedThing.get("x");
-            int yA = (Integer) attachedThing.get("y");
-            String blockTypeA = (String) attachedThing.get("type");
+            RelativeCoordinate relativeCoordinateA = attachedBlock.getRelativeCoordinate();
+            String blockTypeA = attachedBlock.getType();
 
-            for (Map requirement : requirements) {
-                int xR = (Integer) requirement.get("x");
-                int yR = (Integer) requirement.get("y");
-                String blockTypeR = (String) requirement.get("type");
+            for (TaskRequirement requirement : requirements) {
+                RelativeCoordinate relativeCoordinateR = requirement.getRelativeCoordinate();
+                String blockTypeR = requirement.getBlockType();
 
-                if (xR == xA && yR == yA && blockTypeR.equals(blockTypeA)) {
+                if (relativeCoordinateR.equals(relativeCoordinateA) && blockTypeR.equals(blockTypeA)) {
                     thingIsRequired = true;
                     break;
                 }
@@ -371,21 +322,17 @@ public class AgentJulia extends Agent {
         return false;
     }
 
-    private boolean taskSubmissionPossible(Map task) {
+    private boolean taskSubmissionPossible(Task task) {
         if (!checkIfTaskComplete(task)) {
             return false;
         }
-        List<Map> requirements = (List) task.get("requirements");
-        for (Map requirement : requirements) {
-            int xR = (Integer) requirement.get("x");
-            int yR = (Integer) requirement.get("y");
+        List<TaskRequirement> requirements = task.getRequirements();
+        for (TaskRequirement requirement : requirements) {
+            RelativeCoordinate relativeCoordinateR = requirement.getRelativeCoordinate();
 
             boolean inGoalZone = false;
-            for (Map goalZoneField : goalZoneFields) {
-                int xG = (Integer) goalZoneField.get("x");
-                int yG = (Integer) goalZoneField.get("y");
-
-                if (xR == xG && yR == yG) {
+            for (RelativeCoordinate goalZoneField : goalZoneFields) {
+                if (relativeCoordinateR.equals(goalZoneField)) {
                     inGoalZone = true;
                     break;
                 }
@@ -394,10 +341,9 @@ public class AgentJulia extends Agent {
                 return false;
             }
         }
-        for (Map goalZoneField : goalZoneFields) {
-            int xG = (Integer) goalZoneField.get("x");
-            int yG = (Integer) goalZoneField.get("y");
-            if (xG == 0 && yG == 0) {
+        for (RelativeCoordinate goalZoneField : goalZoneFields) {
+            RelativeCoordinate agentPosition = new RelativeCoordinate(0, 0);
+            if (goalZoneField.equals(agentPosition)) {
                 return true;
             }
         }
@@ -408,11 +354,12 @@ public class AgentJulia extends Agent {
         switch(type) {
             case "dispenser" -> {
                 // TODO: Add functionality to look for CLOSEST dispenser rather than any dispenser
-                for (Map dispenser : dispensers) {
-                    String dispenserType = (String) dispenser.get("type");
+                for (Dispenser dispenser : dispensers) {
+                    String dispenserType = dispenser.getType();
                     if (dispenserType.equals(additionalInfo)) {
-                        int x = (Integer) dispenser.get("x");
-                        int y = (Integer) dispenser.get("y");
+                        RelativeCoordinate relativeCoordinate = dispenser.getRelativeCoordinate();
+                        int x = relativeCoordinate.getX();
+                        int y = relativeCoordinate.getY();
                         if (y != 0) {
                             return "n";
                         } else {
