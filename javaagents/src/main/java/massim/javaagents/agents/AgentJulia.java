@@ -10,11 +10,15 @@ import java.util.*;
  */
 public class AgentJulia extends Agent {
 
-    private int lastID = -1;
+    private int lastActionID = -1;
 
     private int currentStep = -1;
 
+    String lastAction = "";
+    String lastActionResult = "";
+
     String blockRequested = "";
+
 
     Percept actionIDpercept = null;
     List<Percept> thingPercepts = new ArrayList<>();
@@ -26,6 +30,7 @@ public class AgentJulia extends Agent {
     List<Map> goalZoneFields = new ArrayList<>();
     List<Map> tasks = new ArrayList<>();
     List<Map> attachedThings = new ArrayList<>();
+
 
     /**
      * Constructor.
@@ -50,6 +55,7 @@ public class AgentJulia extends Agent {
             blockRequested = "";
             return new Action("attach", new Identifier(direction));
         }
+        // This only works for tasks with one block
         if (checkIfBlockAttached()) {
             if (!checkIfTaskComplete(tasks.get(0))) {
                 return new Action("rotate", new Identifier("cw"));
@@ -58,6 +64,8 @@ public class AgentJulia extends Agent {
                 String taskName = (String) tasks.get(0).get("name");
                 return new Action("submit", new Identifier(taskName));
             }
+            // Walk to goal zone
+            // TODO: look for closest goal zone
             if (!goalZoneFields.isEmpty()) {
                 for (Map goalZoneField : goalZoneFields) {
                     int x = (Integer) goalZoneField.get("x");
@@ -69,28 +77,25 @@ public class AgentJulia extends Agent {
                     }
                 } 
             }
-            return new Action("move", new Identifier("w"));
+            return moveRandomly(2);
         }
+        // At the moment limited to one type of dispenser/block ('b0')
         String result = checkIfDispenserNext("b0");
-        if (result.equals("x")) {
-            if (actionIDpercept != null) {
-                Parameter param = actionIDpercept.getParameters().get(0);
-                if (param instanceof Numeral) {
-                    int id = ((Numeral) param).getValue().intValue();
-                    if (id > lastID) {
-                        lastID = id;
-                        return new Action("move", new Identifier("w"), new Identifier("n"));
-                    }
-                }
-            }
-        } else {
+        if (!result.equals("x")) {
             return requestBlock(result);
         }
-        return null;
+        String dispenserDirection = lookFor("dispenser", "b0");
+        if (!dispenserDirection.equals("x")) {
+            return new Action("move", new Identifier(dispenserDirection));
+        }
+        return moveRandomly(2);
     }
 
     private void sortPercepts(List<Percept> percepts) {
         // Delete previous percepts
+        lastAction = "";
+        lastActionResult = "";
+        actionIDpercept = null;
         thingPercepts = new ArrayList<>();
         taskPercepts = new ArrayList<>();
         attachedThingsPercepts = new ArrayList<>();
@@ -109,6 +114,21 @@ public class AgentJulia extends Agent {
             }
             if (percept.getName().equals("actionID")) {
                 actionIDpercept = percept;
+                Parameter param = actionIDpercept.getParameters().get(0);
+                if (param instanceof Numeral) {
+                    int id = ((Numeral) param).getValue().intValue();
+                    if (id > lastActionID) {
+                        lastActionID = id;
+                    }
+                }
+            }
+            if (percept.getName().equals("lastAction")) {
+                Parameter param = percept.getParameters().get(0);
+                lastAction = ((Identifier) param).getValue();
+            }
+            if (percept.getName().equals("lastActionResult")) {
+                Parameter param = percept.getParameters().get(0);
+                lastActionResult = ((Identifier) param).getValue();
             }
             if (percept.getName().equals("thing")) {
                 thingPercepts.add(percept);
@@ -273,6 +293,31 @@ public class AgentJulia extends Agent {
         return new Action("request", new Identifier(direction));
     }
 
+    private Action moveRandomly(int stepNum) {
+        List<String> directions = Arrays.asList("n", "e", "s", "w");
+        Random rand = new Random();
+        List<String> randomDirections = new ArrayList<>();
+        for (int i = 1; i <= stepNum; i++) {
+            String randomDirection = directions.get(rand.nextInt(directions.size()));
+            randomDirections.add(randomDirection);
+        }
+        
+        switch(stepNum) {
+            case 1 -> {
+                String direction = randomDirections.get(0);
+                return new Action("move", new Identifier(direction));
+            }
+            case 2 -> {
+                String direction = randomDirections.get(0);
+                String direction2 = randomDirections.get(1);
+                return new Action("move", new Identifier(direction), new Identifier(direction2));
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
     private boolean checkIfTaskComplete(Map task) {
         // Check if all required blocks are attached
         List<Map> requirements = (List) task.get("requirements");
@@ -357,5 +402,26 @@ public class AgentJulia extends Agent {
             }
         }
         return false;
+    }
+
+    private String lookFor(String type, String additionalInfo) {
+        switch(type) {
+            case "dispenser" -> {
+                // TODO: Add functionality to look for CLOSEST dispenser rather than any dispenser
+                for (Map dispenser : dispensers) {
+                    String dispenserType = (String) dispenser.get("type");
+                    if (dispenserType.equals(additionalInfo)) {
+                        int x = (Integer) dispenser.get("x");
+                        int y = (Integer) dispenser.get("y");
+                        if (y != 0) {
+                            return "n";
+                        } else {
+                            return "w";
+                        }
+                    }
+                }
+            }
+        }
+        return "x";
     }
 }
