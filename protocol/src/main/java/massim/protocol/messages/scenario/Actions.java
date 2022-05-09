@@ -19,8 +19,7 @@ public abstract class Actions {
     public final static String SKIP = "skip";
     public final static String SURVEY = "survey";
     public final static String ADOPT = "adopt";
-    public final static String ADAPT = "adapt";
 
     public static final List<String> ALL_ACTIONS = List.of(
-            MOVE, ATTACH, DETACH, ROTATE, CONNECT, REQUEST, SUBMIT, CLEAR, DISCONNECT, SKIP, SURVEY, ADOPT, ADAPT);
+            MOVE, ATTACH, DETACH, ROTATE, CONNECT, REQUEST, SUBMIT, CLEAR, DISCONNECT, SKIP, SURVEY, ADOPT);
 }

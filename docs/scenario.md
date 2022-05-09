@@ -81,7 +81,7 @@ A zone has a center and a radius. There are two types of zones in the game.
 
 * __Goal zones__: Agents have to be on a __goal__ cell in order to be allowed to submit a task.
   * A goal zone moves to another location after a certain number of tasks has been submitted inside.
-* __Role zones__: Agents have to be on a __role__ cell in order to use the __adopt/adapt__ action.
+* __Role zones__: Agents have to be on a __role__ cell in order to use the __adopt__ action.
   * Role zones stay the same for the whole simulation.
 
 ### Events
@@ -208,7 +208,7 @@ Detaches a thing from the agent. Only the connection between the agent and the t
 
 ### rotate
 
-Rotates the agent (and all attached things) 90 degrees in the given direction. For each attached thing, its _final position_ after the rotation has to be free.
+Rotates the agent (and all attached things) 90 degrees in the given direction. For each attached thing, all _intermediate positions_ for the rotation have to be free as well. For any thing, the intermediate rotation positions are those, which have the same distance to the agent as the thing and are between the thing's current and target positions.
 
 | No  | Parameter | Meaning                                                                                |
 |-----|-----------|----------------------------------------------------------------------------------------|
@@ -313,7 +313,7 @@ the `failed_random` result.
 
 ### adopt
 
-Adopts a role if the agent is in a role zone. If *adopt* is a keyword in your agent platform, you can use *adapt* instead.
+Adopts a role if the agent is in a role zone.
 
 | No  | Parameter | Meaning                        |
 |-----|-----------|--------------------------------|

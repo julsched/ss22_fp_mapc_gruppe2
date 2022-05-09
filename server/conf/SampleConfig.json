@@ -11,7 +11,7 @@
     "logPath" : "logs",
     "replayPath" : "replays",
     "maxPacketLength" : 65536,
-    "waitBetweenSimulations" : 5000
+    "waitBetweenSimulations" : 50000
   },
 
   "manual-mode" : [
@@ -21,6 +21,7 @@
   ],
 
   "match" : [
+    "$(sim/simCarina0.json)",
     "$(sim/sim1.json)",
     "$(sim/sim2.json)"
   ],

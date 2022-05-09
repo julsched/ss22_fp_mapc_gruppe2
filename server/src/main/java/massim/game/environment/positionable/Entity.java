@@ -13,9 +13,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static massim.protocol.messages.scenario.Actions.ADAPT;
-import static massim.protocol.messages.scenario.Actions.ADOPT;
-
 
 /**
  * A controllable entity in the simulation.
@@ -150,8 +147,6 @@ public class Entity extends Attachable {
     }
 
     public boolean isActionAvailable(String action) {
-        if (action.equals(ADAPT))
-            action = ADOPT;
         return action.equals(Actions.NO_ACTION) || this.role.actions().contains(action);
     }
 
