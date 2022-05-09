@@ -19,4 +19,12 @@ public class TaskRequirement {
     public String getBlockType() {
         return this.blockType;
     }
+
+    public boolean isFulfilledBy(Block block) {
+        if (this.relativeCoordinate.equals(block.getRelativeCoordinate()) && this.blockType.equals(block.getType())) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

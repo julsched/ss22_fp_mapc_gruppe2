@@ -205,7 +205,6 @@ public class AgentJulia extends Agent {
             for (Block block : blocks) {
                 RelativeCoordinate relativeCoordinate = block.getRelativeCoordinate();
                 if (relativeCoordinate.equals(relativeCoordinateAttachedThing)) {
-                    String blockType = block.getType();
                     attachedBlocks.add(block);
                 }
             }
@@ -278,14 +277,8 @@ public class AgentJulia extends Agent {
         List<TaskRequirement> requirements = task.getRequirements();
         for (TaskRequirement requirement : requirements) {
             boolean requirementFulfilled = false;
-            RelativeCoordinate relativeCoordinateR = requirement.getRelativeCoordinate(); 
-            String blockTypeR = requirement.getBlockType();
-
             for (Block attachedBlock : attachedBlocks) {
-                RelativeCoordinate relativeCoordinateA = attachedBlock.getRelativeCoordinate();
-                String blockTypeA = attachedBlock.getType();
-
-                if (relativeCoordinateR.equals(relativeCoordinateA) && blockTypeR.equals(blockTypeA)) {
+                if (requirement.isFulfilledBy(attachedBlock)) {
                     requirementFulfilled = true;
                     break;
                 }
@@ -297,20 +290,14 @@ public class AgentJulia extends Agent {
 
         // Check if all attached blocks are really needed
         for (Block attachedBlock : attachedBlocks) {
-            boolean thingIsRequired = false;
-            RelativeCoordinate relativeCoordinateA = attachedBlock.getRelativeCoordinate();
-            String blockTypeA = attachedBlock.getType();
-
+            boolean blockIsRequired = false;
             for (TaskRequirement requirement : requirements) {
-                RelativeCoordinate relativeCoordinateR = requirement.getRelativeCoordinate();
-                String blockTypeR = requirement.getBlockType();
-
-                if (relativeCoordinateR.equals(relativeCoordinateA) && blockTypeR.equals(blockTypeA)) {
-                    thingIsRequired = true;
+                if (requirement.isFulfilledBy(attachedBlock)) {
+                    blockIsRequired = true;
                     break;
                 }
             }
-            if (thingIsRequired == false) {
+            if (blockIsRequired == false) {
                 return false;
             }
         }
