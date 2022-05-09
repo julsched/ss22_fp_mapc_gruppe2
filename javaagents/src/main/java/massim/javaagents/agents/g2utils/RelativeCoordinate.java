@@ -7,6 +7,20 @@ public class RelativeCoordinate {
     private final int x;
     private final int y;
 
+    public static RelativeCoordinate getClosestCoordinate(List<RelativeCoordinate> relativeCoordinates) {
+        RelativeCoordinate shortestCoordinate = null;
+        for (RelativeCoordinate relativeCoordinate : relativeCoordinates) {
+            if (shortestCoordinate == null) {
+                shortestCoordinate = relativeCoordinate;
+                continue;
+            }
+            if (relativeCoordinate.isCloserThan(shortestCoordinate)) {
+                shortestCoordinate = relativeCoordinate;
+            }
+        }
+        return shortestCoordinate;
+    }
+
     public RelativeCoordinate(int x, int y) {
         this.x = x;
         this.y = y;
@@ -54,6 +68,19 @@ public class RelativeCoordinate {
 
     public boolean isOneStepWest() {
         if (this.x == -1 && this.y == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // Manhattan distance
+    public int distanceFromAgent() {
+        return Math.abs(this.x) + Math.abs(this.y);
+    }
+
+    public boolean isCloserThan(RelativeCoordinate relativeCoordinate) {
+        if (this.distanceFromAgent() < relativeCoordinate.distanceFromAgent()) {
             return true;
         } else {
             return false;

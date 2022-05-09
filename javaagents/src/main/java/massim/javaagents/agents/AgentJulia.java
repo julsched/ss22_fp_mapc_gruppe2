@@ -62,17 +62,15 @@ public class AgentJulia extends Agent {
                 return new Action("submit", new Identifier(taskName));
             }
             // Walk to goal zone
-            // TODO: look for closest goal zone
             if (!goalZoneFields.isEmpty()) {
-                for (RelativeCoordinate goalZoneField : goalZoneFields) {
-                    int x = goalZoneField.getX();
-                    int y = goalZoneField.getY();
-                    if (y != 0) {
-                        return new Action("move", new Identifier("n"));
-                    } else {
-                        return new Action("move", new Identifier("w"));
-                    }
-                } 
+                RelativeCoordinate closestGoalZoneField = RelativeCoordinate.getClosestCoordinate(goalZoneFields);
+                int x = closestGoalZoneField.getX();
+                int y = closestGoalZoneField.getY();
+                if (y != 0) {
+                    return new Action("move", new Identifier("n"));
+                } else {
+                    return new Action("move", new Identifier("w"));
+                }
             }
             return moveRandomly(2);
         }
@@ -340,18 +338,25 @@ public class AgentJulia extends Agent {
     private String lookFor(String type, String additionalInfo) {
         switch(type) {
             case "dispenser" -> {
-                // TODO: Add functionality to look for CLOSEST dispenser rather than any dispenser
+                // Look for dispensers of the required type
+                List<Dispenser> dispenserCandidates = new ArrayList<>();
                 for (Dispenser dispenser : dispensers) {
                     String dispenserType = dispenser.getType();
                     if (dispenserType.equals(additionalInfo)) {
-                        RelativeCoordinate relativeCoordinate = dispenser.getRelativeCoordinate();
-                        int x = relativeCoordinate.getX();
-                        int y = relativeCoordinate.getY();
-                        if (y != 0) {
-                            return "n";
-                        } else {
-                            return "w";
-                        }
+                        dispenserCandidates.add(dispenser);
+                    }
+                }
+                // Select closest dispenser
+                if (dispenserCandidates.isEmpty()) {
+                    return "x";
+                } else {
+                    Dispenser closestDispenser = Dispenser.getClosestDispenser(dispenserCandidates);
+                    int x = closestDispenser.getRelativeCoordinate().getX();
+                    int y = closestDispenser.getRelativeCoordinate().getY();
+                    if (y != 0) {
+                        return "n";
+                    } else {
+                        return "w";
                     }
                 }
             }
