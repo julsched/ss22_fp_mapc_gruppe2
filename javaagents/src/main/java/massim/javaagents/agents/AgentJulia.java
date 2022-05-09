@@ -17,8 +17,9 @@ public class AgentJulia extends Agent {
 
     String lastAction = "";
     String lastActionResult = "";
-
     String blockRequested = "";
+    // TODO: fill this with maximum step number of agent's current role
+    int maxStepNum = 2;
 
 
     List<Percept> attachedThingsPercepts = new ArrayList<>();
@@ -47,14 +48,17 @@ public class AgentJulia extends Agent {
     @Override
     public Action step() {
         sortPercepts(getPercepts());
+        // If a block has been requested in the last step, then attach this block
         if (!blockRequested.isEmpty()) {
             String direction = blockRequested;
             blockRequested = "";
             return new Action("attach", new Identifier(direction));
         }
         // This only works for tasks with one block
+        // If the agent has a block attached, then either rotate, look for goal zone or submit
         if (!attachedBlocks.isEmpty()) {
             if (!checkIfTaskComplete(tasks.get(0))) {
+                // TODO: Add check in which direction rotation is possible (due to obstacles)
                 return new Action("rotate", new Identifier("cw"));
             }
             if (taskSubmissionPossible(tasks.get(0))) {
@@ -63,16 +67,53 @@ public class AgentJulia extends Agent {
             }
             // Walk to goal zone
             if (!goalZoneFields.isEmpty()) {
-                RelativeCoordinate closestGoalZoneField = RelativeCoordinate.getClosestCoordinate(goalZoneFields);
-                int x = closestGoalZoneField.getX();
-                int y = closestGoalZoneField.getY();
-                if (y != 0) {
-                    return new Action("move", new Identifier("n"));
-                } else {
-                    return new Action("move", new Identifier("w"));
+                List<RelativeCoordinate> adjacentGoalZoneFields = getAdjacentGoalZoneFields();
+                if (!agentInGoalZone() && adjacentGoalZoneFields.isEmpty()) {
+                    RelativeCoordinate closestGoalZoneField = RelativeCoordinate.getClosestCoordinate(goalZoneFields);
+                    int x = closestGoalZoneField.getX();
+                    int y = closestGoalZoneField.getY();
+                    if (y != 0) {
+                        return new Action("move", new Identifier("n"));
+                    } else {
+                        return new Action("move", new Identifier("w"));
+                    }
+                }
+                // Agent is at one of the four corners of a goal zone (outside)
+                if (!agentInGoalZone() && adjacentGoalZoneFields.size() == 1) {
+                    RelativeCoordinate adjacentGoalZoneField = adjacentGoalZoneFields.get(0);
+                    String direction = adjacentGoalZoneField.getDirectDirection();
+                    return new Action("move", new Identifier(direction));
+                }
+                // Agent is somewhere along the edges of the goal zone (outside)
+                if (!agentInGoalZone() && adjacentGoalZoneFields.size() == 2) {
+                    List<String> directions = new ArrayList<>();
+                    for (RelativeCoordinate adjacentGoalZoneField : adjacentGoalZoneFields) {
+                        directions.add(adjacentGoalZoneField.getDirectDirection());
+                    }
+                    if (directions.contains("n") && directions.contains("e")) {
+                        return new Action("move", new Identifier("e"), new Identifier("n"));
+                    }
+                    if (directions.contains("n") && directions.contains("w")) {
+                        return new Action("move", new Identifier("w"), new Identifier("n"));
+                    }
+                    if (directions.contains("s") && directions.contains("e")) {
+                        return new Action("move", new Identifier("e"), new Identifier("s"));
+                    }
+                    if (directions.contains("s") && directions.contains("w")) {
+                        return new Action("move", new Identifier("w"), new Identifier("s"));
+                    }
+                }
+                // This statement is only reached if the task is complete, but cannot be submitted yet and the agent is already inside the goal zone
+                if (agentInGoalZone()) {
+                    // TODO: move in such a way that all blocks are inside the goal zone
+                    List<String> allowedDirections = new ArrayList<>();
+                    for (RelativeCoordinate adjacentGoalZoneField : adjacentGoalZoneFields) {
+                        allowedDirections.add(adjacentGoalZoneField.getDirectDirection());
+                    }
+                    moveRandomly(1, allowedDirections);
                 }
             }
-            return moveRandomly(2);
+            return moveRandomly(maxStepNum);
         }
         // At the moment limited to one type of dispenser/block ('b0')
         String result = checkIfDispenserNext("b0");
@@ -84,13 +125,11 @@ public class AgentJulia extends Agent {
         if (!dispenserDirection.equals("x")) {
             return new Action("move", new Identifier(dispenserDirection));
         }
-        return moveRandomly(2);
+        return moveRandomly(maxStepNum);
     }
 
     private void sortPercepts(List<Percept> percepts) {
         // Delete previous percepts
-        lastAction = "";
-        lastActionResult = "";
         attachedThingsPercepts = new ArrayList<>();
         dispensers = new ArrayList<>();
         blocks = new ArrayList<>();
@@ -240,17 +279,41 @@ public class AgentJulia extends Agent {
         return "x";
     }
 
+    private List<RelativeCoordinate> getAdjacentGoalZoneFields() {
+        List<RelativeCoordinate> adjacentGoalZoneFields = new ArrayList<>();
+        for (RelativeCoordinate relativeCoordinate : goalZoneFields) {
+            if (relativeCoordinate.distanceFromAgent() == 1) {
+                adjacentGoalZoneFields.add(relativeCoordinate);
+            }
+        }
+        return adjacentGoalZoneFields;
+    }
+
+    private boolean agentInGoalZone() {
+        RelativeCoordinate agentPosition = new RelativeCoordinate(0, 0);
+        for (RelativeCoordinate goalZoneField : goalZoneFields) {
+            if (goalZoneField.equals(agentPosition)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Action requestBlock(String direction) {
         blockRequested = direction;
         return new Action("request", new Identifier(direction));
     }
 
     private Action moveRandomly(int stepNum) {
-        List<String> directions = Arrays.asList("n", "e", "s", "w");
+        List<String> allowedDirections = Arrays.asList("n", "e", "s", "w");
+        return moveRandomly(stepNum, allowedDirections);
+    }
+
+    private Action moveRandomly(int stepNum, List<String> allowedDirections) {
         Random rand = new Random();
         List<String> randomDirections = new ArrayList<>();
         for (int i = 1; i <= stepNum; i++) {
-            String randomDirection = directions.get(rand.nextInt(directions.size()));
+            String randomDirection = allowedDirections.get(rand.nextInt(allowedDirections.size()));
             randomDirections.add(randomDirection);
         }
         

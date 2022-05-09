@@ -86,4 +86,52 @@ public class RelativeCoordinate {
             return false;
         }
     }
+
+    public boolean isDirectlyNorth() {
+        if (this.x == 0 && this.y < 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean isDirectlyEast() {
+        if (this.x > 0 && this.y == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean isDirectlySouth() {
+        if (this.x == 0 && this.y > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean isDirectlyWest() {
+        if (this.x < 0 && this.y == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public String getDirectDirection() {
+        if (this.isDirectlyNorth()) {
+            return "n";
+        }
+        if (this.isDirectlyEast()) {
+            return "e";
+        }
+        if (this.isDirectlySouth()) {
+            return "s";
+        }
+        if (this.isDirectlyWest()) {
+            return "w";
+        }
+        return "x";
+    }
 }
