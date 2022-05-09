@@ -72,10 +72,18 @@ public class AgentJulia extends Agent {
                     RelativeCoordinate closestGoalZoneField = RelativeCoordinate.getClosestCoordinate(goalZoneFields);
                     int x = closestGoalZoneField.getX();
                     int y = closestGoalZoneField.getY();
-                    if (y != 0) {
+                    // TODO: improve this
+                    if (y < 0) {
                         return new Action("move", new Identifier("n"));
-                    } else {
+                    }
+                    if (y > 0) {
+                        return new Action("move", new Identifier("s"));
+                    }
+                    if (x < 0) {
                         return new Action("move", new Identifier("w"));
+                    }
+                    if (x > 0) {
+                        return new Action("move", new Identifier("e"));
                     }
                 }
                 // Agent is at one of the four corners of a goal zone (outside)
@@ -305,7 +313,7 @@ public class AgentJulia extends Agent {
     }
 
     private Action moveRandomly(int stepNum) {
-        List<String> allowedDirections = Arrays.asList("n", "e", "s", "w");
+        List<String> allowedDirections = new ArrayList<String>(Arrays.asList("n", "e", "s", "w"));
         return moveRandomly(stepNum, allowedDirections);
     }
 
@@ -323,9 +331,13 @@ public class AgentJulia extends Agent {
                 return new Action("move", new Identifier(direction));
             }
             case 2 -> {
-                String direction = randomDirections.get(0);
+                String direction1 = randomDirections.get(0);
                 String direction2 = randomDirections.get(1);
-                return new Action("move", new Identifier(direction), new Identifier(direction2));
+                if (oppositeDirections(direction1, direction2)) {
+                    allowedDirections.remove(direction2);
+                    direction2 = allowedDirections.get(rand.nextInt(allowedDirections.size()));
+                }
+                return new Action("move", new Identifier(direction1), new Identifier(direction2));
             }
             default -> {
                 return null;
@@ -416,14 +428,32 @@ public class AgentJulia extends Agent {
                     Dispenser closestDispenser = Dispenser.getClosestDispenser(dispenserCandidates);
                     int x = closestDispenser.getRelativeCoordinate().getX();
                     int y = closestDispenser.getRelativeCoordinate().getY();
-                    if (y != 0) {
+                    // TODO: improve this
+                    if (y < 0) {
                         return "n";
-                    } else {
+                    }
+                    if (y > 0) {
+                        return "s";
+                    }
+                    if (x < 0) {
                         return "w";
+                    }
+                    if (x > 0) {
+                        return "e";
                     }
                 }
             }
         }
         return "x";
+    }
+
+    private boolean oppositeDirections(String direction1, String direction2) {
+        if ((direction1.equals("n") && direction2.equals("s")) || (direction1.equals("s") && direction2.equals("n"))) {
+            return true;
+        }
+        if ((direction1.equals("e") && direction2.equals("w")) || (direction1.equals("w") && direction2.equals("e"))) {
+            return true;
+        }
+        return false;
     }
 }
