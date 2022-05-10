@@ -11,23 +11,31 @@ import java.util.*;
  */
 public class AgentJulia extends Agent {
 
+    private String teamName;
+    private int teamSize;
+    private int stepsOverall;
+    private List<Role> roles = new ArrayList<>();
+
     private int lastActionID = -1;
+    private String lastAction = "";
+    private List<Object> lastActionParams = new ArrayList<>();
+    private String lastActionResult = "";
+    private String blockRequested = "";
 
     private int currentStep = -1;
-
-    String lastAction = "";
-    String lastActionResult = "";
-    String blockRequested = "";
+    private Role currentRole = null;
     // TODO: fill this with maximum step number of agent's current role
-    int maxStepNum = 2;
+    private int maxStepNum = 2;
 
 
-    List<Percept> attachedThingsPercepts = new ArrayList<>();
-    List<Dispenser> dispensers = new ArrayList<>();
-    List<Block> blocks = new ArrayList<>();
-    List<RelativeCoordinate> goalZoneFields = new ArrayList<>();
-    List<Task> tasks = new ArrayList<>();
-    List<Block> attachedBlocks = new ArrayList<>();
+    private List<Percept> attachedThingsPercepts = new ArrayList<>();
+    private List<Dispenser> dispensers = new ArrayList<>();
+    private List<Block> blocks = new ArrayList<>();
+    private List<Entity> entities = new ArrayList<>();
+    private List<RelativeCoordinate> occupiedFields = new ArrayList<>();
+    private List<RelativeCoordinate> goalZoneFields = new ArrayList<>();
+    private List<Task> tasks = new ArrayList<>();
+    private List<Block> attachedBlocks = new ArrayList<>();
 
 
     /**
@@ -48,6 +56,32 @@ public class AgentJulia extends Agent {
     @Override
     public Action step() {
         sortPercepts(getPercepts());
+        if (lastAction.equals("move") && !lastActionResult.equals("success") && lastActionParams.size() == 1) {
+            // Get direction
+            String direction = (String) lastActionParams.get(0);
+            System.out.println("I AM STUCK!!!!!!!! Trying to walk '" + direction + "'!!!");
+
+            RelativeCoordinate desiredField = RelativeCoordinate.getRelativeCoordinate(direction);
+            for (RelativeCoordinate relativeCoordinate : occupiedFields) {
+                if (relativeCoordinate.equals(desiredField)) {
+                    System.out.println("Field towards direction '" + direction + "' is already occupied!");
+                    // This will ensure that agent will try all possible directions if one step after another fails due to occupied fields
+                    switch(direction) {
+                        case "n": 
+                            return new Action("move", new Identifier("e"));
+
+                        case "e":
+                            return new Action("move", new Identifier("s"));
+
+                        case "s":
+                            return new Action("move", new Identifier("w"));
+
+                        case "w":
+                            return new Action("move", new Identifier("n"));
+                    }
+                }
+            }
+        }
         // If a block has been requested in the last step, then attach this block
         if (!blockRequested.isEmpty()) {
             String direction = blockRequested;
@@ -138,9 +172,12 @@ public class AgentJulia extends Agent {
 
     private void sortPercepts(List<Percept> percepts) {
         // Delete previous percepts
+        lastActionParams = new ArrayList<>();
         attachedThingsPercepts = new ArrayList<>();
         dispensers = new ArrayList<>();
         blocks = new ArrayList<>();
+        entities = new ArrayList<>();
+        occupiedFields = new ArrayList<>();
         goalZoneFields = new ArrayList<>();
         tasks = new ArrayList<>();
         attachedBlocks = new ArrayList<>();
@@ -148,69 +185,147 @@ public class AgentJulia extends Agent {
         // Allocate percepts to variables
         for (Percept percept : percepts) {
             if (percept.getName().equals("step")) {
-                Parameter param = percept.getParameters().get(0);
-                currentStep = ((Numeral) param).getValue().intValue();
+                currentStep = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                System.out.println("----- Current step: " + currentStep + " -----");
+                break;
             }
+        }
+
+        for (Percept percept : percepts) {
+            // Initial percept information is stored only before the first step
+            if (currentStep == -1) {
+                if (percept.getName().equals("team")) {
+                    teamName = ((Identifier) percept.getParameters().get(0)).getValue();
+                    continue;
+                }
+                if (percept.getName().equals("teamSize")) {
+                    teamSize = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                    continue;
+                }
+                if (percept.getName().equals("steps")) {
+                    stepsOverall = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                    continue;
+                }
+                
+                if (percept.getName().equals("role") && percept.getParameters().size() == 6) {
+                    String roleName = ((Identifier) percept.getParameters().get(0)).getValue();
+                    int roleVision = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                    double clearChance = ((Numeral) percept.getParameters().get(4)).getValue().doubleValue();
+                    int clearMaxDist = ((Numeral) percept.getParameters().get(5)).getValue().intValue();
+
+                    Parameter paramActions = percept.getParameters().get(2);
+                    List<Parameter> params = new ArrayList<>();
+                    for (int i = 0; i < ((ParameterList) paramActions).size(); i++) {
+                        params.add(((ParameterList) paramActions).get(i));
+                    }
+                    List<String> actions = new ArrayList<>();
+                    for (Parameter param : params) {
+                        String action = ((Identifier) param).getValue();
+                        actions.add(action);
+                    }
+
+                    Parameter paramSpeeds = percept.getParameters().get(3);
+                    params = new ArrayList<>();
+                    for (int i = 0; i < ((ParameterList) paramSpeeds).size(); i++) {
+                        params.add(((ParameterList) paramSpeeds).get(i));
+                    }
+                    List<Integer> speeds = new ArrayList<>();
+                    for (Parameter param : params) {
+                        int speed = ((Numeral) param).getValue().intValue();
+                        speeds.add(speed);
+                    }
+                    Role role = new Role(roleName, roleVision, actions, speeds, clearChance, clearMaxDist);
+                    roles.add(role);
+                    continue;
+                }
+            }
+            
             if (percept.getName().equals("actionID")) {
-                Parameter param = percept.getParameters().get(0);
-                if (param instanceof Numeral) {
-                    int id = ((Numeral) param).getValue().intValue();
-                    if (id > lastActionID) {
-                        lastActionID = id;
+                int id = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                if (id > lastActionID) {
+                    lastActionID = id;
+                }
+                continue;
+            }
+            if (percept.getName().equals("lastAction")) {
+                lastAction = ((Identifier) percept.getParameters().get(0)).getValue();
+                continue;
+            }
+            if (percept.getName().equals("lastActionResult")) {
+                lastActionResult = ((Identifier) percept.getParameters().get(0)).getValue();
+                continue;
+            }
+            if (percept.getName().equals("lastActionParams")) {
+                Parameter lastParams = percept.getParameters().get(0);
+                List<Parameter> params = new ArrayList<>();
+                for (int i = 0; i < ((ParameterList) lastParams).size(); i++) {
+                    params.add(((ParameterList) lastParams).get(i));
+                }
+                for (Parameter param : params) {
+                    if (param instanceof Identifier) {
+                        String stringParam = ((Identifier) param).getValue();
+                        lastActionParams.add(stringParam);
+                        continue;
+                    }
+                    if (param instanceof Numeral) {
+                        Integer intParam = ((Numeral) param).getValue().intValue();
+                        lastActionParams.add(intParam);
                     }
                 }
             }
-            if (percept.getName().equals("lastAction")) {
-                Parameter param = percept.getParameters().get(0);
-                lastAction = ((Identifier) param).getValue();
-            }
-            if (percept.getName().equals("lastActionResult")) {
-                Parameter param = percept.getParameters().get(0);
-                lastActionResult = ((Identifier) param).getValue();
-            }
             if (percept.getName().equals("thing")) {
-                Parameter paramThingType = percept.getParameters().get(2);
-                if (((Identifier) paramThingType).getValue().equals("dispenser")) {
-                    Parameter paramCoordinateX = percept.getParameters().get(0);
-                    Parameter paramCoordinateY = percept.getParameters().get(1);
-                    Parameter paramType = percept.getParameters().get(3);
-
-                    int x = ((Numeral) paramCoordinateX).getValue().intValue();
-                    int y = ((Numeral) paramCoordinateY).getValue().intValue();
-                    String type = ((Identifier) paramType).getValue();
+                String thingType = ((Identifier) percept.getParameters().get(2)).getValue();
+                if (thingType.equals("dispenser")) {
+                    int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                    int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                    String type = ((Identifier) percept.getParameters().get(3)).getValue();
 
                     Dispenser dispenser = new Dispenser(new RelativeCoordinate(x, y), type);
                     dispensers.add(dispenser);
+                    continue;
                 }
-                if (((Identifier) paramThingType).getValue().equals("block")) {
-                    Parameter paramCoordinateX = percept.getParameters().get(0);
-                    Parameter paramCoordinateY = percept.getParameters().get(1);
-                    Parameter paramBlockType = percept.getParameters().get(3);
+                if (thingType.equals("block")) {
+                    int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                    int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                    String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
 
-                    int x = ((Numeral) paramCoordinateX).getValue().intValue();
-                    int y = ((Numeral) paramCoordinateY).getValue().intValue();
-                    String blockType = ((Identifier) paramBlockType).getValue();
-
-                    Block block = new Block(new RelativeCoordinate(x, y), blockType);
+                    RelativeCoordinate relativeCoordinate = new RelativeCoordinate(x, y);
+                    Block block = new Block(relativeCoordinate, blockType);
                     blocks.add(block);
+                    occupiedFields.add(relativeCoordinate);
+                    continue;
+                }
+                if (thingType.equals("entity")) {
+                    int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                    int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                    String teamName = ((Identifier) percept.getParameters().get(3)).getValue();
+
+                    RelativeCoordinate relativeCoordinate = new RelativeCoordinate(x, y);
+                    Entity entity = new Entity(relativeCoordinate, teamName);
+                    entities.add(entity);
+                    occupiedFields.add(relativeCoordinate);
+                    continue;
+                }
+                if (thingType.equals("obstacle")) {
+                    int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                    int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                    RelativeCoordinate relativeCoordinate = new RelativeCoordinate(x, y);
+                    occupiedFields.add(relativeCoordinate);
+                    continue;
                 }
             }
             if (percept.getName().equals("task")) {
-                Parameter paramName = percept.getParameters().get(0);
-                Parameter paramDeadline = percept.getParameters().get(1);
-                Parameter paramReward = percept.getParameters().get(2);
+                String name = ((Identifier) percept.getParameters().get(0)).getValue();
+                int deadline = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                int reward = ((Numeral) percept.getParameters().get(2)).getValue().intValue();
+
                 Parameter paramRequirements = percept.getParameters().get(3);
-
-                String name = ((Identifier) paramName).getValue();
-                int deadline = ((Numeral) paramDeadline).getValue().intValue();
-                int reward = ((Numeral) paramReward).getValue().intValue();
-
                 List<Parameter> params = new ArrayList<>();
-                List<TaskRequirement> requirements = new ArrayList<>();
                 for (int i = 0; i < ((ParameterList) paramRequirements).size(); i++) {
                     params.add(((ParameterList) paramRequirements).get(i));
                 }
-                for (var param : params) {
+                List<TaskRequirement> requirements = new ArrayList<>();
+                for (Parameter param : params) {
                     Parameter paramCoordinateX = ((Function)param).getParameters().get(0);
                     Parameter paramCoordinateY = ((Function)param).getParameters().get(1);
                     Parameter paramBlockType = ((Function)param).getParameters().get(2);
@@ -224,27 +339,33 @@ public class AgentJulia extends Agent {
                 }
                 Task task = new Task(name, deadline, reward, requirements);
                 tasks.add(task);
+                continue;
             }
             if (percept.getName().equals("attached")) {
                 attachedThingsPercepts.add(percept);
+                continue;
             }
             if (percept.getName().equals("goalZone")) {
-                Parameter paramCoordinateX = percept.getParameters().get(0);
-                Parameter paramCoordinateY = percept.getParameters().get(1);
-
-                int x = ((Numeral) paramCoordinateX).getValue().intValue();
-                int y = ((Numeral) paramCoordinateY).getValue().intValue();
+                int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
 
                 RelativeCoordinate goalZoneField = new RelativeCoordinate(x, y);
                 goalZoneFields.add(goalZoneField);
+                continue;
+            }
+            if (percept.getName().equals("role") && percept.getParameters().size() == 1) {
+                String roleName = ((Identifier) percept.getParameters().get(0)).getValue();
+                if (currentRole == null || !currentRole.getName().equals(roleName)) {
+                    Role newRole = Role.getRole(roles, roleName);
+                    currentRole = newRole;
+                }
+                System.out.println("Agent " + getName() + "'s current role: " + currentRole.getName());
+                continue;
             }
         }
         for (Percept percept : attachedThingsPercepts) {
-            Parameter paramCoordinateX = percept.getParameters().get(0);
-            Parameter paramCoordinateY = percept.getParameters().get(1);
-
-            int x = ((Numeral) paramCoordinateX).getValue().intValue();
-            int y = ((Numeral) paramCoordinateY).getValue().intValue();
+            int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+            int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
             RelativeCoordinate relativeCoordinateAttachedThing = new RelativeCoordinate(x, y);
 
             for (Block block : blocks) {

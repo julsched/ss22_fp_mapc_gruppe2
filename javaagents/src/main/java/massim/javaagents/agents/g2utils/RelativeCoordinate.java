@@ -21,6 +21,24 @@ public class RelativeCoordinate {
         return shortestCoordinate;
     }
 
+    public static RelativeCoordinate getRelativeCoordinate(String direction) {
+        switch(direction) {
+            case "n" -> {
+                return new RelativeCoordinate(0, -1);
+            }
+            case "e" -> {
+                return new RelativeCoordinate(1, 0);
+            }
+            case "s" -> {
+                return new RelativeCoordinate(0, 1);
+            }
+            case "w" -> {
+                return new RelativeCoordinate(-1, 0);
+            }
+        }
+        return null;
+    }
+
     public RelativeCoordinate(int x, int y) {
         this.x = x;
         this.y = y;
