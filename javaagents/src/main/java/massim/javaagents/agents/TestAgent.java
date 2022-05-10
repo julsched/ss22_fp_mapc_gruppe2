@@ -2,6 +2,7 @@ package massim.javaagents.agents;
 
 import java.util.Random;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.lang.String;
 
@@ -17,6 +18,7 @@ import java.util.List;
 
 public class TestAgent extends Agent {
 	private String lastMoveDir = "";
+	private HashMap<String, ArrayList<int[]>> inSight;
 
 	public TestAgent(String name, MailService mailbox) {
 		super(name, mailbox);
@@ -31,13 +33,74 @@ public class TestAgent extends Agent {
 	// Goes through all percepts and saves interesting information about the current
 	// state of the field and Agent
 	public void workThroughPercepts() {
+		Identifier lastAction = null;
+		Identifier lastActionResult = null;
+		List<Parameter> lastActionParams = null;
+		this.inSight = new HashMap<String, ArrayList<int[]>>();
+		inSight.put("obstacle", new ArrayList<>());
+		inSight.put("entity", new ArrayList<>());
+		List<Percept> percepts = getPercepts();
 
+		for (Percept percept : percepts) {
+
+			// Remember last Action, last Action result and corresponding Parameters
+			if (percept.getName().equals("lastAction")) {
+				lastAction = (Identifier) percept.getParameters().get(0);
+			}
+			if (percept.getName().equals("lastActionResult")) {
+				lastActionResult = (Identifier) percept.getParameters().get(0);
+			}
+			if (percept.getName().equals("lastActionParams")) {
+				lastActionParams = percept.getParameters();
+			}
+
+			// save location of things for further calculations
+			if (percept.getParameters().size() >= 3) {
+				if (percept.getName().equals("thing")) {
+					if ((percept.getParameters().get(2)) instanceof Identifier) {
+						String identifier = ((Identifier) (percept.getParameters().get(2))).getValue();
+
+						Parameter x = percept.getParameters().get(0);
+						Parameter y = percept.getParameters().get(1);
+						if (x instanceof Numeral && y instanceof Numeral) {
+							int xInt = ((Numeral) x).getValue().intValue();
+							int yInt = ((Numeral) y).getValue().intValue();
+							if (identifier.equals("obstacle")) {
+								inSight.get("obstacle").add(new int[] { xInt, yInt });
+							} else if (identifier.equals("entity")) {
+								inSight.get("entity").add(new int[] { xInt, yInt });
+							}
+						}
+					}
+				}
+			}
+		}
+		// Set last move direction, if last move was successful
+		if (lastAction != null && lastActionResult != null && lastActionParams != null) {
+			if (lastAction.getValue().equals("move") && lastActionResult.getValue().equals("success")) {
+				String lastParamsString = lastActionParams.get(0) + "";
+				lastParamsString = lastParamsString.replace("[", "");
+				lastParamsString = lastParamsString.replace("]", "");
+				this.lastMoveDir = lastParamsString;
+			}
+		}
+
+	}
+
+	// returns an arraylist with all 4 directions
+	private ArrayList<String> setAllDirs() {
+		ArrayList<String> possibleDirs = new ArrayList<String>();
+		possibleDirs.add("n");
+		possibleDirs.add("e");
+		possibleDirs.add("s");
+		possibleDirs.add("w");
+		return possibleDirs;
 	}
 
 	@Override
 	public Action step() {
+		workThroughPercepts();
 		ArrayList<String> possibleDirs = getPossibleDirs();
-		//System.out.println(possibleDirs);
 		ArrayList<String> prefDirs = getPreferredDirs();
 		if (possibleDirs.size() != 0) {
 			if (prefDirs != null) {
@@ -53,29 +116,8 @@ public class TestAgent extends Agent {
 			String randDir = random(possibleDirs);
 			return new Action("move", new Identifier(randDir));
 		}
-		return null;/**
-					 * if (getName().contains("B")) { List<Percept> percepts = getPercepts(); for
-					 * (Percept percept : percepts) { if (percept.getName().equals("thing")) {
-					 * Parameter x = percept.getParameters().get(0); Parameter y =
-					 * percept.getParameters().get(1); if (x instanceof Numeral && y instanceof
-					 * Numeral) { int xInt = ((Numeral) param).getValue().intValue(); int yInt =
-					 * ((Numeral) param).getValue().intValue();
-					 * 
-					 * System.out.println("THIS IS THE PERCEPT!"+getName()+getName().contains("B")+
-					 * " "+percept.getParameters().get(0)+ "== 0? "+ (num==0)); }}}}/** if
-					 * (percept.getName().equals("actionID")) { Parameter param =
-					 * percept.getParameters().get(0); if (param instanceof Numeral) { int id =
-					 * ((Numeral) param).getValue().intValue(); if (id > lastID) { lastID = id;
-					 * return new Action("move", new Identifier("n")); } }
-					 **/
-		/**
-		 * } } Random r = new Random(); int rand = r.nextInt(3); String dir = "";
-		 * switch(rand) { case 0: dir = "n"; break; case 1: dir = "e"; break; case 2:
-		 * dir = "s"; break; case 3: dir = "w"; break; } try{Thread.sleep(5000);}
-		 * catch(Exception e) {} System.out.println("moving in Direction " +dir); return
-		 * new Action("move", new Identifier(dir));
-		 **/
-		// return null;
+		return null;
+
 	}
 
 	private Object oppositeDir(String dir) {
@@ -96,7 +138,6 @@ public class TestAgent extends Agent {
 
 	private String random(ArrayList<String> possibleDirs) {
 		int randIndex = (int) (Math.random() * possibleDirs.size());
-		//System.out.println("Getting Random number " + randIndex);
 		return possibleDirs.get(randIndex);
 	}
 
@@ -106,92 +147,48 @@ public class TestAgent extends Agent {
 	}
 
 	private ArrayList<String> getPossibleDirs() {
-		Identifier lastAction = null;
-		Identifier lastActionResult = null;
-		List<Parameter> lastActionParams = null;
-		ArrayList<String> possibleDirs = new ArrayList<String>();
-		possibleDirs.add("n");
-		possibleDirs.add("e");
-		possibleDirs.add("s");
-		possibleDirs.add("w");
-		//System.out.println("possible Dirs before elimination: " + possibleDirs);
-		List<Percept> percepts = getPercepts();
-		for (Percept percept : percepts) {
-			if (percept.getName().equals("lastAction")) {
-				lastAction = (Identifier) percept.getParameters().get(0);
+		ArrayList<String> possibleDirs = setAllDirs();
+		ArrayList<int[]> obstacleLocations = this.inSight.get("obstacle");
+		// Don't walk towards obstacle
+		for (int i = 0; i < obstacleLocations.size(); i++) {
+			int[] obstacle = obstacleLocations.get(i);
+			if (obstacle[0] == 0) {
+				if (obstacle[1] > 0) {
+					possibleDirs.remove("s");
+				}
+				if (obstacle[1] < 0) {
+					possibleDirs.remove("n");
+				}
 			}
-			if (percept.getName().equals("lastActionResult")) {
-				lastActionResult = (Identifier) percept.getParameters().get(0);
-			}
-			if (percept.getName().equals("lastActionParams")) {
-				lastActionParams = percept.getParameters();
-			}
-			if (percept.getParameters().size() >= 3) {
-				if (percept.getName().equals("thing")) {
-					if ((percept.getParameters().get(2)) instanceof Identifier) {
-						String identifier = ((Identifier) (percept.getParameters().get(2))).getValue();
-						if (identifier.equals("obstacle")) {
-							Parameter x = percept.getParameters().get(0);
-							Parameter y = percept.getParameters().get(1);
-							if (x instanceof Numeral && y instanceof Numeral) {
-								int xInt = ((Numeral) x).getValue().intValue();
-								int yInt = ((Numeral) y).getValue().intValue();
-								if (xInt == 0) {
-									if (yInt > 0) {
-										possibleDirs.remove("s");
-									}
-									if (yInt < 0) {
-										possibleDirs.remove("n");
-									}
-								}
-								if (yInt == 0) {
-									if (xInt > 0) {
-										possibleDirs.remove("e");
-									}
-									if (xInt < 0) {
-										possibleDirs.remove("w");
-									}
-								}
-								//System.out.println("impossible Dirs removed, possible Dirs: " + possibleDirs);
-
-							}
-						}
-						else if (identifier.equals("entity")) {
-						Parameter x = percept.getParameters().get(0);
-							Parameter y = percept.getParameters().get(1);
-							if (x instanceof Numeral && y instanceof Numeral) {
-								int xInt = ((Numeral) x).getValue().intValue();
-								int yInt = ((Numeral) y).getValue().intValue();
-								if (xInt == 0) {
-									if (yInt == 1) {
-										possibleDirs.remove("s");
-									}
-									if (yInt ==-1) {
-										possibleDirs.remove("n");
-									}
-								}
-								if (yInt == 0) {
-									if (xInt == 1) {
-										possibleDirs.remove("e");
-									}
-									if (xInt == -1) {
-										possibleDirs.remove("w");
-									}
-								}
-								//System.out.println("impossible Dirs removed, possible Dirs: " + possibleDirs);
-
-							}
-						}
-					}
+			if (obstacle[1] == 0) {
+				if (obstacle[0] > 0) {
+					possibleDirs.remove("e");
+				}
+				if (obstacle[0] < 0) {
+					possibleDirs.remove("w");
 				}
 			}
 		}
-		if (lastAction != null && lastActionResult != null && lastActionParams != null) {
-			if (lastAction.getValue().equals("move") && lastActionResult.getValue().equals("success")) {
-				String lastParamsString = lastActionParams.get(0) + "";
-				lastParamsString = lastParamsString.replace("[", "");
-				lastParamsString = lastParamsString.replace("]", "");
-				this.lastMoveDir = lastParamsString;
+
+		ArrayList<int[]> entityLocations = this.inSight.get("entity");
+		// Don't walk towards other agent if he's next to you
+		for (int i = 0; i < entityLocations.size(); i++) {
+			int[] entity = entityLocations.get(i);
+			if (entity[0] == 0) {
+				if (entity[1] > 0) {
+					possibleDirs.remove("s");
+				}
+				if (entity[1] < 0) {
+					possibleDirs.remove("n");
+				}
+			}
+			if (entity[1] == 0) {
+				if (entity[0] > 0) {
+					possibleDirs.remove("e");
+				}
+				if (entity[0] < 0) {
+					possibleDirs.remove("w");
+				}
 			}
 		}
 		return possibleDirs;
