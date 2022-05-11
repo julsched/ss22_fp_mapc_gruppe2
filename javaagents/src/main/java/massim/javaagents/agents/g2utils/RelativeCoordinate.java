@@ -92,6 +92,14 @@ public class RelativeCoordinate {
         }
     }
 
+    public boolean isNextToAgent() {
+        if (isOneStepNorth() || isOneStepEast() || isOneStepSouth() || isOneStepWest()) {
+            return true;        
+        } else {
+            return false;
+        }
+    }
+
     // Manhattan distance
     public int distanceFromAgent() {
         return Math.abs(this.x) + Math.abs(this.y);
