@@ -2,7 +2,7 @@ package massim.javaagents.agents.g2utils;
 
 import java.util.*;
 
-public class Dispenser {
+public class Dispenser extends Cell{
 
     private final RelativeCoordinate relativeCoordinate;
     private final String type;
@@ -21,7 +21,8 @@ public class Dispenser {
         return closestDispenser;
     }
 
-    public Dispenser(RelativeCoordinate relativeCoordinate, String type) {
+    public Dispenser(RelativeCoordinate relativeCoordinate, String type, int lastSeen) {
+    	super(lastSeen);
         this.relativeCoordinate = relativeCoordinate;
         this.type = type;
     }

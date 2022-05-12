@@ -45,8 +45,13 @@ public class AgentJulia extends Agent {
      private List<Norm> norms = new ArrayList<>();
     // Blocks that might(!) be directly attached to the agent (right next to agent)
     private List<Block> attachedBlocks = new ArrayList<>();
-
-
+   
+    private HashMap<String, RelativeCoordinate> seenTeamMembers = new HashMap<String, RelativeCoordinate>();
+    private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>();
+    private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0);
+    private Orientation rotated = Orientation.NORTH;
+    private HashMap<RelativeCoordinate, Cell> attachedBlocksWithPositions = new HashMap<>();
+    private String roleName = ""; //TODO -> automatisch aktualisieren, wenn Rolle geändert wird
     /**
      * Constructor.
      * @param name    the agent's name
@@ -61,15 +66,30 @@ public class AgentJulia extends Agent {
 
     @Override
     public void handleMessage(Percept message, String sender) {}
+    
+    public void handleMap(HashMap<RelativeCoordinate, Cell> mapSender, String from, RelativeCoordinate pos) {
+		if (seenTeamMembers.containsKey(from)) {
+			RelativeCoordinate posSender = seenTeamMembers.get(from);
+			int xDiff = (posSender.getX() - pos.getX());
+			int yDiff = (posSender.getY() - pos.getY());
+			for (RelativeCoordinate key : mapSender.keySet()) {
+				RelativeCoordinate adjusted = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
+				if (!map.containsKey(adjusted) || mapSender.get(key).getLastSeen() > map.get(adjusted).getLastSeen()) {
+					map.put(adjusted, mapSender.get(key));
+				}
+			}
+		}	
+	}
 
     @Override
     public Action step() {
-        boolean currentStepSet = setCurrentStep(getPercepts());
-        if (!currentStepSet) {
-            say("I was called but did not receive a current step percept");
-            // TODO: implement end of simulation percept handling
-            return null;
-        }
+//      Fehlerbehandlung ausgelagert in sortPercepts  
+//    	boolean currentStepSet = setCurrentStep(getPercepts());
+//        if (!currentStepSet) {
+//            say("I was called but did not receive a current step percept");
+//            // TODO: implement end of simulation percept handling
+//            return null;
+//        }
         sortPercepts(getPercepts());
         if (explorerMissionAgent.length() == 0) {
             if (teamSize > 1) {
@@ -87,19 +107,23 @@ public class AgentJulia extends Agent {
             return workerStep();
         }
     }
-
-    private boolean setCurrentStep(List<Percept> percepts) {
-        for (Percept percept : percepts) {
-            if (percept.getName().equals("step")) {
-                currentStep = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-                say("------------------ Current step: " + currentStep + " ------------------");
-                return true;
-            }
-        }
-        return false;
-    }
+    
+//		Ausgelagert in sortPercepts()
+//    private boolean setCurrentStep(List<Percept> percepts) {
+//        for (Percept percept : percepts) {
+//            if (percept.getName().equals("step")) {
+//                currentStep = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+//                say("------------------ Current step: " + currentStep + " ------------------");
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
 
     private void sortPercepts(List<Percept> percepts) {
+    	if(percepts == null) { //Error handling if no percepts are available
+    		return;
+    	}
         // Allocate initial percepts to variables
         if (currentStep == 0) {
             saveInitialPercepts(percepts);
@@ -137,6 +161,16 @@ public class AgentJulia extends Agent {
                 case "deadline" -> {
                     deadline = ((Numeral) percept.getParameters().get(0)).getValue().longValue();
                     break;
+                }
+                case "step" ->{
+    				Parameter step = percept.getParameters().get(0);
+    				if (step instanceof Numeral) {
+    					int stepNo = ((Numeral) step).getValue().intValue();
+    					this.currentStep = stepNo;
+    					break;
+    				} else {
+    					break;
+    				}
                 }
                 case "score" -> {
                     currentScore = ((Numeral) percept.getParameters().get(0)).getValue().longValue();
@@ -189,47 +223,39 @@ public class AgentJulia extends Agent {
                 }
                 case "thing" -> {
                     String thingType = ((Identifier) percept.getParameters().get(2)).getValue();
-                    if (thingType.equals("dispenser")) {
-                        int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-                        int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                    //Maybe Check if x and y are Numeral first
+                    int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                    int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                    RelativeCoordinate relativeCoordinate = new RelativeCoordinate(x, y);
+                    if (thingType.equals("dispenser")) {                       
                         String type = ((Identifier) percept.getParameters().get(3)).getValue();
-
-                        Dispenser dispenser = new Dispenser(new RelativeCoordinate(x, y), type);
+                        Dispenser dispenser = new Dispenser(relativeCoordinate, type,currentStep);
+                        map.put(relativeCoordinate, dispenser);
                         dispensers.add(dispenser);
                         break;
                     }
                     if (thingType.equals("block")) {
-                        int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-                        int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
                         String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
-
-                        RelativeCoordinate relativeCoordinate = new RelativeCoordinate(x, y);
-                        Block block = new Block(relativeCoordinate, blockType);
+                        Block block = new Block(relativeCoordinate, blockType, currentStep);
+                        map.put(relativeCoordinate, block);
                         blocks.add(block);
                         occupiedFields.add(relativeCoordinate);
                         break;
                     }
-                    if (thingType.equals("entity")) {
-                        int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-                        int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                    if (thingType.equals("entity")) {                     
                         String teamName = ((Identifier) percept.getParameters().get(3)).getValue();
-
-                        RelativeCoordinate relativeCoordinate = new RelativeCoordinate(x, y);
                         Entity entity = new Entity(relativeCoordinate, teamName);
                         entities.add(entity);
                         occupiedFields.add(relativeCoordinate);
                         break;
                     }
-                    if (thingType.equals("obstacle")) {
-                        int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-                        int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-                        RelativeCoordinate relativeCoordinate = new RelativeCoordinate(x, y);
+                    if (thingType.equals("obstacle")) {                    
                         occupiedFields.add(relativeCoordinate);
+                        Obstacle obstacle = new Obstacle(currentStep);
+                        map.put(relativeCoordinate, obstacle);
                         break;
                     }
-                    if (thingType.equals("marker")) {
-                        int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-                        int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                    if (thingType.equals("marker")) {                   
                         String info = ((Identifier) percept.getParameters().get(3)).getValue();
                         // TODO
                         break;
@@ -411,7 +437,278 @@ public class AgentJulia extends Agent {
         }
     }
 
-    private Action handleError() {
+ // Verarbeitet die Informationen zur letzten Aktion und passt die Annahmen des Agenten an
+ 	// TODO: eigentliche Evaluation
+ 	private void evaluateLastAction() {
+ 		switch (lastAction) {
+ 		case "skip":
+ 			break;
+ 		case "move":
+ 			if (this.lastActionResult.equals("success")) {
+ 				Iterator<Object> it = this.lastActionParams.iterator();
+ 				while (it.hasNext()) {
+ 					Parameter dir = (Parameter) it.next();
+ 					if (dir instanceof Identifier) {
+ 						int x = this.currentPos.getX();
+ 						int y = this.currentPos.getY();
+ 						String dirString = ((Identifier) dir).getValue();
+ 						if ((dirString.equals("n") && this.rotated.equals(Orientation.NORTH)) || (dirString.equals("e") && this.rotated.equals(Orientation.EAST)) || (dirString.equals("s") && this.rotated.equals(Orientation.SOUTH)) || (dirString.equals("w") && this.rotated.equals(Orientation.WEST))) {
+ 							this.setCurrentPosition(new RelativeCoordinate(x, y+1));
+ 						} else if  ((dirString.equals("s") && this.rotated.equals(Orientation.NORTH)) || (dirString.equals("w") && this.rotated.equals(Orientation.EAST)) || (dirString.equals("s") && this.rotated.equals(Orientation.NORTH)) || (dirString.equals("e") && this.rotated.equals(Orientation.WEST))) {
+ 							this.setCurrentPosition(new RelativeCoordinate(x, y+1));
+ 						} else if ((dirString.equals("e") && this.rotated.equals(Orientation.NORTH)) || (dirString.equals("s") && this.rotated.equals(Orientation.EAST)) || (dirString.equals("w") && this.rotated.equals(Orientation.SOUTH)) || (dirString.equals("n") && this.rotated.equals(Orientation.WEST))) {
+ 							this.setCurrentPosition(new RelativeCoordinate(x+1, y));
+ 						} else if ((dirString.equals("w") && this.rotated.equals(Orientation.NORTH)) || (dirString.equals("n") && this.rotated.equals(Orientation.EAST)) || (dirString.equals("e") && this.rotated.equals(Orientation.SOUTH)) || (dirString.equals("s") && this.rotated.equals(Orientation.WEST))) {
+ 							this.setCurrentPosition(new RelativeCoordinate(x-1, y));
+ 						}
+ 					}
+ 				}
+ 			} else if (this.lastActionResult.equals("partial_success")) {
+ 				Parameter dir = (Parameter) this.lastActionParams.get(0);
+ 				if (dir instanceof Identifier) {
+ 					int x = this.currentPos.getX();
+ 					int y = this.currentPos.getY();
+ 					String dirString = ((Identifier) dir).getValue();
+ 					switch (dirString) {
+ 					case "n":
+ 						this.setCurrentPosition(new RelativeCoordinate(x, y+1));
+ 						break;
+ 					case "s":
+ 						this.setCurrentPosition(new RelativeCoordinate(x, y-1));
+ 						break;
+ 					case "e":
+ 						this.setCurrentPosition(new RelativeCoordinate(x+1, y));
+ 						break;
+ 					case "w":
+ 						this.setCurrentPosition(new RelativeCoordinate(x-1, y));
+ 						break;
+ 					}
+ 					// Fehlerbehandlung
+ 				}
+ 			} else if (this.lastActionResult.equals("failed_parameter")) {
+ 				// Fehlerbehandlung
+ 			} else {
+ 				// Fehlerbehandlung
+ 			}
+ 			break;
+ 		case "attach":
+ 			switch (lastActionResult) {
+ 			case "success":
+ 				Parameter dir = (Parameter) this.lastActionParams.get(0);
+ 				if (dir instanceof Identifier) {
+ 					String dirString = ((Identifier) dir).getValue();
+ 					RelativeCoordinate pos;
+ 					Cell cell;
+ 					switch (dirString) {
+ 					case "n":
+ 						pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY()+1);
+ 						cell = this.map.get(pos);
+ 						this.attachedBlocksWithPositions.put(pos, cell);
+ 						break;
+ 					case "s":
+ 						pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY()-1);
+ 						cell = this.map.get(pos);
+ 						this.attachedBlocksWithPositions.put(pos, cell);
+ 						break;
+ 					case "e":
+ 						pos = new RelativeCoordinate(this.currentPos.getX()+1, this.currentPos.getY());
+ 						cell = this.map.get(pos);
+ 						this.attachedBlocksWithPositions.put(pos, cell);
+ 						break;
+ 					case "w":
+ 						pos = new RelativeCoordinate(this.currentPos.getX()-1, this.currentPos.getY());
+ 						cell = this.map.get(pos);
+ 						this.attachedBlocksWithPositions.put(pos, cell);
+ 						break;
+ 					}
+ 				}
+ 			case "failed_parameter":
+ 				break;
+ 			case "failed_target":
+ 				break;
+ 			case "failed_blocked":
+ 				break;
+ 			case "failed":
+ 				break;
+ 			default:
+ 				break;
+ 			}
+ 			break;
+ 		case "detach":
+ 			switch (lastActionResult) {
+ 			case "success":
+ 				Parameter dir = (Parameter) this.lastActionParams.get(0);
+ 				if (dir instanceof Identifier) {
+ 					String dirString = ((Identifier) dir).getValue();
+ 					RelativeCoordinate pos;
+ 					switch (dirString) {
+ 					case "n":
+ 						pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY()+1);
+ 						this.attachedBlocks.remove(pos);
+ 						break;
+ 					case "s":
+ 						pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY()-1);
+ 						this.attachedBlocks.remove(pos);
+ 						break;
+ 					case "e":
+ 						pos = new RelativeCoordinate(this.currentPos.getX()+1, this.currentPos.getY());
+ 						this.attachedBlocks.remove(pos);
+ 						break;
+ 					case "w":
+ 						pos = new RelativeCoordinate(this.currentPos.getX()-1, this.currentPos.getY());
+ 						this.attachedBlocks.remove(pos);
+ 						break;
+ 					default:
+ 						break;
+ 					}
+ 			}
+ 			break;
+ 		case "rotate":
+ 			switch (lastActionResult) {
+ 			case "success":
+ 				Parameter rot = (Parameter) this.lastActionParams.get(0);
+ 				if (rot instanceof Identifier) {
+ 					String rotString = ((Identifier) rot).getValue();
+ 					HashMap<RelativeCoordinate, Cell> temp = new HashMap<RelativeCoordinate, Cell>();
+ 					if (rotString.equals("cw")) {
+ 						this.rotated = Orientation.changeOrientation(rotated, 1);
+ 						for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
+ 							Cell cell = this.attachedBlocksWithPositions.get(key);
+ 							temp.put(new RelativeCoordinate(key.getY(), -key.getX()), cell);
+ 						}
+ 					} else {
+ 						this.rotated = Orientation.changeOrientation(rotated, -1);
+ 						for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
+ 							Cell cell = this.attachedBlocksWithPositions.get(key);
+ 							temp.put(new RelativeCoordinate(-key.getY(), key.getX()), cell);
+ 						}
+ 					}
+ 					this.attachedBlocksWithPositions = temp;
+ 				}
+ 			case "failed_parameter":
+ 				// Fehlerbehandlung
+ 				break;
+ 			case "failed":
+ 				// Fehlerbehandlung
+ 				break;
+ 			default:
+ 				break;
+ 			}
+ 			break;
+ 		case "connect":
+ 			switch (lastActionResult) {
+ 			case "success":
+ 				// Behandlung
+ 				break;
+ 			case "failed_parameter":
+ 				// FEhlerbehandlung
+ 				break;
+ 			case "failed_partner":
+ 				// Fehlerbehandlung
+ 				break;
+ 			case "failed_target":
+ 				// Fehlerbehandlung
+ 				break;
+ 			case "failed":
+ 				// Fehlerbehandlung
+ 				break;
+ 			default:
+ 				break;
+ 			}
+ 			break;
+ 		case "disconnect":
+ 			switch (lastActionResult) {
+ 			case "success":
+ 				Parameter xCellA = (Parameter) this.lastActionParams.get(0);
+ 				Parameter yCellA = (Parameter) this.lastActionParams.get(1);
+ 				Parameter xCellB = (Parameter) this.lastActionParams.get(2);
+ 				Parameter yCellB = (Parameter) this.lastActionParams.get(3);
+ 				// Bestimmung, ob Blöcke aus der attached-Liste entfernt werden müssen
+ 				break;
+ 			case "failed_parameter":
+ 				// Fehlerbehandlung
+ 				break;
+ 			case "failed_target":
+ 				// Fehlerbehandlung
+ 				break;
+ 			default:
+ 				break;
+ 			}
+ 			break;
+ 		case "request":
+ 			break;
+ 		case "submit":
+ 			break;
+ 		case "clear":
+ 			switch (lastActionResult) {
+ 			case "success":
+ 				int xCoor = 0;
+ 				int yCoor = 0;
+ 				Parameter xCell = (Parameter) this.lastActionParams.get(0);
+ 				if (xCell instanceof Numeral) {
+ 					xCoor = ((Numeral) xCell).getValue().intValue();
+ 				} else {
+ 					break;
+ 				}
+ 				Parameter yCell = (Parameter) this.lastActionParams.get(1);
+ 				if (yCell instanceof Numeral) {
+ 					yCoor = ((Numeral) yCell).getValue().intValue();
+ 				} else {
+ 					break;
+ 				}
+ 				this.map.remove(new RelativeCoordinate(xCoor, yCoor));
+ 				break;
+ 			case "failed_parameter":
+ 				// Fehlerbehandlung
+ 				break;
+ 			case "failed_target":
+ 				// Fehlerbehandlung
+ 				break;
+ 			case "failed_resources":
+ 				// Fehlerbehandlung
+ 				break;
+ 			case "failed_location":
+ 				// Fehlerbehandlung
+ 				break;
+ 			case "failed_random":
+ 				// Fehlerbehandlung
+ 				break;
+ 			default:
+ 				break;
+ 			}
+ 			break;
+ 		case "adopt":
+ 			switch (lastActionResult) {
+ 			case "success":
+ 				Parameter role = (Parameter) this.lastActionParams.get(0);
+ 				if (role instanceof Identifier) {
+ 					this.roleName = ((Identifier) role).getValue();
+ 				}
+ 			case "failed_parameter":
+ 				// Fehlerbehandlung
+ 				break;
+ 			case "failed_location":
+ 				// Fehlerbehandlung
+ 				break;
+ 			default:
+ 				break;
+ 			}
+ 			break;
+ 		case "survey":
+ 			break;
+ 		default:
+ 			break;
+ 		}
+ 		
+ 	}
+ 	}
+ 	
+    private void setCurrentPosition(RelativeCoordinate relativeCoordinate) {
+		this.currentPos = relativeCoordinate;
+		
+	}
+
+	private Action handleError() {
         if (lastAction.equals("move") && !lastActionResult.equals("success") && lastActionParams.size() == 1) {
             // Get direction
             String direction = (String) lastActionParams.get(0);

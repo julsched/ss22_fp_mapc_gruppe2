@@ -2,11 +2,12 @@ package massim.javaagents.agents.g2utils;
 
 import java.util.*;
 
-public class Block {
+public class Block extends Cell{
 
     private final RelativeCoordinate relativeCoordinate;
     private final String type;
 
+    
     public static Block getClosestBlock(List<Block> blocks) {
         Block closestBlock = null;
         for (Block block : blocks) {
@@ -21,11 +22,12 @@ public class Block {
         return closestBlock;
     }
 
-    public Block(RelativeCoordinate relativeCoordinate, String type) {
+    public Block(RelativeCoordinate relativeCoordinate, String type, int lastSeen) {
+    	super(lastSeen);
         this.relativeCoordinate = relativeCoordinate;
         this.type = type;
     }
-
+    
     public RelativeCoordinate getRelativeCoordinate() {
         return this.relativeCoordinate;
     }
