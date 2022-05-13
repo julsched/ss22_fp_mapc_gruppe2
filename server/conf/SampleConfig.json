@@ -21,6 +21,8 @@
   ],
 
   "match" : [
+    "$(sim/sim_julia_1.json)",
+    "$(sim/simCarina0.json)",
     "$(sim/sim1.json)",
     "$(sim/sim2.json)"
   ],

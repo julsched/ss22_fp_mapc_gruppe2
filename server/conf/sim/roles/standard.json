@@ -2,8 +2,8 @@
   {
     "name": "default",
     "vision": 5,
-    "actions": ["skip", "move", "rotate", "adopt", "detach", "clear"],
-    "speed": [1],
+    "actions": ["skip", "move", "rotate", "adopt", "detach", "clear", "request", "attach", "submit"],
+    "speed": [2],
     "clear": {
       "chance": 0.3,
       "maxDistance": 1

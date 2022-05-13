@@ -1,6 +1,6 @@
 {
     "simultaneous" : 1,
-    "chance": 15,
+    "chance": 0,
     "subjects" : [
         {
             "name" : "Carry",
