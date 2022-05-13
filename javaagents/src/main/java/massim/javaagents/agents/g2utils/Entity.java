@@ -11,4 +11,12 @@ public class Entity {
         this.relativeCoordinate = relativeCoordinate;
         this.teamName = teamName;
     }
+
+    public RelativeCoordinate getRelativeCoordinate() {
+        return this.relativeCoordinate;
+    }
+
+    public String getTeamName() {
+        return this.teamName;
+    }
 }

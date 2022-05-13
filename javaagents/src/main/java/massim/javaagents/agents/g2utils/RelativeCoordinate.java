@@ -113,7 +113,7 @@ public class RelativeCoordinate {
         }
     }
 
-    public boolean isDirectlyNorth() {
+    public boolean isStraightNorth() {
         if (this.x == 0 && this.y < 0) {
             return true;
         } else {
@@ -121,7 +121,7 @@ public class RelativeCoordinate {
         }
     }
 
-    public boolean isDirectlyEast() {
+    public boolean isStraightEast() {
         if (this.x > 0 && this.y == 0) {
             return true;
         } else {
@@ -129,7 +129,7 @@ public class RelativeCoordinate {
         }
     }
 
-    public boolean isDirectlySouth() {
+    public boolean isStraightSouth() {
         if (this.x == 0 && this.y > 0) {
             return true;
         } else {
@@ -137,7 +137,7 @@ public class RelativeCoordinate {
         }
     }
 
-    public boolean isDirectlyWest() {
+    public boolean isStraightWest() {
         if (this.x < 0 && this.y == 0) {
             return true;
         } else {
@@ -146,16 +146,16 @@ public class RelativeCoordinate {
     }
 
     public String getDirectDirection() {
-        if (this.isDirectlyNorth()) {
+        if (this.isStraightNorth()) {
             return "n";
         }
-        if (this.isDirectlyEast()) {
+        if (this.isStraightEast()) {
             return "e";
         }
-        if (this.isDirectlySouth()) {
+        if (this.isStraightSouth()) {
             return "s";
         }
-        if (this.isDirectlyWest()) {
+        if (this.isStraightWest()) {
             return "w";
         }
         return "x";

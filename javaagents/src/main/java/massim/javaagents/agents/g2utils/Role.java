@@ -46,6 +46,10 @@ public class Role {
 		return this.speeds;
 	}
 
+	public Integer getSpeedWithoutAttachments() {
+        return this.speeds.get(0);
+    }
+
 	public double getClearChance() {
 		return this.clearChance;
 	}

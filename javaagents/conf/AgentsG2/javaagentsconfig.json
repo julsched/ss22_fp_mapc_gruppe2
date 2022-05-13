@@ -6,7 +6,7 @@
       "agent-prefix":  "A",
       "entity-prefix":  "connectionA",
       "team":  "A",
-      "class": "AgentJulia"
+      "class": "AgentG2"
     },
     {
       "count":  30,
@@ -14,7 +14,7 @@
       "agent-prefix":  "A",
       "entity-prefix":  "connectionA",
       "team":  "A",
-      "class": "AgentJulia"
+      "class": "AgentG2"
     },
     {
       "count":  50,

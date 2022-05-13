@@ -11,7 +11,7 @@ import eis.iilang.Percept;
 import massim.eismassim.EnvironmentInterface;
 import massim.javaagents.agents.Agent;
 import massim.javaagents.agents.BasicAgent;
-import massim.javaagents.agents.AgentJulia;
+import massim.javaagents.agents.AgentG2;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -100,8 +100,8 @@ public class Scheduler implements AgentListener, EnvironmentListener{
                     agent = new BasicAgent(agentConf.name, mailService);
                     break;
                 // [add further types here]
-                case "AgentJulia":
-                    agent = new AgentJulia(agentConf.name, mailService);
+                case "AgentG2":
+                    agent = new AgentG2(agentConf.name, mailService);
                     break;
                 default:
                     System.out.println("Unknown agent type/class " + agentConf.className);

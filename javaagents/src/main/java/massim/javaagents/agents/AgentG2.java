@@ -6,32 +6,28 @@ import massim.javaagents.agents.g2utils.*;
 
 import java.util.*;
 
-/**
- * A very basic agent.
- */
-public class AgentJulia extends Agent {
+public class AgentG2 extends Agent {
 
 	private String teamName;
 	private int teamSize;
-	private int stepsOverall;
+	private int simSteps;
 	private List<Role> roles = new ArrayList<>();
-	private String explorerMissionAgent = "";
+	private String explorerAgent;
+	boolean simStartPerceptsSaved;
 
 	private int currentStep = -1;
-	private long currentScore = 0;
-	private int energyLevel = 0;
-	private boolean currentlyActive = true;
-	private Role currentRole = null;
-	// TODO: fill this with maximum step number of agent's current role
-	private int maxStepNum = 2;
+	private long currentScore;
+	private int energyLevel;
+	private boolean currentlyActive;
+	private Role currentRole;
 
 	private long actionID = -1;
-	private long timestamp = 0;
-	private long deadline = -1;
-	private String lastAction = "";
+	private long timestamp;
+	private long deadline;
+	private String lastAction;
 	private List<Object> lastActionParams = new ArrayList<>();
-	private String lastActionResult = "";
-	private RelativeCoordinate hitFrom = null;
+	private String lastActionResult;
+	private RelativeCoordinate hitFrom;
 	private List<Norm> violations = new ArrayList<>();
 
 	private List<Percept> attachedThingsPercepts = new ArrayList<>();
@@ -63,7 +59,7 @@ public class AgentJulia extends Agent {
 	 * @param name    the agent's name
 	 * @param mailbox the mail facility
 	 */
-	public AgentJulia(String name, MailService mailbox) {
+	public AgentG2(String name, MailService mailbox) {
 		super(name, mailbox);
 	}
 
@@ -91,66 +87,74 @@ public class AgentJulia extends Agent {
 
 	@Override
 	public Action step() {
-		boolean currentStepSet = setCurrentStep(getPercepts()); // must be set first, so agents knows currentStep for
-																// sortPercepts()
-		if (!currentStepSet) {
-			say("I was called but did not receive a current step percept");
-			// TODO: implement end of simulation percept handling
-			return null;
-		}
-		sortPercepts(getPercepts());
-		if (explorerMissionAgent.length() == 0) {
-			if (teamSize > 1) {
-				explorerMissionAgent = Mission.applyForExplorerMission(getName());
-			}
-		}
-		if (!lastActionResult.equals("success")) {
-			return handleError();
-		}
-		if (explorerMissionAgent.equals(getName())) {
-			say("My mission: I am the explorer of the team!");
-			return explorerStep();
-		} else {
-			say("My mission: I am just a normal worker :(");
-			return workerStep();
-		}
+		List<Percept> percepts = getPercepts();
+		if (simSteps != 0 && currentStep == simSteps -1) {
+            saveSimEndPercepts(percepts);
+            say("Bye! See you in the next simulation!");
+            prepareForNextSimulation();
+            return null;
+        }
+        if (!simStartPerceptsSaved) {
+            saveSimStartPercepts(percepts);
+            if (teamSize > 1) {
+                explorerAgent = Mission.applyForExplorerMission(getName());
+            } else {
+                explorerAgent = "None";
+            }
+            return null;
+        }
+
+		// must be set first, so agents knows currentStep for sorting Percepts and for having a structured console output
+		setCurrentStep(percepts);													
+		
+		saveStepPercepts(percepts);
+
+		analyzeAttachedThings();
+
+		if (explorerAgent.equals(getName())) {
+            say("My mission: I am the explorer of the team!");
+            if (!lastActionResult.equals("success")) {
+                return handleError();
+            }
+            return explorerStep();
+        } else {
+            say("My mission: I am just a normal worker :(");
+            if (!lastActionResult.equals("success")) {
+                return handleError();
+            }
+            return workerStep();
+        }
 	}
 
-	private boolean setCurrentStep(List<Percept> percepts) {
+	private void setCurrentStep(List<Percept> percepts) {
 		for (Percept percept : percepts) {
 			if (percept.getName().equals("step")) {
 				currentStep = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
 				say("------------------ Current step: " + currentStep + " ------------------");
-				return true;
+				return;
 			}
 		}
-		return false;
 	}
 
-	private void sortPercepts(List<Percept> percepts) {
+	private void saveStepPercepts(List<Percept> percepts) {
 		if (percepts == null) { // Error handling if no percepts are available
 			return;
 		}
-		// Allocate initial percepts to variables
-		if (currentStep == 0) {
-			saveInitialPercepts(percepts);
-		}
 
 		// Delete previous step percepts
-		lastActionParams = new ArrayList<>();
-		hitFrom = null;
-		attachedThingsPercepts = new ArrayList<>();
-		dispensers = new ArrayList<>();
-		blocks = new ArrayList<>();
-		entities = new ArrayList<>();
-		occupiedFields = new ArrayList<>();
-		goalZoneFields = new ArrayList<>();
-		roleZoneFields = new ArrayList<>();
-		tasks = new ArrayList<>();
-		norms = new ArrayList<>();
-		attachedBlocks = new ArrayList<>();
+		lastActionParams.clear();
+        attachedThingsPercepts.clear();
+        dispensers.clear();
+        blocks.clear();
+        entities.clear();
+        occupiedFields.clear();
+        goalZoneFields.clear();
+        roleZoneFields.clear();
+        tasks.clear();
+        norms.clear();
+        hitFrom = null;
 
-		// Allocate step percepts to variables
+		// Save new step percepts
 		for (Percept percept : percepts) {
 			String perceptName = percept.getName();
 			switch (perceptName) {
@@ -169,7 +173,6 @@ public class AgentJulia extends Agent {
 				deadline = ((Numeral) percept.getParameters().get(0)).getValue().longValue();
 				break;
 			}
-
 			case "score" -> {
 				currentScore = ((Numeral) percept.getParameters().get(0)).getValue().longValue();
 				break;
@@ -214,7 +217,6 @@ public class AgentJulia extends Agent {
 				}
 				break;
 			}
-
 			case "violations" -> {
 				// TODO
 				break;
@@ -251,7 +253,7 @@ public class AgentJulia extends Agent {
 				}
 				if (thingType.equals("obstacle")) {
 					occupiedFields.add(relativeCoordinate);
-					Obstacle obstacle = new Obstacle(currentStep);
+					Obstacle obstacle = new Obstacle(relativeCoordinate, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, obstacle); //TODO @Carina -> make current AbsolutePos work. Then we can make a Map. 
 					map.put(relativeCoordinate, obstacle);
 					break;
@@ -344,8 +346,7 @@ public class AgentJulia extends Agent {
 				if (percept.getParameters().size() == 1) {
 					String roleName = ((Identifier) percept.getParameters().get(0)).getValue();
 					if (currentRole == null || !currentRole.getName().equals(roleName)) {
-						Role newRole = Role.getRole(roles, roleName);
-						currentRole = newRole;
+						currentRole = Role.getRole(roles, roleName);
 					}
 					if (currentRole != null) {
 						say("My current role: " + currentRole.getName());
@@ -378,28 +379,32 @@ public class AgentJulia extends Agent {
 			}
 		}
 //		setCurrentAbsolutePos();
-		// Identify if agent has blocks directly attached (next to agent) - TODO: needs
-		// to be improved since they could be attached to another entity
-		for (Percept percept : attachedThingsPercepts) {
-			int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-			int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-			RelativeCoordinate relativeCoordinateAttachedThing = new RelativeCoordinate(x, y);
-			if (!relativeCoordinateAttachedThing.isNextToAgent()) {
-				continue;
-			}
-
-			for (Block block : blocks) {
-				RelativeCoordinate relativeCoordinate = block.getRelativeCoordinate();
-				if (relativeCoordinate.equals(relativeCoordinateAttachedThing)) {
-					say("I probably have a block attached on position " + relativeCoordinate.getX() + "|"
-							+ relativeCoordinate.getY());
-					attachedBlocks.add(block);
-				}
-			}
-			// TODO: Same should be done with entity and obstacle once variables are
-			// implemented
-		}
 	}
+
+	// Analyzes and saves things that could be attached to the agent
+	private void analyzeAttachedThings() {
+        attachedBlocks = new ArrayList<>();
+        // Identify if agent has blocks directly attached (next to agent) - TODO: needs to be improved since they
+		// could be attached to another entity
+        for (Percept percept : attachedThingsPercepts) {
+            int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+            int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+            RelativeCoordinate relativeCoordinateAttachedThing = new RelativeCoordinate(x, y);
+            if (!relativeCoordinateAttachedThing.isNextToAgent()) {
+                continue;
+            }
+
+            for (Block block : blocks) {
+                RelativeCoordinate relativeCoordinate = block.getRelativeCoordinate();
+                if (relativeCoordinate.equals(relativeCoordinateAttachedThing)) {
+                    say("I probably have a block attached on position " + relativeCoordinate.getX() 
+						+ "|" + relativeCoordinate.getY());
+                    attachedBlocks.add(block);
+                }
+            }
+            // TODO: Same should be done with entity and obstacle once variables are implemented
+        }
+    }
 
 //	We only need this, if we want to use currentAbsolutePos.
 	// updates the current absolute Position of the Agent.
@@ -433,57 +438,81 @@ public class AgentJulia extends Agent {
 //
 //	}
 
-	private void saveInitialPercepts(List<Percept> percepts) {
-		for (Percept percept : percepts) {
-			if (percept.getName().equals("team")) {
-				say("Saving team name...");
-				teamName = ((Identifier) percept.getParameters().get(0)).getValue();
-				continue;
-			}
-			if (percept.getName().equals("teamSize")) {
-				say("Saving team size...");
-				teamSize = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-				continue;
-			}
-			if (percept.getName().equals("steps")) {
-				say("Saving simulation step number...");
-				stepsOverall = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-				continue;
-			}
-			if (percept.getName().equals("role") && percept.getParameters().size() == 6) {
-				String roleName = ((Identifier) percept.getParameters().get(0)).getValue();
-				int roleVision = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-				double clearChance = ((Numeral) percept.getParameters().get(4)).getValue().doubleValue();
-				int clearMaxDist = ((Numeral) percept.getParameters().get(5)).getValue().intValue();
+	private void saveSimStartPercepts(List<Percept> percepts) {
+        for (Percept percept : percepts) {
+            String perceptName = percept.getName();
+            switch(perceptName) {
+                case "team" -> {
+                    say("Saving team name...");
+                    teamName = ((Identifier) percept.getParameters().get(0)).getValue();
+                    break;
+                }
+                case "teamSize" -> {
+                    say("Saving team size...");
+                    teamSize = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                    break;
+                }
+                case "steps" -> {
+                    say("Saving simulation step number...");
+                    simSteps = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+                    break;
+                }
+                case "role" -> {
+                    if (percept.getParameters().size() == 6) {
+                        String roleName = ((Identifier) percept.getParameters().get(0)).getValue();
+                        int roleVision = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+                        double clearChance = ((Numeral) percept.getParameters().get(4)).getValue().doubleValue();
+                        int clearMaxDist = ((Numeral) percept.getParameters().get(5)).getValue().intValue();
 
-				Parameter paramActions = percept.getParameters().get(2);
-				List<Parameter> params = new ArrayList<>();
-				for (int i = 0; i < ((ParameterList) paramActions).size(); i++) {
-					params.add(((ParameterList) paramActions).get(i));
-				}
-				List<String> actions = new ArrayList<>();
-				for (Parameter param : params) {
-					String action = ((Identifier) param).getValue();
-					actions.add(action);
-				}
+                        Parameter paramActions = percept.getParameters().get(2);
+                        List<Parameter> params = new ArrayList<>();
+                        for (int i = 0; i < ((ParameterList) paramActions).size(); i++) {
+                            params.add(((ParameterList) paramActions).get(i));
+                        }
+                        List<String> actions = new ArrayList<>();
+                        for (Parameter param : params) {
+                            String action = ((Identifier) param).getValue();
+                            actions.add(action);
+                        }
 
-				Parameter paramSpeeds = percept.getParameters().get(3);
-				params = new ArrayList<>();
-				for (int i = 0; i < ((ParameterList) paramSpeeds).size(); i++) {
-					params.add(((ParameterList) paramSpeeds).get(i));
-				}
-				List<Integer> speeds = new ArrayList<>();
-				for (Parameter param : params) {
-					int speed = ((Numeral) param).getValue().intValue();
-					speeds.add(speed);
-				}
-				Role role = new Role(roleName, roleVision, actions, speeds, clearChance, clearMaxDist);
-				say("Saving information for role '" + roleName + "'...");
-				roles.add(role);
-				continue;
-			}
-		}
-	}
+                        Parameter paramSpeeds = percept.getParameters().get(3);
+                        params = new ArrayList<>();
+                        for (int i = 0; i < ((ParameterList) paramSpeeds).size(); i++) {
+                            params.add(((ParameterList) paramSpeeds).get(i));
+                        }
+                        List<Integer> speeds = new ArrayList<>();
+                        for (Parameter param : params) {
+                            int speed = ((Numeral) param).getValue().intValue();
+                            speeds.add(speed);
+                        }
+                        Role role = new Role(roleName, roleVision, actions, speeds, clearChance, clearMaxDist);
+                        say("Saving information for role '" + roleName + "'...");
+                        roles.add(role);
+                    }
+                    break;
+                }
+            }
+        }
+		simStartPerceptsSaved = true;
+    }
+
+	private void saveSimEndPercepts(List<Percept> percepts) {
+        for (Percept percept : percepts) {
+            String perceptName = percept.getName();
+            switch(perceptName) {
+                case "ranking" -> {
+                    // TODO
+                    say("Now analyzing simulation end percept 'ranking'");
+                    break;
+                }
+                case "score" -> {
+                    // TODO
+                    say("Now analyzing simulation end percept 'score'");
+                    break;
+                }
+            }
+        }
+    }
 
 	// Verarbeitet die Informationen zur letzten Aktion und passt die Annahmen des
 	// Agenten an
@@ -770,7 +799,6 @@ public class AgentJulia extends Agent {
 	}
 
 	private Action handleError() {
-
 		if (lastAction.equals("move") && !lastActionResult.equals("success") && lastActionParams.size() == 1) {
 			// Get direction
 			String direction = (String) lastActionParams.get(0);
@@ -812,116 +840,157 @@ public class AgentJulia extends Agent {
 			return moveRandomly(1);
 		}
 		// TODO: expand error handling
-		return moveRandomly(maxStepNum);
+		return moveRandomly(currentRole.getSpeedWithoutAttachments());
 	}
 
 	private Action workerStep() {
-		// If a block has been requested in the last step, then attach this block
-		if (lastAction.equals("request") && lastActionResult.equals("success")) {
-			String direction = (String) lastActionParams.get(0);
-			say("Block had been successfully requested. Trying to attach...");
-			return new Action("attach", new Identifier(direction));
-		}
-		// This only works for tasks with one block
-		// If the agent has a block attached, then either rotate, look for goal zone or
-		// submit
-		if (!attachedBlocks.isEmpty()) {
-			if (!checkIfTaskComplete(tasks.get(0))) {
-				// TODO: Add check in which direction rotation is possible (due to obstacles)
-				say("Block(s) attached, but task incomplete.");
-				say("Rotating in clockwise direction...");
-				return new Action("rotate", new Identifier("cw"));
+        // If a block has been requested in the last step, then attach this block
+        if (lastAction.equals("request") && lastActionResult.equals("success")) {
+            String direction = (String) lastActionParams.get(0);
+            say("Block had been successfully requested. Trying to attach...");
+            return new Action("attach", new Identifier(direction));
+        }
+        // This only works for tasks with one block
+        // If the agent has a block attached, then either detach from it (if no corresponding task), rotate, look for goal zone or submit
+        if (!attachedBlocks.isEmpty()) {
+            List<Task> correspondingTasks = determineCorrespondingTasks();
+            if (correspondingTasks.isEmpty()) {
+                say("Block(s) attached, but no corresponding task(s).");
+                say("Detaching from block...");
+                return new Action("detach", new Identifier(attachedBlocks.get(0).getDirectDirection()));
+            }
+            Task completedTask = checkIfAnyTaskComplete(correspondingTasks);
+            if (completedTask == null) {
+                // TODO: Add check in which direction rotation is possible (due to obstacles)
+                say("Block(s) attached, but task incomplete.");
+                say("Rotating in clockwise direction...");
+                return new Action("rotate", new Identifier("cw"));
+            }
+            say("Task '" + completedTask.getName() + "' is complete");
+            if (taskSubmissionPossible(completedTask)) {
+                String taskName = completedTask.getName();
+                say("Submitting task '" + taskName + "'...");
+                return new Action("submit", new Identifier(taskName));
+            }
+            say("Need to look for goal zone");
+            
+            if (!goalZoneFields.isEmpty()) {
+                say("Goal zone identified");
+                List<RelativeCoordinate> adjacentGoalZoneFields = getAdjacentGoalZoneFields();
+                // Walk to goal zone
+                if (!agentInGoalZone() && adjacentGoalZoneFields.isEmpty()) {
+                    RelativeCoordinate closestGoalZoneField = RelativeCoordinate.getClosestCoordinate(goalZoneFields);
+                    int x = closestGoalZoneField.getX();
+                    int y = closestGoalZoneField.getY();
+                    // TODO: improve this
+                    if (y < 0) {
+                        say("Moving one step north towards goal zone...");
+                        return new Action("move", new Identifier("n"));
+                    }
+                    if (y > 0) {
+                        say("Moving one step south towards goal zone...");
+                        return new Action("move", new Identifier("s"));
+                    }
+                    if (x < 0) {
+                        say("Moving one step west towards goal zone...");
+                        return new Action("move", new Identifier("w"));
+                    }
+                    if (x > 0) {
+                        say("Moving one step east towards goal zone...");
+                        return new Action("move", new Identifier("e"));
+                    }
+                }
+                // Agent is at one of the four corners of a goal zone (outside) -> enter goal zone via corner
+                if (!agentInGoalZone() && adjacentGoalZoneFields.size() == 1) {
+                    RelativeCoordinate adjacentGoalZoneField = adjacentGoalZoneFields.get(0);
+                    String direction = adjacentGoalZoneField.getDirectDirection();
+                    say("Entering goal zone via corner...");
+                    return new Action("move", new Identifier(direction));
+                }
+                // Agent is somewhere along the edges of the goal zone (outside) -> enter goal zone via edge
+                if (!agentInGoalZone() && adjacentGoalZoneFields.size() == 2) {
+                    List<String> directions = new ArrayList<>();
+                    for (RelativeCoordinate adjacentGoalZoneField : adjacentGoalZoneFields) {
+                        directions.add(adjacentGoalZoneField.getDirectDirection());
+                    }
+                    if (directions.contains("n") && directions.contains("e")) {
+                        say("Entering goal zone via edge...");
+                        return new Action("move", new Identifier("e"), new Identifier("n"));
+                    }
+                    if (directions.contains("n") && directions.contains("w")) {
+                        say("Entering goal zone via edge...");
+                        return new Action("move", new Identifier("w"), new Identifier("n"));
+                    }
+                    if (directions.contains("s") && directions.contains("e")) {
+                        say("Entering goal zone via edge...");
+                        return new Action("move", new Identifier("e"), new Identifier("s"));
+                    }
+                    if (directions.contains("s") && directions.contains("w")) {
+                        say("Entering goal zone via edge...");
+                        return new Action("move", new Identifier("w"), new Identifier("s"));
+                    }
+                }
+                // This statement is only reached if the task is complete and the agent is in a goal zone but not all attached blocks are inside the goal zone
+                if (agentInGoalZone()) {
+                    say("Already in goal zone");
+                    // TODO: move in such a way that all blocks are inside the goal zone. At the moment the agent will randomly move to an adjacent goal zone cell
+                    // TODO: keep in mind that this goal zone might be too small for the task and the agent might need to look for a bigger goal zone
+                    List<String> allowedDirections = new ArrayList<>();
+                    for (RelativeCoordinate adjacentGoalZoneField : adjacentGoalZoneFields) {
+                        allowedDirections.add(adjacentGoalZoneField.getDirectDirection());
+                    }
+                    return moveRandomly(1, allowedDirections);
+                }
+            }
+            // Move randomly to find a goal zone
+            return moveRandomly(currentRole.getSpeedWithoutAttachments());
+        }
+
+        if (!dispensers.isEmpty()) {
+            // Determine closest dispenser
+            Dispenser closestDispenser = (Dispenser) determineClosest("dispenser", null);
+			if (closestDispenser == null) {
+				return null;
 			}
-			say("Task '" + tasks.get(0).getName() + "' is complete");
-			if (taskSubmissionPossible(tasks.get(0))) {
-				String taskName = tasks.get(0).getName();
-				say("Submitting task '" + taskName + "'...");
-				return new Action("submit", new Identifier(taskName));
+            say("Dispenser identified");
+            // Check whether there is a task for this block type
+            if (!checkForCorrespondingTask(closestDispenser.getType())) {
+                say("No corresponding task for identified dispenser.");
+                // Keep moving randomly to find a different dispenser
+                return moveRandomly(currentRole.getSpeedWithoutAttachments());
+            }
+            // If dispenser is already next to agent, then request a block
+            if (closestDispenser.isNextToAgent()) {
+                String direction = closestDispenser.getDirectDirection();
+                return requestBlock(direction);
+            }
+            // Move towards dispenser
+            int x = closestDispenser.getRelativeCoordinate().getX();
+            int y = closestDispenser.getRelativeCoordinate().getY();
+			say("Moving towards dispenser...");
+            // Agent is on top of dispenser -> move one step to be able to request a block
+			if (y == 0 && x == 0) {
+				return moveRandomly(1);
 			}
-			say("Need to look for goal zone");
-			// Walk to goal zone
-			if (!goalZoneFields.isEmpty()) {
-				say("Goal zone identified");
-				List<RelativeCoordinate> adjacentGoalZoneFields = getAdjacentGoalZoneFields();
-				if (!agentInGoalZone() && adjacentGoalZoneFields.isEmpty()) {
-					RelativeCoordinate closestGoalZoneField = RelativeCoordinate.getClosestCoordinate(goalZoneFields);
-					int x = closestGoalZoneField.getX();
-					int y = closestGoalZoneField.getY();
-					// TODO: improve this
-					if (y < 0) {
-						say("Moving one step north towards goal zone...");
-						return new Action("move", new Identifier("n"));
-					}
-					if (y > 0) {
-						say("Moving one step south towards goal zone...");
-						return new Action("move", new Identifier("s"));
-					}
-					if (x < 0) {
-						say("Moving one step west towards goal zone...");
-						return new Action("move", new Identifier("w"));
-					}
-					if (x > 0) {
-						say("Moving one step east towards goal zone...");
-						return new Action("move", new Identifier("e"));
-					}
-				}
-				// Agent is at one of the four corners of a goal zone (outside)
-				if (!agentInGoalZone() && adjacentGoalZoneFields.size() == 1) {
-					RelativeCoordinate adjacentGoalZoneField = adjacentGoalZoneFields.get(0);
-					String direction = adjacentGoalZoneField.getDirectDirection();
-					say("Entering goal zone via corner...");
-					return new Action("move", new Identifier(direction));
-				}
-				// Agent is somewhere along the edges of the goal zone (outside)
-				if (!agentInGoalZone() && adjacentGoalZoneFields.size() == 2) {
-					List<String> directions = new ArrayList<>();
-					for (RelativeCoordinate adjacentGoalZoneField : adjacentGoalZoneFields) {
-						directions.add(adjacentGoalZoneField.getDirectDirection());
-					}
-					if (directions.contains("n") && directions.contains("e")) {
-						say("Entering goal zone via edge...");
-						return new Action("move", new Identifier("e"), new Identifier("n"));
-					}
-					if (directions.contains("n") && directions.contains("w")) {
-						say("Entering goal zone via edge...");
-						return new Action("move", new Identifier("w"), new Identifier("n"));
-					}
-					if (directions.contains("s") && directions.contains("e")) {
-						say("Entering goal zone via edge...");
-						return new Action("move", new Identifier("e"), new Identifier("s"));
-					}
-					if (directions.contains("s") && directions.contains("w")) {
-						say("Entering goal zone via edge...");
-						return new Action("move", new Identifier("w"), new Identifier("s"));
-					}
-				}
-				// This statement is only reached if the task is complete, but cannot be
-				// submitted yet and the agent is already inside the goal zone
-				if (agentInGoalZone()) {
-					say("Already in goal zone");
-					// TODO: move in such a way that all blocks are inside the goal zone
-					List<String> allowedDirections = new ArrayList<>();
-					for (RelativeCoordinate adjacentGoalZoneField : adjacentGoalZoneFields) {
-						allowedDirections.add(adjacentGoalZoneField.getDirectDirection());
-					}
-					return moveRandomly(1, allowedDirections);
-				}
-			}
-			return moveRandomly(maxStepNum);
-		}
-		// At the moment limited to one type of dispenser/block ('b0')
-		String result = checkIfDispenserNext("b0");
-		// TODO: add check whether block already lies on top of dispenser
-		if (!result.equals("x")) {
-			return requestBlock(result);
-		}
-		String dispenserDirection = lookFor("dispenser", "b0");
-		if (!dispenserDirection.equals("x")) {
-			say("Dispenser identified. Moving towards dispenser...");
-			return new Action("move", new Identifier(dispenserDirection));
-		}
-		return moveRandomly(maxStepNum);
-	}
+			String dispenserDir = "";
+			// TODO: improve this
+            if (y < 0) {
+                dispenserDir = "n";
+            }
+            if (y > 0) {
+                dispenserDir = "s";
+            }
+            if (x < 0) {
+                dispenserDir = "w";
+            }
+            if (x > 0) {
+                dispenserDir = "e";
+            }
+            return new Action("move", new Identifier(dispenserDir));
+        }
+        // Move randomly to find a dispenser
+        return moveRandomly(currentRole.getSpeedWithoutAttachments());
+    }
 
 	private Action explorerStep() {
 		ArrayList<String> possibleDirs = getPossibleDirs();
@@ -1005,38 +1074,39 @@ public class AgentJulia extends Agent {
 	}
 
 	/**
-	 * Checks in clockwise-sequence if there is a dispenser of the required block
-	 * type directly next to the agent
-	 * 
-	 * @param blockType block type of dispenser agent is looking for
-	 * @return direction of the dispenser or 'x' if no dispenser of the required
-	 *         block type next to the agent
-	 */
-	private String checkIfDispenserNext(String blockType) {
-		if (!dispensers.isEmpty()) {
-			for (Dispenser dispenser : dispensers) {
-				String type = dispenser.getType();
-				if (type.equals(blockType)) {
-					RelativeCoordinate relativeCoordinate = dispenser.getRelativeCoordinate();
+    Checks in clockwise-sequence if there is a dispenser of the required block type directly next to the agent
+    @param blockType block type of dispenser agent is looking for
+    @return direction of the dispenser or "x" if no dispenser of the required block type next to the agent
+     */
+    private String checkIfDispenserNext(String blockType) {
+        if (!dispensers.isEmpty()) {
+            for (Dispenser dispenser : dispensers) {
+                String type = dispenser.getType();
+                if (type.equals(blockType)) {
+                    RelativeCoordinate relativeCoordinate = dispenser.getRelativeCoordinate();
 
-					if (relativeCoordinate.isOneStepNorth()) {
-						return "n";
-					}
-					if (relativeCoordinate.isOneStepEast()) {
-						return "e";
-					}
-					if (relativeCoordinate.isOneStepSouth()) {
-						return "s";
-					}
-					if (relativeCoordinate.isOneStepWest()) {
-						return "w";
-					}
-				}
-			}
-		}
-		return "x";
-	}
+                    if (relativeCoordinate.isOneStepNorth()) {
+                        return "n";
+                    }
+                    if (relativeCoordinate.isOneStepEast()) {
+                        return "e";
+                    }
+                    if (relativeCoordinate.isOneStepSouth()) {
+                        return "s";
+                    }
+                    if (relativeCoordinate.isOneStepWest()) {
+                        return "w";
+                    }
+                }  
+            } 
+        }
+        return "x";
+    }
 
+	/**
+    Gets a list of relative coordinates of goal zones which are directly next to the agent
+    @return A list of relative coordinates of adjacent goal zone cells
+     */
 	private List<RelativeCoordinate> getAdjacentGoalZoneFields() {
 		List<RelativeCoordinate> adjacentGoalZoneFields = new ArrayList<>();
 		for (RelativeCoordinate relativeCoordinate : goalZoneFields) {
@@ -1047,6 +1117,10 @@ public class AgentJulia extends Agent {
 		return adjacentGoalZoneFields;
 	}
 
+	/**
+    Checks whether agent is positioned on a goal zone (does not check for attached blocks)
+    @return True if agent is positioned on a goal zone, otherwise false
+     */
 	private boolean agentInGoalZone() {
 		RelativeCoordinate agentPosition = new RelativeCoordinate(0, 0);
 		for (RelativeCoordinate goalZoneField : goalZoneFields) {
@@ -1057,17 +1131,36 @@ public class AgentJulia extends Agent {
 		return false;
 	}
 
+	/**
+    Makes the agent request a block from a dispenser
+    @param direction Direction of the dispenser
+    @return The request action
+     */
 	private Action requestBlock(String direction) {
 		say("Requesting block...");
 		return new Action("request", new Identifier(direction));
 	}
 
+	/**
+    Moves the agent randomly in any directions
+    @param stepNum The number of steps the agent should move
+    @return The move action
+     */
 	private Action moveRandomly(int stepNum) {
 		List<String> allowedDirections = new ArrayList<String>(Arrays.asList("n", "e", "s", "w"));
 		return moveRandomly(stepNum, allowedDirections);
 	}
 
+	/**
+    Moves the agent randomly in the allowed directions
+    @param stepNum The number of steps the agent should move.
+	@param allowedDirections The list of allowed directions
+    @return The move action
+     */
 	private Action moveRandomly(int stepNum, List<String> allowedDirections) {
+		if (allowedDirections == null || allowedDirections.isEmpty()) {
+			return null;
+		}
 		Random rand = new Random();
 		List<String> randomDirections = new ArrayList<>();
 		for (int i = 1; i <= stepNum; i++) {
@@ -1097,6 +1190,25 @@ public class AgentJulia extends Agent {
 		}
 	}
 
+	/**
+    Checks from a list of tasks whether any task is complete (required blocks attached and all blocks on correct position)
+    @param tasks The list of tasks to be checked against
+    @return The task which is complete, otherwise null
+     */
+	private Task checkIfAnyTaskComplete(List<Task> tasks) {
+        for (Task task : tasks) {
+            if (checkIfTaskComplete(task)) {
+                return task;
+            }
+        }
+        return null;
+    }
+
+	/**
+    Checks if the task is complete (all blocks attached and on the correct position)
+    @param task The task to be checked against
+    @return True if task is complete, otherwise false
+     */
 	private boolean checkIfTaskComplete(Task task) {
 		// Check if all required blocks are attached
 		List<TaskRequirement> requirements = task.getRequirements();
@@ -1134,6 +1246,12 @@ public class AgentJulia extends Agent {
 		return false;
 	}
 
+	/**
+    Checks whether the task can be submitted
+	(checks if all requirements of the task are fulfilled and whether agent and attached blocks are positioned on goal zone fields)
+    @param task The task to be checked against
+    @return True if task can be submitted, otherwise false
+     */
 	private boolean taskSubmissionPossible(Task task) {
 		if (!checkIfTaskComplete(task)) {
 			return false;
@@ -1162,43 +1280,83 @@ public class AgentJulia extends Agent {
 		return false;
 	}
 
-	private String lookFor(String type, String additionalInfo) {
-		switch (type) {
-		case "dispenser" -> {
-			// Look for dispensers of the required type
-			List<Dispenser> dispenserCandidates = new ArrayList<>();
-			for (Dispenser dispenser : dispensers) {
-				String dispenserType = dispenser.getType();
-				if (dispenserType.equals(additionalInfo)) {
-					dispenserCandidates.add(dispenser);
-				}
-			}
-			// Select closest dispenser
-			if (dispenserCandidates.isEmpty()) {
-				return "x";
-			} else {
-				Dispenser closestDispenser = Dispenser.getClosestDispenser(dispenserCandidates);
-				int x = closestDispenser.getRelativeCoordinate().getX();
-				int y = closestDispenser.getRelativeCoordinate().getY();
-				// TODO: improve this
-				if (y < 0) {
-					return "n";
-				}
-				if (y > 0) {
-					return "s";
-				}
-				if (x < 0) {
-					return "w";
-				}
-				if (x > 0) {
-					return "e";
-				}
-			}
-		}
-		}
-		return "x";
-	}
+	/**
+    Determines the closest cell of the required type
+    @param type The cell type, e.g. dispenser
+	@param additionalInfo Additional info regarding the required cell, e.g. for dispenser the block type. If null, type is ignored
+    @return The closest cell which is of the required type and which fulfills the additional info requirements (if not null)
+     */
+	private Cell determineClosest(String type, String additionalInfo) {
+        switch(type) {
+            case "dispenser" -> {
+                if (dispensers.isEmpty()) {
+                    return null;
+                }
+                if (additionalInfo != null) {
+                    // Look for dispensers of the required type
+                    List<Dispenser> dispenserCandidates = new ArrayList<>();
+                    for (Dispenser dispenser : dispensers) {
+                        if (dispenser.getType().equals(additionalInfo)) {
+                            dispenserCandidates.add(dispenser);
+                        }
+                    }
+                    // Select closest dispenser
+                    // TODO: also keep in mind that a dispenser might be close in terms of distance but difficult to reach due to obstacles
+                    if (dispenserCandidates.isEmpty()) {
+                        return null;
+                    } else {
+                        Dispenser closestDispenser = Dispenser.getClosestDispenser(dispenserCandidates);
+                        return closestDispenser;
+                    }
+                } else {
+                    // Select closest dispenser
+                    Dispenser closestDispenser = Dispenser.getClosestDispenser(dispensers);
+                    return closestDispenser;
+                }
+            }
+        }
+        return null;
+    }
 
+	/**
+    Analyzes the currently attached blocks and determines tasks which require these blocks
+    @return A list of the tasks which require the currently attached blocks
+     */
+	private List<Task> determineCorrespondingTasks() {
+        List<Task> correspondingTasks = new ArrayList<>();
+
+        // At the moment this logic only works when the agent has only one block attached and there are only one-block-tasks.
+        String blockType = attachedBlocks.get(0).getType();
+        for (Task task : tasks) {
+            if (task.getRequirements().get(0).getBlockType().equals(blockType)) {
+                correspondingTasks.add(task);
+            }
+        }
+        return correspondingTasks;
+    }
+
+	/**
+    Checks if there is task which requires the specific block type
+    @param blockType The block type which is analyzed
+    @return True if there is a task that requires the block type, otherwise false
+     */
+    private boolean checkForCorrespondingTask(String blockType) {
+        // At the moment this method only checks if there is a task for the given block type. And it only works for one-block-tasks.
+        // TODO: also keep in mind the deadline and rewards of tasks
+        for (Task task : tasks) {
+            if (task.getRequirements().get(0).getBlockType().equals(blockType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+	/**
+    Checks if two directions are opposite directions
+    @param direction1 First direction
+	@param direction2 Second direction
+    @return True if directions are opposite, otherwise false
+     */
 	private boolean oppositeDirections(String direction1, String direction2) {
 		if ((direction1.equals("n") && direction2.equals("s")) || (direction1.equals("s") && direction2.equals("n"))) {
 			return true;
@@ -1213,6 +1371,11 @@ public class AgentJulia extends Agent {
 		return false;
 	}
 
+	/**
+    Returns the opposite direction
+    @param direction Direction for which opposite direction is required
+    @return The opposite direction
+     */
 	private String getOppositeDirection(String direction) {
 		switch (direction) {
 		case "n":
@@ -1231,4 +1394,14 @@ public class AgentJulia extends Agent {
 			return null;
 		}
 	}
+
+	// Prepare for next simulation since agents are 're-used'
+    private void prepareForNextSimulation() {
+        // Empty/overwrite data structures which are not emptied/overwritten inside the methods for saving new percepts
+		// TODO: add all data structures which need to be emptied before the next simulation
+        currentStep = -1;
+        actionID = -1;
+        roles.clear();
+		simStartPerceptsSaved = false;
+    }
 }

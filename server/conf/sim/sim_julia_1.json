@@ -36,12 +36,12 @@
     }
   },
 
-  "blockTypes" : [1, 1],
-  "dispensers" : [2, 2],
+  "blockTypes" : [3, 3],
+  "dispensers" : [3, 3],
 
   "tasks" : {
     "size" : [1, 1],
-    "concurrent" : 1,
+    "concurrent" : 3,
     "iterations" : [100, 100],
     "maxDuration" : [5000, 5000]
   },
