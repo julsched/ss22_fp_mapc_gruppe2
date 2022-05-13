@@ -160,4 +160,9 @@ public class RelativeCoordinate {
         }
         return "x";
     }
+    
+    public String toString() {
+    	return "( "+ this.x + ", "+ this.y+ " )";
+    }
+    
 }

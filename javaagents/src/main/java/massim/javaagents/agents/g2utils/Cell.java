@@ -10,4 +10,9 @@ private int lastSeen;
 	public int getLastSeen() {
 		return lastSeen;
 	}
+	
+	//Used to print out content of Cell
+	public String toString() {
+		return this.getClass().getSimpleName()+ "\r\n";
+	}
 }
