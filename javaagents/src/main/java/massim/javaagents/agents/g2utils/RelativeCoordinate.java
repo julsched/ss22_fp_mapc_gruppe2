@@ -59,6 +59,27 @@ public class RelativeCoordinate {
             return false;
         }
     }
+    
+    @Override
+    public boolean equals(Object o) {
+    	if (this == o) {
+            return true;
+        }
+        if (o == null || this.getClass() != o.getClass()) {
+            return false;
+        }
+        
+        RelativeCoordinate rCo = (RelativeCoordinate) o;
+        
+        if (this.x != rCo.x) {
+        	return false;
+        }
+        if (this.y != rCo.y) {
+        	return false;
+        }
+        
+        return true;
+    }
 
     public boolean isOneStepNorth() {
         if (this.x == 0 && this.y == -1) {
@@ -164,5 +185,15 @@ public class RelativeCoordinate {
     public String toString() {
     	return "( "+ this.x + ", "+ this.y+ " )";
     }
+    
+    @Override
+	public int hashCode() {
+
+		Integer xInt = this.x;
+		Integer yInt = this.y;
+		int result = 7*xInt.hashCode() + 11*yInt.hashCode();
+		return result;
+		
+	}
     
 }
