@@ -2,6 +2,9 @@ package massim.javaagents;
 
 import eis.iilang.Percept;
 import massim.javaagents.agents.Agent;
+import massim.javaagents.agents.AgentG2;
+import massim.javaagents.agents.g2utils.Cell;
+import massim.javaagents.agents.g2utils.RelativeCoordinate;
 
 import java.util.HashMap;
 import java.util.List;
@@ -59,5 +62,29 @@ public class MailService {
                 .map(Agent::getName)
                 .filter(ag -> !ag.equals(sender))
                 .forEach(ag -> sendMessage(message, ag, sender));
+    }
+    
+    public void requestMap(String to, String from){
+
+        Agent recipient = register.get(to);
+
+        if(recipient == null && !(recipient instanceof AgentG2)) {
+            logger.warning("Cannot deliver message to " + to + "; unknown target,");
+        }
+        else{
+        	AgentG2 rec = (AgentG2) recipient;
+        	rec.deliverMap(from);
+        }
+    }
+    
+    public void deliverMap(String to, String from, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate currentPosition) {
+    	
+    	Agent recipient = register.get(to);
+        if (recipient == null && !(recipient instanceof AgentG2)) {
+            logger.warning("Cannot deliver message to " + to + "; unknown target,");
+        } else {
+        	AgentG2 rec = (AgentG2) recipient;
+        	rec.handleMap(from, map, currentPosition);
+        }
     }
 }

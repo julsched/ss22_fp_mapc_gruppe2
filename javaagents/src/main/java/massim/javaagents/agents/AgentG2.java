@@ -43,6 +43,11 @@ public class AgentG2 extends Agent {
 	private List<Block> attachedBlocks = new ArrayList<>();
 
 	private HashMap<String, RelativeCoordinate> seenTeamMembers = new HashMap<String, RelativeCoordinate>();
+	private AgentInformation seenAgent = null;
+	private boolean mapRequest = false;
+	private String requestingExplorer;
+	private HashMap<RelativeCoordinate, Cell> externalMap;
+	private RelativeCoordinate externalPosition;
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
 	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); //see map
 	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
@@ -72,20 +77,6 @@ public class AgentG2 extends Agent {
 	public void handleMessage(Percept message, String sender) {
 	}
 
-	public void handleMap(HashMap<RelativeCoordinate, Cell> mapSender, String from, RelativeCoordinate pos) {
-		if (seenTeamMembers.containsKey(from)) {
-			RelativeCoordinate posSender = seenTeamMembers.get(from);
-			int xDiff = (posSender.getX() - pos.getX());
-			int yDiff = (posSender.getY() - pos.getY());
-			for (RelativeCoordinate key : mapSender.keySet()) {
-				RelativeCoordinate adjusted = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
-				if (!map.containsKey(adjusted) || mapSender.get(key).getLastSeen() > map.get(adjusted).getLastSeen()) {
-					map.put(adjusted, mapSender.get(key));
-				}
-			}
-		}
-	}
-
 	@Override
 	public Action step() {
 		List<Percept> percepts = getPercepts();
@@ -111,6 +102,20 @@ public class AgentG2 extends Agent {
 		saveStepPercepts(percepts);
 
 		analyzeAttachedThings();
+		
+		// Einleiten des Austausches der maps
+		if (this.seenAgent != null) {
+			this.requestMap(this.seenAgent.getName());
+		}
+		
+		// Übergeben der aktuellen Map
+		HashMap<RelativeCoordinate, Cell> map = this.map;
+		RelativeCoordinate currentPosition = this.currentPos;
+		String from = this.getName();
+		this.mailbox.deliverMap(requestingExplorer, from, map, currentPosition);
+		
+		// Zusammenführen der Maps
+		this.mergeMaps();
 
 		if (explorerAgent.equals(getName())) {
             say("My mission: I am the explorer of the team!");
@@ -360,7 +365,27 @@ public class AgentG2 extends Agent {
 				break;
 			}
 			case "surveyed" -> {
-				// TODO
+				String target = ((Identifier) percept.getParameters().get(0)).getValue();
+				switch (target) {
+				case "agent" -> {
+					String name = ((Identifier) percept.getParameters().get(1)).getValue();
+					this.seenAgent.setName(name);
+					String role = ((Identifier) percept.getParameters().get(2)).getValue();
+					this.seenAgent.setRole(role);
+					int energy = ((Numeral) percept.getParameters().get(3)).getValue().intValue();
+					this.seenAgent.setEnergy(energy);
+					break;
+				}
+				case "goal" -> {
+					// TODO
+				}
+				case "role" -> {
+					// TODO
+				}
+				case "dispenser" -> {
+					// TODO
+				}
+				}
 				break;
 			}
 			case "hit" -> {
@@ -998,6 +1023,8 @@ public class AgentG2 extends Agent {
     }
 
 	private Action explorerStep() {
+		// falls mindestens ein Teammitglied sichtbar, wird dies nach seinem Namen befragt, um einen map-Austausch einzuleiten
+		// TODO: Bedingung sollte weiter eingeschränkt, weil sonst nur surveyed und nicht explort wird
 		if (!this.friendlyAgents.isEmpty()) {
 			Iterator<RelativeCoordinate> it = this.friendlyAgents.iterator();
 			while (it.hasNext()) {
@@ -1009,6 +1036,7 @@ public class AgentG2 extends Agent {
 				}
 			}
 			if (!this.friendlyAgents.isEmpty()) {
+				seenAgent = new AgentInformation(this.currentPos.getX() + this.friendlyAgents.get(0).getX(), this.currentPos.getY() + this.friendlyAgents.get(0).getY());
 				return new Action("survey", new Numeral(this.friendlyAgents.get(0).getX()), new Numeral(this.friendlyAgents.get(0).getY()));
 			}
 		}
@@ -1423,4 +1451,42 @@ public class AgentG2 extends Agent {
         roles.clear();
 		simStartPerceptsSaved = false;
     }
+	
+    public void deliverMap(String to) {
+    	this.requestingExplorer = to;
+    	this.mapRequest = true;
+    }
+	
+	public void handleMap(String from, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate currentPos) {
+		this.externalMap = map;
+		this.externalPosition = currentPos;
+	}
+	
+	private void mergeMaps() {
+		RelativeCoordinate rc = this.seenAgent.getRelativeCoordinate();
+		ArrayList<RelativeCoordinate> agents = new ArrayList<RelativeCoordinate>();
+		
+		Iterator<Entity> it = this.entities.iterator();
+		while (it.hasNext()) {
+			Entity ent = it.next();
+			int xCoor = ent.getRelativeCoordinate().getX() + this.currentPos.getX();
+			int yCoor = ent.getRelativeCoordinate().getY() + this.currentPos.getY();
+			if (Math.abs(rc.getX() - xCoor) < 2 && Math.abs(rc.getY() - yCoor) < 2) {
+				agents.add(new RelativeCoordinate(xCoor, yCoor));
+			}
+		}
+		if (agents.size() < 1 || agents.size() > 1) {
+			return;
+		}
+		RelativeCoordinate pos = agents.get(0);
+		int xDiff = pos.getX() - this.externalPosition.getX();
+		int yDiff = pos.getY() - this.externalPosition.getY();
+		for (RelativeCoordinate key : this.externalMap.keySet()) {
+			RelativeCoordinate newKey = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
+			if (!this.map.containsKey(newKey) || this.map.get(newKey).getLastSeen() < externalMap.get(key).getLastSeen()) {
+				this.map.put(newKey, this.externalMap.get(key));
+			}
+			
+		}
+	}
 }

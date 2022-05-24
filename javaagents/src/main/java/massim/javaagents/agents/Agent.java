@@ -2,6 +2,8 @@ package massim.javaagents.agents;
 
 import eis.iilang.Percept;
 import massim.javaagents.MailService;
+import massim.javaagents.agents.g2utils.Cell;
+import massim.javaagents.agents.g2utils.RelativeCoordinate;
 
 import java.util.*;
 
@@ -11,7 +13,7 @@ import java.util.*;
 public abstract class Agent {
 
     private final String name;
-    private final MailService mailbox;
+    protected final MailService mailbox;
     private final Set<Percept> percepts = Collections.synchronizedSet(new HashSet<>());
 
     /**
@@ -99,4 +101,9 @@ public abstract class Agent {
     List<Percept> getPercepts(){
         return new ArrayList<>(percepts);
     }
+    
+    public void requestMap(String to) {
+    	this.mailbox.requestMap(to, this.name);
+    }
+
 }
