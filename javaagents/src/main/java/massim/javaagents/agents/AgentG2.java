@@ -43,6 +43,7 @@ public class AgentG2 extends Agent {
 	private List<Block> attachedBlocks = new ArrayList<>();
 
 	private HashMap<String, RelativeCoordinate> seenTeamMembers = new HashMap<String, RelativeCoordinate>();
+	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
 	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); //see map
 	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
 	private Orientation rotated = Orientation.NORTH;
@@ -249,6 +250,10 @@ public class AgentG2 extends Agent {
 					Entity entity = new Entity(relativeCoordinate, teamName);
 					entities.add(entity);
 					occupiedFields.add(relativeCoordinate);
+					if (this.teamName.equals(teamName)) {
+						RelativeCoordinate relCo = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
+						this.friendlyAgents.add(relCo);
+					}
 					break;
 				}
 				if (thingType.equals("obstacle")) {
@@ -993,6 +998,20 @@ public class AgentG2 extends Agent {
     }
 
 	private Action explorerStep() {
+		if (!this.friendlyAgents.isEmpty()) {
+			Iterator<RelativeCoordinate> it = this.friendlyAgents.iterator();
+			while (it.hasNext()) {
+				RelativeCoordinate relCo = it.next();
+				int x = this.currentPos.getX() + relCo.getX();
+				int y = this.currentPos.getY() + relCo.getY();
+				if (Math.abs(x) + Math.abs(y) > this.currentRole.getVision() - 1) {
+					this.friendlyAgents.remove(relCo);
+				}
+			}
+			if (!this.friendlyAgents.isEmpty()) {
+				return new Action("survey", new Numeral(this.friendlyAgents.get(0).getX()), new Numeral(this.friendlyAgents.get(0).getY()));
+			}
+		}
 		ArrayList<String> possibleDirs = getPossibleDirs();
 		ArrayList<String> prefDirs = getPreferredDirs();
 		say("this is my map: " + map);
