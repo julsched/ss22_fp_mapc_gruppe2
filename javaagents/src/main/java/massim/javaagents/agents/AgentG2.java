@@ -1488,5 +1488,6 @@ public class AgentG2 extends Agent {
 			}
 			
 		}
+		
 	}
 }
