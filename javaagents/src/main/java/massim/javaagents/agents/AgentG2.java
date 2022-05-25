@@ -280,10 +280,20 @@ public class AgentG2 extends Agent {
 				int deadline = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
 				int reward = ((Numeral) percept.getParameters().get(2)).getValue().intValue();
 
+				// Ignore tasks which have expired
+				if (deadline < currentStep) {
+					break;
+				}
+
 				Parameter paramRequirements = percept.getParameters().get(3);
 				List<Parameter> params = new ArrayList<>();
 				for (int i = 0; i < ((ParameterList) paramRequirements).size(); i++) {
 					params.add(((ParameterList) paramRequirements).get(i));
+				}
+				// Remove this if-statement, once agent can handle tasks with more than one block
+				if (params.size() > 1) {
+					say("Task " + name + " has more than one block. Ignore.");
+					break;
 				}
 				List<TaskRequirement> requirements = new ArrayList<>();
 				for (Parameter param : params) {
