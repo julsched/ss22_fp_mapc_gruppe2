@@ -571,24 +571,24 @@ public class AgentG2 extends Agent {
 						int y = this.currentPos.getY();
 						String dirString = ((Identifier) dir).getValue();
 						if ((dirString.equals("n") && this.rotated.equals(Orientation.NORTH))
-								|| (dirString.equals("e") && this.rotated.equals(Orientation.EAST))
-								|| (dirString.equals("s") && this.rotated.equals(Orientation.SOUTH))
-								|| (dirString.equals("w") && this.rotated.equals(Orientation.WEST))) {
-							this.setCurrentPosition(new RelativeCoordinate(x, y + 1));
-						} else if ((dirString.equals("s") && this.rotated.equals(Orientation.NORTH))
 								|| (dirString.equals("w") && this.rotated.equals(Orientation.EAST))
-								|| (dirString.equals("s") && this.rotated.equals(Orientation.NORTH))
+								|| (dirString.equals("s") && this.rotated.equals(Orientation.SOUTH))
 								|| (dirString.equals("e") && this.rotated.equals(Orientation.WEST))) {
 							this.setCurrentPosition(new RelativeCoordinate(x, y + 1));
+						} else if ((dirString.equals("s") && this.rotated.equals(Orientation.NORTH))
+								|| (dirString.equals("e") && this.rotated.equals(Orientation.EAST))
+								|| (dirString.equals("n") && this.rotated.equals(Orientation.SOUTH))
+								|| (dirString.equals("e") && this.rotated.equals(Orientation.WEST))) {
+							this.setCurrentPosition(new RelativeCoordinate(x, y - 1));
 						} else if ((dirString.equals("e") && this.rotated.equals(Orientation.NORTH))
-								|| (dirString.equals("s") && this.rotated.equals(Orientation.EAST))
+								|| (dirString.equals("n") && this.rotated.equals(Orientation.EAST))
 								|| (dirString.equals("w") && this.rotated.equals(Orientation.SOUTH))
-								|| (dirString.equals("n") && this.rotated.equals(Orientation.WEST))) {
+								|| (dirString.equals("s") && this.rotated.equals(Orientation.WEST))) {
 							this.setCurrentPosition(new RelativeCoordinate(x + 1, y));
 						} else if ((dirString.equals("w") && this.rotated.equals(Orientation.NORTH))
-								|| (dirString.equals("n") && this.rotated.equals(Orientation.EAST))
+								|| (dirString.equals("s") && this.rotated.equals(Orientation.EAST))
 								|| (dirString.equals("e") && this.rotated.equals(Orientation.SOUTH))
-								|| (dirString.equals("s") && this.rotated.equals(Orientation.WEST))) {
+								|| (dirString.equals("n") && this.rotated.equals(Orientation.WEST))) {
 							this.setCurrentPosition(new RelativeCoordinate(x - 1, y));
 						}
 					}
@@ -599,19 +599,26 @@ public class AgentG2 extends Agent {
 					int x = this.currentPos.getX();
 					int y = this.currentPos.getY();
 					String dirString = ((Identifier) dir).getValue();
-					switch (dirString) {
-					case "n":
+					if ((dirString.equals("n") && this.rotated.equals(Orientation.NORTH))
+							|| (dirString.equals("w") && this.rotated.equals(Orientation.EAST))
+							|| (dirString.equals("s") && this.rotated.equals(Orientation.SOUTH))
+							|| (dirString.equals("e") && this.rotated.equals(Orientation.WEST))) {
 						this.setCurrentPosition(new RelativeCoordinate(x, y + 1));
-						break;
-					case "s":
+					} else if ((dirString.equals("s") && this.rotated.equals(Orientation.NORTH))
+							|| (dirString.equals("e") && this.rotated.equals(Orientation.EAST))
+							|| (dirString.equals("n") && this.rotated.equals(Orientation.SOUTH))
+							|| (dirString.equals("e") && this.rotated.equals(Orientation.WEST))) {
 						this.setCurrentPosition(new RelativeCoordinate(x, y - 1));
-						break;
-					case "e":
+					} else if ((dirString.equals("e") && this.rotated.equals(Orientation.NORTH))
+							|| (dirString.equals("n") && this.rotated.equals(Orientation.EAST))
+							|| (dirString.equals("w") && this.rotated.equals(Orientation.SOUTH))
+							|| (dirString.equals("s") && this.rotated.equals(Orientation.WEST))) {
 						this.setCurrentPosition(new RelativeCoordinate(x + 1, y));
-						break;
-					case "w":
+					} else if ((dirString.equals("w") && this.rotated.equals(Orientation.NORTH))
+							|| (dirString.equals("s") && this.rotated.equals(Orientation.EAST))
+							|| (dirString.equals("e") && this.rotated.equals(Orientation.SOUTH))
+							|| (dirString.equals("n") && this.rotated.equals(Orientation.WEST))) {
 						this.setCurrentPosition(new RelativeCoordinate(x - 1, y));
-						break;
 					}
 					// Fehlerbehandlung
 				}
