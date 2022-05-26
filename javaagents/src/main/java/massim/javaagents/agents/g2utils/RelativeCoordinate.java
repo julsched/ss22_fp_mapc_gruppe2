@@ -51,14 +51,6 @@ public class RelativeCoordinate {
     public int getY() {
         return this.y;
     }
-
-    public boolean equals(RelativeCoordinate relativeCoordinate) {
-        if (this.x == relativeCoordinate.getX() && this.y == relativeCoordinate.getY()) {
-            return true;
-        } else {
-            return false;
-        }
-    }
     
     @Override
     public boolean equals(Object o) {
