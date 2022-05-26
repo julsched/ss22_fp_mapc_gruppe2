@@ -3,6 +3,7 @@ package massim.javaagents.agents;
 import eis.iilang.*;
 import massim.javaagents.MailService;
 import massim.javaagents.agents.g2utils.*;
+import massim.javaagents.agents.g2pathcalc.*;
 
 import java.util.*;
 
@@ -84,7 +85,7 @@ public class AgentG2 extends Agent {
             saveSimEndPercepts(percepts);
             say("Bye! See you in the next simulation!");
             prepareForNextSimulation();
-            return null;
+            return new Action("skip");
         }
         if (!simStartPerceptsSaved) {
             saveSimStartPercepts(percepts);
@@ -93,7 +94,7 @@ public class AgentG2 extends Agent {
             } else {
                 explorerAgent = "None";
             }
-            return null;
+            return new Action("skip");
         }
 
 		// must be set first, so agents knows currentStep for sorting Percepts and for having a structured console output
@@ -921,31 +922,45 @@ public class AgentG2 extends Agent {
             }
             say("Need to look for goal zone");
             
-            if (!goalZoneFields.isEmpty()) {
-                say("Goal zone identified");
-                List<RelativeCoordinate> adjacentGoalZoneFields = getAdjacentGoalZoneFields();
+			List<RelativeCoordinate> goalZoneFieldsFree = new ArrayList<>();
+			for (RelativeCoordinate relativeCoordinate : goalZoneFields) {
+				if (!occupiedFields.contains(relativeCoordinate) || (occupiedFields.contains(relativeCoordinate) && attachedBlocks.contains(relativeCoordinate))) {
+					goalZoneFieldsFree.add(relativeCoordinate);
+				}
+			}
+
+            if (!goalZoneFieldsFree.isEmpty()) {
+                say("Free goal zone identified");
+                List<RelativeCoordinate> adjacentGoalZoneFields = getAdjacentGoalZoneFields(goalZoneFieldsFree);
                 // Walk to goal zone
                 if (!agentInGoalZone() && adjacentGoalZoneFields.isEmpty()) {
-                    RelativeCoordinate closestGoalZoneField = RelativeCoordinate.getClosestCoordinate(goalZoneFields);
-                    int x = closestGoalZoneField.getX();
-                    int y = closestGoalZoneField.getY();
-                    // TODO: improve this
-                    if (y < 0) {
-                        say("Moving one step north towards goal zone...");
-                        return new Action("move", new Identifier("n"));
-                    }
-                    if (y > 0) {
-                        say("Moving one step south towards goal zone...");
-                        return new Action("move", new Identifier("s"));
-                    }
-                    if (x < 0) {
-                        say("Moving one step west towards goal zone...");
-                        return new Action("move", new Identifier("w"));
-                    }
-                    if (x > 0) {
-                        say("Moving one step east towards goal zone...");
-                        return new Action("move", new Identifier("e"));
-                    }
+                    //RelativeCoordinate closestGoalZoneField = RelativeCoordinate.getClosestCoordinate(goalZoneFieldsFree); 
+					// Calculate direction agent should move into in order to get as fast as possible to the next free goal zone field
+					// TODO: check if  attached blocks will fit
+					Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields, determineLocations("attachedBlock", null), goalZoneFieldsFree);
+					if (dir == null) {
+						say("No path towards goal zone.");
+						return moveRandomly(currentRole.getSpeedWithoutAttachments());
+					}
+					say("Path identified. Moving towards goal zone...");
+					switch(dir) {
+						case NORTH -> {
+							say("NORTH");
+							return new Action("move", new Identifier("n"));
+						}
+						case EAST -> {
+							say("EAST");
+							return new Action("move", new Identifier("e"));
+						}
+						case SOUTH -> {
+							say("SOUTH");
+							return new Action("move", new Identifier("s"));
+						}
+						case WEST -> {
+							say("WEST");
+							return new Action("move", new Identifier("w"));
+						}
+					}
                 }
                 // Agent is at one of the four corners of a goal zone (outside) -> enter goal zone via corner
                 if (!agentInGoalZone() && adjacentGoalZoneFields.size() == 1) {
@@ -986,7 +1001,12 @@ public class AgentG2 extends Agent {
                     for (RelativeCoordinate adjacentGoalZoneField : adjacentGoalZoneFields) {
                         allowedDirections.add(adjacentGoalZoneField.getDirectDirection());
                     }
-                    return moveRandomly(1, allowedDirections);
+                    if (allowedDirections.isEmpty()) {
+						// TODO: improve
+						return moveRandomly(currentRole.getSpeedWithoutAttachments());
+					} else {
+						return moveRandomly(1, allowedDirections);
+					}
                 }
             }
             // Move randomly to find a goal zone
@@ -994,46 +1014,55 @@ public class AgentG2 extends Agent {
         }
 
         if (!dispensers.isEmpty()) {
-            // Determine closest dispenser
-            Dispenser closestDispenser = (Dispenser) determineClosest("dispenser", null);
-			if (closestDispenser == null) {
-				return null;
+            say("Dispenser(s) identified");
+			List<RelativeCoordinate> dispenserLocations = new ArrayList<>();
+			for (Dispenser dispenser : dispensers) {
+				// Check whether there is a task for this block type
+				if (checkForCorrespondingTask(dispenser.getType())) {
+					dispenserLocations.add(dispenser.getRelativeCoordinate());
+				}
 			}
-            say("Dispenser identified");
-            // Check whether there is a task for this block type
-            if (!checkForCorrespondingTask(closestDispenser.getType())) {
-                say("No corresponding task for identified dispenser.");
-                // Keep moving randomly to find a different dispenser
+			if (dispenserLocations.isEmpty()) {
+				say("No corresponding tasks for identified dispenser(s).");
+				// Keep moving randomly to find a different dispenser
                 return moveRandomly(currentRole.getSpeedWithoutAttachments());
-            }
-            // If dispenser is already next to agent, then request a block
-            if (closestDispenser.isNextToAgent()) {
-                String direction = closestDispenser.getDirectDirection();
-                return requestBlock(direction);
-            }
-            // Move towards dispenser
-            int x = closestDispenser.getRelativeCoordinate().getX();
-            int y = closestDispenser.getRelativeCoordinate().getY();
-			say("Moving towards dispenser...");
-            // Agent is on top of dispenser -> move one step to be able to request a block
-			if (y == 0 && x == 0) {
-				return moveRandomly(1);
+			} else {
+				for (RelativeCoordinate relativeCoordinate : dispenserLocations) {
+					if (relativeCoordinate.isNextToAgent()) {
+						String direction = relativeCoordinate.getDirectDirection();
+                		return requestBlock(direction);
+					}
+					// If agent is on top of dispenser -> move one step to be able to request a block
+					if (relativeCoordinate.getX() == 0 && relativeCoordinate.getY() == 0) {
+						return moveRandomly(1);
+					}
+				}
+				// Move towards dispenser
+				Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields, determineLocations("attachedBlock", null), dispenserLocations);
+				if (dir == null) {
+					say("No path towards goal zone.");
+					return moveRandomly(currentRole.getSpeedWithoutAttachments());
+				}
+				say("Path identified. Moving towards dispenser...");
+				switch(dir) {
+					case NORTH -> {
+						say("NORTH");
+						return new Action("move", new Identifier("n"));
+					}
+					case EAST -> {
+						say("EAST");
+						return new Action("move", new Identifier("e"));
+					}
+					case SOUTH -> {
+						say("SOUTH");
+						return new Action("move", new Identifier("s"));
+					}
+					case WEST -> {
+						say("WEST");
+						return new Action("move", new Identifier("w"));
+					}
+				}
 			}
-			String dispenserDir = "";
-			// TODO: improve this
-            if (y < 0) {
-                dispenserDir = "n";
-            }
-            if (y > 0) {
-                dispenserDir = "s";
-            }
-            if (x < 0) {
-                dispenserDir = "w";
-            }
-            if (x > 0) {
-                dispenserDir = "e";
-            }
-            return new Action("move", new Identifier(dispenserDir));
         }
         // Move randomly to find a dispenser
         return moveRandomly(currentRole.getSpeedWithoutAttachments());
@@ -1168,12 +1197,12 @@ public class AgentG2 extends Agent {
     }
 
 	/**
-    Gets a list of relative coordinates of goal zones which are directly next to the agent
-    @return A list of relative coordinates of adjacent goal zone cells
+    Gets a list of relative coordinates of free goal zones which are directly next to the agent
+    @return A list of relative coordinates of adjacent free goal zone cells
      */
-	private List<RelativeCoordinate> getAdjacentGoalZoneFields() {
+	private List<RelativeCoordinate> getAdjacentGoalZoneFields(List<RelativeCoordinate> goalZoneFieldsFree) {
 		List<RelativeCoordinate> adjacentGoalZoneFields = new ArrayList<>();
-		for (RelativeCoordinate relativeCoordinate : goalZoneFields) {
+		for (RelativeCoordinate relativeCoordinate : goalZoneFieldsFree) {
 			if (relativeCoordinate.distanceFromAgent() == 1) {
 				adjacentGoalZoneFields.add(relativeCoordinate);
 			}
@@ -1223,7 +1252,7 @@ public class AgentG2 extends Agent {
      */
 	private Action moveRandomly(int stepNum, List<String> allowedDirections) {
 		if (allowedDirections == null || allowedDirections.isEmpty()) {
-			return null;
+			return new Action("skip");
 		}
 		Random rand = new Random();
 		List<String> randomDirections = new ArrayList<>();
@@ -1249,7 +1278,7 @@ public class AgentG2 extends Agent {
 			return new Action("move", new Identifier(direction1), new Identifier(direction2));
 		}
 		default -> {
-			return null;
+			return new Action("skip");
 		}
 		}
 	}
@@ -1364,8 +1393,7 @@ public class AgentG2 extends Agent {
                             dispenserCandidates.add(dispenser);
                         }
                     }
-                    // Select closest dispenser
-                    // TODO: also keep in mind that a dispenser might be close in terms of distance but difficult to reach due to obstacles
+                    // Select closest dispenser (ignoring obstacles)
                     if (dispenserCandidates.isEmpty()) {
                         return null;
                     } else {
@@ -1381,6 +1409,50 @@ public class AgentG2 extends Agent {
         }
         return null;
     }
+
+	/**
+    Determines a list of coordinates where the required thing can be found
+    @param type The cell type of the required thing, e.g. dispenser
+	@param additionalInfo Additional info regarding the required thing, e.g. for dispenser the block type. If null, type is ignored
+    @return A list of coordinates where instances of the required thing can be found
+     */
+	private List<RelativeCoordinate> determineLocations(String type, String additionalInfo) {
+		List<RelativeCoordinate> locations = new ArrayList<>();
+
+		switch(type) {
+			case "dispenser" -> {
+				if (dispensers.isEmpty()) {
+					break;
+				}
+				if (additionalInfo != null) {
+					// Look for dispensers of the required type
+                    for (Dispenser dispenser : dispensers) {
+                        if (dispenser.getType().equals(additionalInfo)) {
+                            locations.add(dispenser.getRelativeCoordinate());
+                        }
+                    }
+				} else {
+					for (Dispenser dispenser : dispensers) {
+						locations.add(dispenser.getRelativeCoordinate());
+					}
+				}
+			}
+			case "attachedBlock" -> {
+				if (attachedBlocks.isEmpty()) {
+					break;
+				}
+				if (additionalInfo != null) {
+					// TODO
+					break;
+				} else {
+					for (Block block : attachedBlocks) {
+						locations.add(block.getRelativeCoordinate());
+					}
+				}
+			}
+		}
+		return locations;
+	}
 
 	/**
     Analyzes the currently attached blocks and determines tasks which require these blocks
@@ -1505,6 +1577,5 @@ public class AgentG2 extends Agent {
 			}
 			
 		}
-		
 	}
 }
