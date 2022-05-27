@@ -431,29 +431,112 @@ public class AgentG2 extends Agent {
 //		setCurrentAbsolutePos();
 	}
 
-	// Analyzes and saves things that could be attached to the agent
+	// Analyzes and saves things that are attached to the agent
 	private void analyzeAttachedThings() {
-        attachedBlocks = new ArrayList<>();
-        // Identify if agent has blocks directly attached (next to agent) - TODO: needs to be improved since they
-		// could be attached to another entity
-        for (Percept percept : attachedThingsPercepts) {
-            int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-            int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-            RelativeCoordinate relativeCoordinateAttachedThing = new RelativeCoordinate(x, y);
-            if (!relativeCoordinateAttachedThing.isNextToAgent()) {
-                continue;
-            }
+		if (lastAction.equals("submit") && lastActionResult.equals("success")) {
+			attachedBlocks.clear();
+			return;
+		}
 
-            for (Block block : blocks) {
-                RelativeCoordinate relativeCoordinate = block.getRelativeCoordinate();
-                if (relativeCoordinate.equals(relativeCoordinateAttachedThing)) {
-                    say("I probably have a block attached on position " + relativeCoordinate.getX() 
-						+ "|" + relativeCoordinate.getY());
-                    attachedBlocks.add(block);
-                }
-            }
-            // TODO: Same should be done with entity and obstacle once variables are implemented
-        }
+		if (!attachedBlocks.isEmpty()) {
+			if (lastAction.equals("rotate") && lastActionResult.equals("success")) {
+				// Works only if exactly one block is attached to agent
+				String direction = (String) lastActionParams.get(0);
+				Block block = attachedBlocks.get(0);
+				attachedBlocks.clear();
+				if (direction.equals("cw")) {
+					if (block.getRelativeCoordinate().isOneStepEast()) {
+						Block updatedBlock = new Block(new RelativeCoordinate(0, 1), block.getType(), block.getLastSeen());
+						attachedBlocks.add(updatedBlock);
+					}
+					if (block.getRelativeCoordinate().isOneStepSouth()) {
+						Block updatedBlock = new Block(new RelativeCoordinate(-1, 0), block.getType(), block.getLastSeen());
+						attachedBlocks.add(updatedBlock);
+					}
+					if (block.getRelativeCoordinate().isOneStepWest()) {
+						Block updatedBlock = new Block(new RelativeCoordinate(0, -1), block.getType(), block.getLastSeen());
+						attachedBlocks.add(updatedBlock);
+					}
+					if (block.getRelativeCoordinate().isOneStepNorth()) {
+						Block updatedBlock = new Block(new RelativeCoordinate(1, 0), block.getType(), block.getLastSeen());
+						attachedBlocks.add(updatedBlock);
+					}
+				} else if (direction.equals("ccw")) {
+					if (block.getRelativeCoordinate().isOneStepEast()) {
+						Block updatedBlock = new Block(new RelativeCoordinate(0, -1), block.getType(), block.getLastSeen());
+						attachedBlocks.add(updatedBlock);
+					}
+					if (block.getRelativeCoordinate().isOneStepSouth()) {
+						Block updatedBlock = new Block(new RelativeCoordinate(1, 0), block.getType(), block.getLastSeen());
+						attachedBlocks.add(updatedBlock);
+					}
+					if (block.getRelativeCoordinate().isOneStepWest()) {
+						Block updatedBlock = new Block(new RelativeCoordinate(0, 1), block.getType(), block.getLastSeen());
+						attachedBlocks.add(updatedBlock);
+					}
+					if (block.getRelativeCoordinate().isOneStepNorth()) {
+						Block updatedBlock = new Block(new RelativeCoordinate(-1, 0), block.getType(), block.getLastSeen());
+						attachedBlocks.add(updatedBlock);
+					}
+				}
+			}
+			// TODO: check every step if things are still attached (could have been removed by a clear event?)
+		}
+
+		if (lastAction.equals("attach") && lastActionResult.equals("success")) {
+			String direction = (String) lastActionParams.get(0);
+			switch (direction) {
+				case "n" -> {
+					//Could be friendly entity/obstacle/block -> check what it is and save in dedicated list
+					for (Block block : blocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(0, -1))) {
+							attachedBlocks.add(block);
+							break;
+						}
+					}
+					// TODO: Same should be done with entity and obstacle
+					break;
+				}
+				case "e" -> {
+					//Could be friendly entity/obstacle/block -> check what it is and save in dedicated list
+					for (Block block : blocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(1, 0))) {
+							attachedBlocks.add(block);
+							break;
+						}
+					}
+					// TODO: Same should be done with entity and obstacle
+					break;
+				}
+				case "s" -> {
+					//Could be friendly entity/obstacle/block -> check what it is and save in dedicated list
+					for (Block block : blocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(0, 1))) {
+							attachedBlocks.add(block);
+							break;
+						}
+					}
+					// TODO: Same should be done with entity and obstacle
+					break;
+				}
+				case "w" -> {
+					//Could be friendly entity/obstacle/block -> check what it is and save in dedicated list
+					for (Block block : blocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(-1, 0))) {
+							attachedBlocks.add(block);
+							break;
+						}
+					}
+					// TODO: Same should be done with entity and obstacle
+					break;
+				}
+			}
+		}
+		
+		say("Attached blocks: ");
+		for (Block block : attachedBlocks) {
+			say("(" + block.getRelativeCoordinate().getX() + "|" + block.getRelativeCoordinate().getY() + ")");
+		}
     }
 
 //	We only need this, if we want to use currentAbsolutePos.
@@ -1547,6 +1630,7 @@ public class AgentG2 extends Agent {
         currentStep = -1;
         actionID = -1;
         roles.clear();
+		attachedBlocks.clear();
 		simStartPerceptsSaved = false;
     }
 	
