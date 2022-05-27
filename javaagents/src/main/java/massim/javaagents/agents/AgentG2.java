@@ -104,6 +104,12 @@ public class AgentG2 extends Agent {
 
 		analyzeAttachedThings();
 		
+		// Auswertung der abgespeicherten Ergebnisse der lastAction
+		this.evaluateLastAction();
+		
+		// nach der Evaluation ist die currentPosition korrekt bestimmt und es können die things der map hinzugefügt werden
+		this.updateMap(percepts);
+		
 		// Einleiten des Austausches der maps
 		if (this.seenAgent != null) {
 			this.requestMap(this.seenAgent.getName());
@@ -238,7 +244,6 @@ public class AgentG2 extends Agent {
 					String type = ((Identifier) percept.getParameters().get(3)).getValue();
 					Dispenser dispenser = new Dispenser(relativeCoordinate, type, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, dispenser);
-					map.put(relativeCoordinate, dispenser);
 					dispensers.add(dispenser);
 					break;
 				}
@@ -246,7 +251,6 @@ public class AgentG2 extends Agent {
 					String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
 					Block block = new Block(relativeCoordinate, blockType, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, block);
-					map.put(relativeCoordinate, block);
 					blocks.add(block);
 					occupiedFields.add(relativeCoordinate);
 					break;
@@ -266,7 +270,6 @@ public class AgentG2 extends Agent {
 					occupiedFields.add(relativeCoordinate);
 					Obstacle obstacle = new Obstacle(relativeCoordinate, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, obstacle); //TODO @Carina -> make current AbsolutePos work. Then we can make a Map. 
-					map.put(relativeCoordinate, obstacle);
 					break;
 				}
 				if (thingType.equals("marker")) {
@@ -1577,5 +1580,47 @@ public class AgentG2 extends Agent {
 			}
 			
 		}
+	}
+	
+	private void updateMap(List<Percept> percepts) {
+		if (percepts == null) { // Error handling if no percepts are available
+			return;
+		} else {
+			Iterator it = percepts.iterator();
+			Percept percept = percepts.get(0);
+			while (it.hasNext()) {
+				if (!((Percept) it.next()).getName().equals("things")) {
+					percept = (Percept) it.next();
+				} else {
+					percept = (Percept) it.next();
+					String thingType = ((Identifier) percept.getParameters().get(2)).getValue();
+					// Maybe Check if x and y are Numeral first
+					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
+					if (thingType.equals("dispenser")) {
+						String type = ((Identifier) percept.getParameters().get(3)).getValue();
+						Dispenser dispenser = new Dispenser(absolutePosition, type, currentStep);
+						map.put(absolutePosition, dispenser);
+						break;
+					}
+					if (thingType.equals("block")) {
+						String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
+						Block block = new Block(absolutePosition, blockType, currentStep);
+						map.put(absolutePosition, block);
+						break;
+					}
+					if (thingType.equals("obstacle")) {
+						Obstacle obstacle = new Obstacle(absolutePosition, currentStep);
+						map.put(absolutePosition, obstacle);
+						break;
+					}
+				}
+								
+			}
+			
+			
+		}
+		
 	}
 }
