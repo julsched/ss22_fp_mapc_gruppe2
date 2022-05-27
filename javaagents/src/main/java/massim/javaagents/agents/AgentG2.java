@@ -125,9 +125,10 @@ public class AgentG2 extends Agent {
 			this.mapRequest = false;
 		}
 		
-		
-		// Zusammenführen der Maps
+		// Zusammenführen der Maps und Übergeben der geupdateten Map
 		this.mergeMaps();
+		this.sendMap(this.seenAgent.getName(), map);
+		
 
 		if (explorerAgent.equals(getName())) {
             say("My mission: I am the explorer of the team!");
@@ -1626,9 +1627,13 @@ public class AgentG2 extends Agent {
 				}
 								
 			}
-			
-			
+				
 		}
 		
 	}
+	
+	public void receiveMap(HashMap<RelativeCoordinate, Cell> map) {
+		this.map = map;
+	}
+
 }
