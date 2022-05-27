@@ -47,6 +47,7 @@ public class AgentG2 extends Agent {
 	private AgentInformation seenAgent = null;
 	private boolean mapRequest = false;
 	private String requestingExplorer;
+	private int stepMap = -1;
 	private HashMap<RelativeCoordinate, Cell> externalMap;
 	private RelativeCoordinate externalPosition;
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
@@ -112,14 +113,18 @@ public class AgentG2 extends Agent {
 		
 		// Einleiten des Austausches der maps
 		if (this.seenAgent != null) {
-			this.requestMap(this.seenAgent.getName());
+			this.requestMap(this.seenAgent.getName(), this.currentStep);
 		}
 		
 		// Übergeben der aktuellen Map
-		HashMap<RelativeCoordinate, Cell> map = this.map;
-		RelativeCoordinate currentPosition = this.currentPos;
-		String from = this.getName();
-		this.mailbox.deliverMap(requestingExplorer, from, map, currentPosition);
+		if (this.mapRequest) {
+			if (this.stepMap == this.currentStep) {
+				this.mailbox.deliverMap(requestingExplorer, this.getName(), this.map, this.currentPos, this.currentStep);
+			}
+			this.stepMap = -1;
+			this.mapRequest = false;
+		}
+		
 		
 		// Zusammenführen der Maps
 		this.mergeMaps();
@@ -1544,41 +1549,44 @@ public class AgentG2 extends Agent {
 		simStartPerceptsSaved = false;
     }
 	
-    public void deliverMap(String to) {
+    public void deliverMap(String to, int step) {
     	this.requestingExplorer = to;
+    	this.stepMap = step;
     	this.mapRequest = true;
     }
 	
-	public void handleMap(String from, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate currentPos) {
+	public void handleMap(String from, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate currentPos, int step) {
+		this.stepMap = step;
 		this.externalMap = map;
 		this.externalPosition = currentPos;
 	}
 	
 	private void mergeMaps() {
-		RelativeCoordinate rc = this.seenAgent.getRelativeCoordinate();
-		ArrayList<RelativeCoordinate> agents = new ArrayList<RelativeCoordinate>();
-		
-		Iterator<Entity> it = this.entities.iterator();
-		while (it.hasNext()) {
-			Entity ent = it.next();
-			int xCoor = ent.getRelativeCoordinate().getX() + this.currentPos.getX();
-			int yCoor = ent.getRelativeCoordinate().getY() + this.currentPos.getY();
-			if (Math.abs(rc.getX() - xCoor) < 2 && Math.abs(rc.getY() - yCoor) < 2) {
-				agents.add(new RelativeCoordinate(xCoor, yCoor));
-			}
-		}
-		if (agents.size() < 1 || agents.size() > 1) {
-			return;
-		}
-		RelativeCoordinate pos = agents.get(0);
-		int xDiff = pos.getX() - this.externalPosition.getX();
-		int yDiff = pos.getY() - this.externalPosition.getY();
-		for (RelativeCoordinate key : this.externalMap.keySet()) {
-			RelativeCoordinate newKey = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
-			if (!this.map.containsKey(newKey) || this.map.get(newKey).getLastSeen() < externalMap.get(key).getLastSeen()) {
-				this.map.put(newKey, this.externalMap.get(key));
-			}
+		if (this.currentStep == this.stepMap) {
+			RelativeCoordinate rc = this.seenAgent.getRelativeCoordinate();
+			ArrayList<RelativeCoordinate> agents = new ArrayList<RelativeCoordinate>();
 			
+			Iterator<Entity> it = this.entities.iterator();
+			while (it.hasNext()) {
+				Entity ent = it.next();
+				int xCoor = ent.getRelativeCoordinate().getX() + this.currentPos.getX();
+				int yCoor = ent.getRelativeCoordinate().getY() + this.currentPos.getY();
+				if (Math.abs(rc.getX() - xCoor) < 2 && Math.abs(rc.getY() - yCoor) < 2) {
+					agents.add(new RelativeCoordinate(xCoor, yCoor));
+				}
+			}
+			if (agents.size() < 1 || agents.size() > 1) {
+				return;
+			}
+			RelativeCoordinate pos = agents.get(0);
+			int xDiff = pos.getX() - this.externalPosition.getX();
+			int yDiff = pos.getY() - this.externalPosition.getY();
+			for (RelativeCoordinate key : this.externalMap.keySet()) {
+				RelativeCoordinate newKey = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
+				if (!this.map.containsKey(newKey) || this.map.get(newKey).getLastSeen() < externalMap.get(key).getLastSeen()) {
+					this.map.put(newKey, this.externalMap.get(key));
+				}			
+			}
 		}
 	}
 	

@@ -102,8 +102,8 @@ public abstract class Agent {
         return new ArrayList<>(percepts);
     }
     
-    public void requestMap(String to) {
-    	this.mailbox.requestMap(to, this.name);
+    public void requestMap(String to, int currentStep) {
+    	this.mailbox.requestMap(to, this.name, currentStep);
     }
 
 }
