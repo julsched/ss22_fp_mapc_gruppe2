@@ -999,21 +999,9 @@ public class AgentG2 extends Agent {
                 say("Detaching from block...");
                 return new Action("detach", new Identifier(attachedBlocks.get(0).getDirectDirection()));
             }
-            Task completedTask = checkIfAnyTaskComplete(correspondingTasks);
-            if (completedTask == null) {
-                // TODO: Add check in which direction rotation is possible (due to obstacles)
-                say("Block(s) attached, but task incomplete.");
-                say("Rotating in clockwise direction...");
-                return new Action("rotate", new Identifier("cw"));
-            }
-            say("Task '" + completedTask.getName() + "' is complete");
-            if (taskSubmissionPossible(completedTask)) {
-                String taskName = completedTask.getName();
-                say("Submitting task '" + taskName + "'...");
-                return new Action("submit", new Identifier(taskName));
-            }
             say("Need to look for goal zone");
-            
+
+            // Identify free goal zone fields
 			List<RelativeCoordinate> goalZoneFieldsFree = new ArrayList<>();
 			for (RelativeCoordinate relativeCoordinate : goalZoneFields) {
 				if (!occupiedFields.contains(relativeCoordinate) || (occupiedFields.contains(relativeCoordinate) && attachedBlocks.contains(relativeCoordinate))) {
@@ -1023,10 +1011,8 @@ public class AgentG2 extends Agent {
 
             if (!goalZoneFieldsFree.isEmpty()) {
                 say("Free goal zone identified");
-                List<RelativeCoordinate> adjacentGoalZoneFields = getAdjacentGoalZoneFields(goalZoneFieldsFree);
                 // Walk to goal zone
-                if (!agentInGoalZone() && adjacentGoalZoneFields.isEmpty()) {
-                    //RelativeCoordinate closestGoalZoneField = RelativeCoordinate.getClosestCoordinate(goalZoneFieldsFree); 
+				if (!agentInGoalZone()) {
 					// Calculate direction agent should move into in order to get as fast as possible to the next free goal zone field
 					// TODO: check if  attached blocks will fit
 					Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields, determineLocations("attachedBlock", null), goalZoneFieldsFree);
@@ -1054,42 +1040,25 @@ public class AgentG2 extends Agent {
 						}
 					}
                 }
-                // Agent is at one of the four corners of a goal zone (outside) -> enter goal zone via corner
-                if (!agentInGoalZone() && adjacentGoalZoneFields.size() == 1) {
-                    RelativeCoordinate adjacentGoalZoneField = adjacentGoalZoneFields.get(0);
-                    String direction = adjacentGoalZoneField.getDirectDirection();
-                    say("Entering goal zone via corner...");
-                    return new Action("move", new Identifier(direction));
-                }
-                // Agent is somewhere along the edges of the goal zone (outside) -> enter goal zone via edge
-                if (!agentInGoalZone() && adjacentGoalZoneFields.size() == 2) {
-                    List<String> directions = new ArrayList<>();
-                    for (RelativeCoordinate adjacentGoalZoneField : adjacentGoalZoneFields) {
-                        directions.add(adjacentGoalZoneField.getDirectDirection());
-                    }
-                    if (directions.contains("n") && directions.contains("e")) {
-                        say("Entering goal zone via edge...");
-                        return new Action("move", new Identifier("e"), new Identifier("n"));
-                    }
-                    if (directions.contains("n") && directions.contains("w")) {
-                        say("Entering goal zone via edge...");
-                        return new Action("move", new Identifier("w"), new Identifier("n"));
-                    }
-                    if (directions.contains("s") && directions.contains("e")) {
-                        say("Entering goal zone via edge...");
-                        return new Action("move", new Identifier("e"), new Identifier("s"));
-                    }
-                    if (directions.contains("s") && directions.contains("w")) {
-                        say("Entering goal zone via edge...");
-                        return new Action("move", new Identifier("w"), new Identifier("s"));
-                    }
-                }
-                // This statement is only reached if the task is complete and the agent is in a goal zone but not all attached blocks are inside the goal zone
+
                 if (agentInGoalZone()) {
                     say("Already in goal zone");
+					Task completedTask = checkIfAnyTaskComplete(correspondingTasks);
+					if (completedTask == null) {
+						// TODO: Add check in which direction rotation is possible (due to obstacles)
+						say("Rotating in clockwise direction to fulfill task...");
+						return new Action("rotate", new Identifier("cw"));
+					}
+					say("Task '" + completedTask.getName() + "' is complete");
+					if (taskSubmissionPossible(completedTask)) {
+						String taskName = completedTask.getName();
+						say("Submitting task '" + taskName + "'...");
+						return new Action("submit", new Identifier(taskName));
+					}
                     // TODO: move in such a way that all blocks are inside the goal zone. At the moment the agent will randomly move to an adjacent goal zone cell
                     // TODO: keep in mind that this goal zone might be too small for the task and the agent might need to look for a bigger goal zone
-                    List<String> allowedDirections = new ArrayList<>();
+                    List<RelativeCoordinate> adjacentGoalZoneFields = getAdjacentGoalZoneFields(goalZoneFieldsFree);
+					List<String> allowedDirections = new ArrayList<>();
                     for (RelativeCoordinate adjacentGoalZoneField : adjacentGoalZoneFields) {
                         allowedDirections.add(adjacentGoalZoneField.getDirectDirection());
                     }
