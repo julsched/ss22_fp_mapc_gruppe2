@@ -5,7 +5,7 @@ import java.util.*;
 
 public class PathCalc {
 
-    public static Direction calculateShortestPath(int vision, List<RelativeCoordinate> occupiedFields, List<RelativeCoordinate> attachedBlocks, List<RelativeCoordinate> destinations) {
+    public static Direction calculateShortestPath(int vision, List<RelativeCoordinate> occupiedFields, List<RelativeCoordinate> attachedBlocks, Set<RelativeCoordinate> destinations) {
         // Boolean array representing a map (true means field is occupied)
         boolean[][] map = new boolean[2 * vision + 3][2 * vision + 3];
         // Position of agent inside the map (center)
