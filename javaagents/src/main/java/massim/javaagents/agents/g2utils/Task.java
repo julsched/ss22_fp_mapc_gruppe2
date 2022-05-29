@@ -12,7 +12,7 @@ public class Task {
     private String[][] blockMatrix;;
     private HashMap<String, Integer> blockTypeMap;
 
-    public Task(String name, int deadline, int reward, List<TaskRequirement> requirements) throws Exception {
+    public Task(String name, int deadline, int reward, List<TaskRequirement> requirements){
         this.name = name;
         this.deadline = deadline;
         this.reward = reward;
@@ -95,7 +95,7 @@ public class Task {
 	 * @return
 	 * @throws Exception
 	 */
-	public HashMap<String, Integer> createBlockTypeMap() throws Exception{
+	public HashMap<String, Integer> createBlockTypeMap(){
 		HashMap<String, Integer> map = new HashMap<String, Integer>();
 		map.put("b0",0);
 		map.put("b1",0);
@@ -113,7 +113,7 @@ public class Task {
 			case "b3":
 				map.put("b3", map.get("b3")+1);
 			default:
-				throw new Exception("setBlockTypeMap cannot handle: "+this.requirements.get(i).getBlockType());
+				System.out.println("setBlockTypeMap cannot handle: "+this.requirements.get(i).getBlockType());
 			}
 		}
 		return map;
