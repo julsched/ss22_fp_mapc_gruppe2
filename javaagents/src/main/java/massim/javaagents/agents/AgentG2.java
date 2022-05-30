@@ -104,9 +104,10 @@ public class AgentG2 extends Agent {
 		saveStepPercepts(percepts);
 
 		analyzeAttachedThings();
-		
+		/*
 		// Auswertung der abgespeicherten Ergebnisse der lastAction
 		this.evaluateLastAction();
+		
 		
 		// nach der Evaluation ist die currentPosition korrekt bestimmt und es können die things der map hinzugefügt werden
 		this.updateMap(percepts);
@@ -143,6 +144,12 @@ public class AgentG2 extends Agent {
             }
             return workerStep();
         }
+		*/
+		say("My mission: I am just a normal worker :(");
+        if (!lastActionResult.equals("success")) {
+            return handleError();
+        }
+        return workerStep();
 	}
 
 	private void setCurrentStep(List<Percept> percepts) {
@@ -1154,7 +1161,7 @@ public class AgentG2 extends Agent {
 		}
 		ArrayList<String> possibleDirs = getPossibleDirs();
 		ArrayList<String> prefDirs = getPreferredDirs();
-		say("this is my map: " + map);
+		//say("this is my map: " + map);
 		if (possibleDirs != null && possibleDirs.size() != 0) {
 			if (prefDirs != null) {
 				// flip coin
