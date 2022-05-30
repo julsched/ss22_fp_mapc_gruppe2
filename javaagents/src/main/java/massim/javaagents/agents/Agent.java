@@ -106,8 +106,8 @@ public abstract class Agent {
     	this.mailbox.requestMap(to, this.name, currentStep);
     }
     
-    public void sendMap(String to, HashMap<RelativeCoordinate, Cell> map) {
-    	this.mailbox.sendMap(to, map);
+    public void sendMap(String to, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate rc) {
+    	this.mailbox.sendMap(to, map, rc);
     }
 
 }

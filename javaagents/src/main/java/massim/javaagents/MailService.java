@@ -88,13 +88,13 @@ public class MailService {
     }
     
     // sendet eine geupdatete Map
-    public void sendMap(String to, HashMap<RelativeCoordinate, Cell> map) {
+    public void sendMap(String to, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate rc) {
     	Agent recipient = register.get(to);
         if (recipient == null && !(recipient instanceof AgentG2)) {
             logger.warning("Cannot deliver message to " + to + "; unknown target,");
         } else {
         	AgentG2 rec = (AgentG2) recipient;
-        	rec.receiveMap(map);
+        	rec.receiveMap(map, rc);
         }
     }
 }
