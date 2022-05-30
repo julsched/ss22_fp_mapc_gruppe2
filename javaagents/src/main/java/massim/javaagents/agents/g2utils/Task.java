@@ -39,6 +39,14 @@ public class Task {
     public List<TaskRequirement> getRequirements() {
         return this.requirements;
     }
+    
+	public String[][] getBlockMatrix() {
+		return blockMatrix;
+	}
+
+	public HashMap<String, Integer> getBlockTypeMap() {
+		return blockTypeMap;
+	}
 
     public boolean equals(Task task) {
         if (this.name.equals(task.getName())) {
@@ -117,14 +125,6 @@ public class Task {
 			}
 		}
 		return map;
-	}
-
-	public String[][] getBlockMatrix() {
-		return blockMatrix;
-	}
-
-	public HashMap<String, Integer> getBlockTypeMap() {
-		return blockTypeMap;
 	}
 	
 }

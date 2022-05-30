@@ -982,78 +982,88 @@ public class AgentG2 extends Agent {
 		// TODO: expand error handling
 		return moveRandomly(currentRole.getSpeedWithoutAttachments());
 	}
+	
+	private Action workerActionAttach() {
+		String direction = (String) lastActionParams.get(0);
+        say("Block had been successfully requested. Trying to attach...");
+        return new Action("attach", new Identifier(direction));
+	}
+	
+	private Action workerActionDetach() {
+		say("Block attached, but no corresponding task(s).");
+            say("Detaching from block...");
+            return new Action("detach", new Identifier(attachedBlocks.get(0).getDirectDirection()));
+	}
+	
+	//worker searches or chooses Goalzone
+	private Action workerActionSearchGoalzone(List<Task> correspondingTasks) {
+		say("Need to look for goal zone");
+        // Identify goal zone field candidates (= goal zone fields which are not occupied and which have enough space around them to submit a task)
+		HashMap<RelativeCoordinate, List<Task>> goalZoneFieldCandidates = determineGoalZoneFieldCandidates(correspondingTasks);
 
-	private Action workerStep() {
-        // If a block has been requested in the last step, then attach this block
-        if (lastAction.equals("request") && lastActionResult.equals("success")) {
-            String direction = (String) lastActionParams.get(0);
-            say("Block had been successfully requested. Trying to attach...");
-            return new Action("attach", new Identifier(direction));
-        }
-        // This only works for tasks with one block
-        // If the agent has a block attached, then either detach from it (if no corresponding task), look for goal zone, rotate or submit
-        if (!attachedBlocks.isEmpty()) {
-            List<Task> correspondingTasks = determineCorrespondingTasks();
-            if (correspondingTasks.isEmpty()) {
-                say("Block attached, but no corresponding task(s).");
-                say("Detaching from block...");
-                return new Action("detach", new Identifier(attachedBlocks.get(0).getDirectDirection()));
-            }
-
-            say("Need to look for goal zone");
-            // Identify goal zone field candidates (= goal zone fields which are not occupied and which have enough space around them to submit a task)
-			HashMap<RelativeCoordinate, List<Task>> goalZoneFieldCandidates = determineGoalZoneFieldCandidates(correspondingTasks);
-
-            if (!goalZoneFieldCandidates.isEmpty()) {
-                say("Suitable goal zone fields identified");
-				// Check if agent already on a suitable goal zone field
-				if (!goalZoneFieldCandidates.containsKey(new RelativeCoordinate(0, 0))) {
-					// Calculate direction agent should move into in order to get as fast as possible to the next suitable goal zone field
-					// TODO: check if attached blocks will fit on this path
-					Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields, determineLocations("attachedBlock", null), goalZoneFieldCandidates.keySet());
-					if (dir == null) {
-						say("No path towards identified goal zone fields.");
-						return moveRandomly(currentRole.getSpeedWithoutAttachments());
+        if (!goalZoneFieldCandidates.isEmpty()) {
+            say("Suitable goal zone fields identified");
+			// Check if agent already on a suitable goal zone field
+			if (!goalZoneFieldCandidates.containsKey(new RelativeCoordinate(0, 0))) {
+				// Calculate direction agent should move into in order to get as fast as possible to the next suitable goal zone field
+				// TODO: check if attached blocks will fit on this path
+				Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields, determineLocations("attachedBlock", null), goalZoneFieldCandidates.keySet());
+				if (dir == null) {
+					say("No path towards identified goal zone fields.");
+					return moveRandomly(currentRole.getSpeedWithoutAttachments());
+				}
+				say("Path identified. Moving towards next suitable goal zone field...");
+				switch(dir) {
+					case NORTH -> {
+						say("NORTH");
+						return new Action("move", new Identifier("n"));
 					}
-					say("Path identified. Moving towards next suitable goal zone field...");
-					switch(dir) {
-						case NORTH -> {
-							say("NORTH");
-							return new Action("move", new Identifier("n"));
-						}
-						case EAST -> {
-							say("EAST");
-							return new Action("move", new Identifier("e"));
-						}
-						case SOUTH -> {
-							say("SOUTH");
-							return new Action("move", new Identifier("s"));
-						}
-						case WEST -> {
-							say("WEST");
-							return new Action("move", new Identifier("w"));
-						}
+					case EAST -> {
+						say("EAST");
+						return new Action("move", new Identifier("e"));
 					}
-				} else {
-					say("Already on suitable goal zone field");
-					Task completedTask = checkIfAnyTaskComplete(correspondingTasks);
-					if (completedTask == null) {
-						// TODO: select the task which requires the least amount of rotations
-						Task selectedTask = goalZoneFieldCandidates.get(new RelativeCoordinate(0, 0)).get(0);
-						return executeRotation(attachedBlocks.get(0).getRelativeCoordinate(), selectedTask.getRequirements().get(0).getRelativeCoordinate());
+					case SOUTH -> {
+						say("SOUTH");
+						return new Action("move", new Identifier("s"));
 					}
-					say("Task '" + completedTask.getName() + "' is complete");
-					if (taskSubmissionPossible(completedTask)) {
-						String taskName = completedTask.getName();
-						say("Submitting task '" + taskName + "'...");
-						return new Action("submit", new Identifier(taskName));
+					case WEST -> {
+						say("WEST");
+						return new Action("move", new Identifier("w"));
 					}
 				}
-            }
-            // Move randomly to find a suitable goal zone field
-            return moveRandomly(currentRole.getSpeedWithoutAttachments());
+			} else {
+				say("Already on suitable goal zone field");
+				Task completedTask = checkIfAnyTaskComplete(correspondingTasks);
+				if (completedTask == null) {
+					// TODO: select the task which requires the least amount of rotations
+					Task selectedTask = goalZoneFieldCandidates.get(new RelativeCoordinate(0, 0)).get(0);
+					return executeRotation(attachedBlocks.get(0).getRelativeCoordinate(), selectedTask.getRequirements().get(0).getRelativeCoordinate());
+				}
+				say("Task '" + completedTask.getName() + "' is complete");
+				if (taskSubmissionPossible(completedTask)) {
+					String taskName = completedTask.getName();
+					say("Submitting task '" + taskName + "'...");
+					return new Action("submit", new Identifier(taskName));
+				}
+			}
         }
-
+        // Move randomly to find a suitable goal zone field
+        return moveRandomly(currentRole.getSpeedWithoutAttachments());
+	}
+	
+	
+	//worker has block attached and chooses how to handle it
+	private Action workerActionHandleBlock() {
+        // no tasks with current block available
+		List<Task> correspondingTasks = determineCorrespondingTasks();
+        if (correspondingTasks.isEmpty()) {
+            return this.workerActionDetach();
+        }
+        // chooses or searches goalzone
+        return this.workerActionSearchGoalzone(correspondingTasks);
+	}
+	
+	private Action workerActionSearchDispenser() {
         if (!dispensers.isEmpty()) {
             say("Dispenser(s) identified");
 			Set<RelativeCoordinate> dispenserLocations = new HashSet<>();
@@ -1107,6 +1117,21 @@ public class AgentG2 extends Agent {
         }
         // Move randomly to find a dispenser
         return moveRandomly(currentRole.getSpeedWithoutAttachments());
+	}
+	
+	// default (main) worker method
+	private Action workerStep() {
+        // If a block has been requested in the last step, then attach this block
+        if (lastAction.equals("request") && lastActionResult.equals("success")) {
+            return this.workerActionAttach();
+        }
+        // This only works for tasks with one block
+        // If the agent has a block attached, then either detach from it (if no corresponding task), look for goal zone, rotate or submit
+        if (!attachedBlocks.isEmpty()) {
+        	return this.workerActionHandleBlock();
+        }
+        // no block requested in last step or currently attached        
+        return this.workerActionSearchDispenser();
     }
 
 	private Action explorerStep() {
