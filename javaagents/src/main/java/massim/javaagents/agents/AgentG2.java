@@ -126,9 +126,11 @@ public class AgentG2 extends Agent {
 		}
 		
 		// Zusammenführen der Maps und Übergeben der geupdateten Map
-		this.mergeMaps();
-		this.sendMap(this.seenAgent.getName(), map, this.seenAgent.getRelativeCoordinate());
-		
+		if (this.seenAgent != null) {
+			this.mergeMaps();
+			this.sendMap(this.seenAgent.getName(), map, this.seenAgent.getRelativeCoordinate());
+		}
+		this.seenAgent = null;
 
 		if (explorerAgent.equals(getName())) {
             say("My mission: I am the explorer of the team!");
