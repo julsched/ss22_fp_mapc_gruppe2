@@ -1732,15 +1732,12 @@ public class AgentG2 extends Agent {
 		if (percepts == null) { // Error handling if no percepts are available
 			return;
 		} else {
-			Iterator it = percepts.iterator();
-			Percept percept = percepts.get(0);
+			Iterator<Percept> it = percepts.iterator();
+			Percept percept;
 			while (it.hasNext()) {
-				if (!((Percept) it.next()).getName().equals("things")) {
-					percept = (Percept) it.next();
-				} else {
-					percept = (Percept) it.next();
+				percept = it.next();
+				if (percept.getName().equals("things")) {
 					String thingType = ((Identifier) percept.getParameters().get(2)).getValue();
-					// Maybe Check if x and y are Numeral first
 					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
 					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
 					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
@@ -1748,21 +1745,29 @@ public class AgentG2 extends Agent {
 						String type = ((Identifier) percept.getParameters().get(3)).getValue();
 						Dispenser dispenser = new Dispenser(absolutePosition, type, currentStep);
 						map.put(absolutePosition, dispenser);
-						break;
 					}
 					if (thingType.equals("block")) {
 						String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
 						Block block = new Block(absolutePosition, blockType, currentStep);
 						map.put(absolutePosition, block);
-						break;
 					}
 					if (thingType.equals("obstacle")) {
 						Obstacle obstacle = new Obstacle(absolutePosition, currentStep);
 						map.put(absolutePosition, obstacle);
-						break;
 					}
 				}
-								
+				if (percept.getName().equals("goalzone")) {		
+					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
+					map.put(absolutePosition, new Goalzone(absolutePosition, currentStep));	
+				}
+				if (percept.getName().equals("rolezone")) {		
+					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
+					map.put(absolutePosition, new Rolezone(absolutePosition, currentStep));	
+				}
 			}
 				
 		}
