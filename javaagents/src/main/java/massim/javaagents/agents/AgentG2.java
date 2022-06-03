@@ -42,18 +42,22 @@ public class AgentG2 extends Agent {
 	private List<Norm> norms = new ArrayList<>();
 	// Blocks that might(!) be directly attached to the agent (right next to agent)
 	private List<Block> attachedBlocks = new ArrayList<>();
+	
+	private MapManagement mapManager;
+	private boolean initiateMapExchange = false;
 
-	private HashMap<String, RelativeCoordinate> seenTeamMembers = new HashMap<String, RelativeCoordinate>();
 	private AgentInformation seenAgent = null;
-	private boolean mapRequest = false;
+	private boolean requestForMap = false;
 	private String requestingExplorer;
-	private int stepMap = -1;
-	private HashMap<RelativeCoordinate, Cell> externalMap;
-	private RelativeCoordinate externalPosition;
+	private int stepOfRequest = -3;
+	private int exchangeCounter = 0;
+	private int stepOfSentMap;
+	private HashMap<RelativeCoordinate, Cell> sentMap;
+	private RelativeCoordinate sentPosition;
+	
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
 	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); //see map
 	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
-	private Orientation rotated = Orientation.NORTH;
 	private HashMap<RelativeCoordinate, Cell> attachedBlocksWithPositions = new HashMap<>();
 	private String roleName = ""; // TODO -> automatisch aktualisieren, wenn Rolle geändert wird
 
@@ -69,6 +73,7 @@ public class AgentG2 extends Agent {
 	 */
 	public AgentG2(String name, MailService mailbox) {
 		super(name, mailbox);
+		this.mapManager = new MapManagement(this.currentStep, this.currentPos);
 	}
 
 	@Override
@@ -102,35 +107,46 @@ public class AgentG2 extends Agent {
 		setCurrentStep(percepts);													
 		
 		saveStepPercepts(percepts);
+		
+		mapManager.setEntities(entities);
 
 		analyzeAttachedThings();
 		
 		// Auswertung der abgespeicherten Ergebnisse der lastAction
-		this.evaluateLastAction();
+		evaluateLastAction();
 		
 		// nach der Evaluation ist die currentPosition korrekt bestimmt und es können die things der map hinzugefügt werden
-		this.updateMap(percepts);
+		mapManager.updateMap(percepts);
 		
 		// Einleiten des Austausches der maps
-		if (this.seenAgent != null) {
-			this.requestMap(this.seenAgent.getName(), this.currentStep);
+		if (initiateMapExchange) {
+			requestMap(mapManager.getExchangePartner().getName(), currentStep);
 		}
 		
 		// Übergeben der aktuellen Map
-		if (this.mapRequest) {
-			if (this.stepMap == this.currentStep) {
-				this.mailbox.deliverMap(requestingExplorer, this.getName(), this.map, this.currentPos, this.currentStep);
+		if (requestForMap) {
+			if (stepOfRequest == currentStep) {
+				mailbox.deliverMap(requestingExplorer, getName(), mapManager.getMap(), currentPos, currentStep);
+				stepOfRequest = -3;
 			}
-			this.stepMap = -1;
-			this.mapRequest = false;
+			if (stepOfRequest == currentStep - 1) {
+				mailbox.deliverMap(requestingExplorer, getName(), mapManager.getLastMap(), mapManager.getLastPosition(), currentStep - 1);
+				stepOfRequest = -3;
+			}
+			exchangeCounter = exchangeCounter + 1;
+			if (exchangeCounter > 1) {
+				stepOfRequest = -3;
+				requestForMap = false;
+			}
+			
 		}
 		
 		// Zusammenführen der Maps und Übergeben der geupdateten Map
-		if (this.seenAgent != null) {
-			this.mergeMaps();
+		if (!(sentMap == null)) {
+			mapManager.mergeMaps(sentMap, sentPosition, stepOfSentMap);
 			this.sendMap(this.seenAgent.getName(), map, this.seenAgent.getRelativeCoordinate());
 		}
-		this.seenAgent = null;
+		this.initiateMapExchange = false;
 
 		if (explorerAgent.equals(getName())) {
             say("My mission: I am the explorer of the team!");
@@ -391,11 +407,10 @@ public class AgentG2 extends Agent {
 				switch (target) {
 				case "agent" -> {
 					String name = ((Identifier) percept.getParameters().get(1)).getValue();
-					this.seenAgent.setName(name);
 					String role = ((Identifier) percept.getParameters().get(2)).getValue();
-					this.seenAgent.setRole(role);
 					int energy = ((Numeral) percept.getParameters().get(3)).getValue().intValue();
-					this.seenAgent.setEnergy(energy);
+					mapManager.setExchangePartner(name, role, energy);
+					this.initiateMapExchange = true;
 					break;
 				}
 				case "goal" -> {
@@ -659,33 +674,15 @@ public class AgentG2 extends Agent {
 		case "move":
 			if (this.lastActionResult.equals("success")) {
 				Iterator<Object> it = this.lastActionParams.iterator();
+				int counter = 1;
 				while (it.hasNext()) {
 					Parameter dir = (Parameter) it.next();
 					if (dir instanceof Identifier) {
 						int x = this.currentPos.getX();
 						int y = this.currentPos.getY();
 						String dirString = ((Identifier) dir).getValue();
-						if ((dirString.equals("n") && this.rotated.equals(Orientation.NORTH))
-								|| (dirString.equals("w") && this.rotated.equals(Orientation.EAST))
-								|| (dirString.equals("s") && this.rotated.equals(Orientation.SOUTH))
-								|| (dirString.equals("e") && this.rotated.equals(Orientation.WEST))) {
-							this.setCurrentPosition(new RelativeCoordinate(x, y + 1));
-						} else if ((dirString.equals("s") && this.rotated.equals(Orientation.NORTH))
-								|| (dirString.equals("e") && this.rotated.equals(Orientation.EAST))
-								|| (dirString.equals("n") && this.rotated.equals(Orientation.SOUTH))
-								|| (dirString.equals("e") && this.rotated.equals(Orientation.WEST))) {
-							this.setCurrentPosition(new RelativeCoordinate(x, y - 1));
-						} else if ((dirString.equals("e") && this.rotated.equals(Orientation.NORTH))
-								|| (dirString.equals("n") && this.rotated.equals(Orientation.EAST))
-								|| (dirString.equals("w") && this.rotated.equals(Orientation.SOUTH))
-								|| (dirString.equals("s") && this.rotated.equals(Orientation.WEST))) {
-							this.setCurrentPosition(new RelativeCoordinate(x + 1, y));
-						} else if ((dirString.equals("w") && this.rotated.equals(Orientation.NORTH))
-								|| (dirString.equals("s") && this.rotated.equals(Orientation.EAST))
-								|| (dirString.equals("e") && this.rotated.equals(Orientation.SOUTH))
-								|| (dirString.equals("n") && this.rotated.equals(Orientation.WEST))) {
-							this.setCurrentPosition(new RelativeCoordinate(x - 1, y));
-						}
+						mapManager.updatePosition(x, y, dirString, counter);
+						counter = counter + 1;
 					}
 				}
 			} else if (this.lastActionResult.equals("partial_success")) {
@@ -694,28 +691,8 @@ public class AgentG2 extends Agent {
 					int x = this.currentPos.getX();
 					int y = this.currentPos.getY();
 					String dirString = ((Identifier) dir).getValue();
-					if ((dirString.equals("n") && this.rotated.equals(Orientation.NORTH))
-							|| (dirString.equals("w") && this.rotated.equals(Orientation.EAST))
-							|| (dirString.equals("s") && this.rotated.equals(Orientation.SOUTH))
-							|| (dirString.equals("e") && this.rotated.equals(Orientation.WEST))) {
-						this.setCurrentPosition(new RelativeCoordinate(x, y + 1));
-					} else if ((dirString.equals("s") && this.rotated.equals(Orientation.NORTH))
-							|| (dirString.equals("e") && this.rotated.equals(Orientation.EAST))
-							|| (dirString.equals("n") && this.rotated.equals(Orientation.SOUTH))
-							|| (dirString.equals("e") && this.rotated.equals(Orientation.WEST))) {
-						this.setCurrentPosition(new RelativeCoordinate(x, y - 1));
-					} else if ((dirString.equals("e") && this.rotated.equals(Orientation.NORTH))
-							|| (dirString.equals("n") && this.rotated.equals(Orientation.EAST))
-							|| (dirString.equals("w") && this.rotated.equals(Orientation.SOUTH))
-							|| (dirString.equals("s") && this.rotated.equals(Orientation.WEST))) {
-						this.setCurrentPosition(new RelativeCoordinate(x + 1, y));
-					} else if ((dirString.equals("w") && this.rotated.equals(Orientation.NORTH))
-							|| (dirString.equals("s") && this.rotated.equals(Orientation.EAST))
-							|| (dirString.equals("e") && this.rotated.equals(Orientation.SOUTH))
-							|| (dirString.equals("n") && this.rotated.equals(Orientation.WEST))) {
-						this.setCurrentPosition(new RelativeCoordinate(x - 1, y));
-					}
-					// Fehlerbehandlung
+					mapManager.updatePosition(x, y, dirString, 1);
+					// TODO: Fehlerbehandlung, falls Agent mehr als zwei Schritte laufen kann
 				}
 			} else if (this.lastActionResult.equals("failed_parameter")) {
 				// Fehlerbehandlung
@@ -803,13 +780,13 @@ public class AgentG2 extends Agent {
 						String rotString = ((Identifier) rot).getValue();
 						HashMap<RelativeCoordinate, Cell> temp = new HashMap<RelativeCoordinate, Cell>();
 						if (rotString.equals("cw")) {
-							this.rotated = Orientation.changeOrientation(rotated, 1);
+							mapManager.updateOrientation(true);
 							for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
 								Cell cell = this.attachedBlocksWithPositions.get(key);
 								temp.put(new RelativeCoordinate(key.getY(), -key.getX()), cell);
 							}
 						} else {
-							this.rotated = Orientation.changeOrientation(rotated, -1);
+							mapManager.updateOrientation(false);
 							for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
 								Cell cell = this.attachedBlocksWithPositions.get(key);
 								temp.put(new RelativeCoordinate(-key.getY(), key.getX()), cell);
@@ -1125,7 +1102,7 @@ public class AgentG2 extends Agent {
 				}
 			}
 			if (!this.friendlyAgents.isEmpty()) {
-				seenAgent = new AgentInformation(this.currentPos.getX() + this.friendlyAgents.get(0).getX(), this.currentPos.getY() + this.friendlyAgents.get(0).getY());
+				this.mapManager.createExchangePartner(new RelativeCoordinate(this.currentPos.getX() + this.friendlyAgents.get(0).getX(), this.currentPos.getY() + this.friendlyAgents.get(0).getY()));
 				return new Action("survey", new Numeral(this.friendlyAgents.get(0).getX()), new Numeral(this.friendlyAgents.get(0).getY()));
 			}
 		}
@@ -1691,89 +1668,15 @@ public class AgentG2 extends Agent {
 	
     public void deliverMap(String to, int step) {
     	this.requestingExplorer = to;
-    	this.stepMap = step;
-    	this.mapRequest = true;
+    	this.stepOfRequest = step;
+    	this.requestForMap = true;
+    	this.exchangeCounter = 0;
     }
 	
 	public void handleMap(String from, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate currentPos, int step) {
-		this.stepMap = step;
-		this.externalMap = map;
-		this.externalPosition = currentPos;
-	}
-	
-	private void mergeMaps() {
-		if (this.currentStep == this.stepMap) {
-			RelativeCoordinate rc = this.seenAgent.getRelativeCoordinate();
-			ArrayList<RelativeCoordinate> agents = new ArrayList<RelativeCoordinate>();
-			
-			Iterator<Entity> it = this.entities.iterator();
-			while (it.hasNext()) {
-				Entity ent = it.next();
-				int xCoor = ent.getRelativeCoordinate().getX() + this.currentPos.getX();
-				int yCoor = ent.getRelativeCoordinate().getY() + this.currentPos.getY();
-				if (Math.abs(rc.getX() - xCoor) < 2 && Math.abs(rc.getY() - yCoor) < 2) {
-					agents.add(new RelativeCoordinate(xCoor, yCoor));
-				}
-			}
-			if (agents.size() < 1 || agents.size() > 1) {
-				return;
-			}
-			RelativeCoordinate pos = agents.get(0);
-			int xDiff = pos.getX() - this.externalPosition.getX();
-			int yDiff = pos.getY() - this.externalPosition.getY();
-			for (RelativeCoordinate key : this.externalMap.keySet()) {
-				RelativeCoordinate newKey = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
-				if (!this.map.containsKey(newKey) || this.map.get(newKey).getLastSeen() < externalMap.get(key).getLastSeen()) {
-					this.map.put(newKey, this.externalMap.get(key));
-				}			
-			}
-		}
-	}
-	
-	private void updateMap(List<Percept> percepts) {
-		if (percepts == null) { // Error handling if no percepts are available
-			return;
-		} else {
-			Iterator<Percept> it = percepts.iterator();
-			Percept percept;
-			while (it.hasNext()) {
-				percept = it.next();
-				if (percept.getName().equals("things")) {
-					String thingType = ((Identifier) percept.getParameters().get(2)).getValue();
-					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
-					if (thingType.equals("dispenser")) {
-						String type = ((Identifier) percept.getParameters().get(3)).getValue();
-						Dispenser dispenser = new Dispenser(absolutePosition, type, currentStep);
-						map.put(absolutePosition, dispenser);
-					}
-					if (thingType.equals("block")) {
-						String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
-						Block block = new Block(absolutePosition, blockType, currentStep);
-						map.put(absolutePosition, block);
-					}
-					if (thingType.equals("obstacle")) {
-						Obstacle obstacle = new Obstacle(absolutePosition, currentStep);
-						map.put(absolutePosition, obstacle);
-					}
-				}
-				if (percept.getName().equals("goalzone")) {		
-					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
-					map.put(absolutePosition, new Goalzone(absolutePosition, currentStep));	
-				}
-				if (percept.getName().equals("rolezone")) {		
-					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
-					map.put(absolutePosition, new Rolezone(absolutePosition, currentStep));	
-				}
-			}
-				
-		}
-		
+		this.stepOfSentMap = step;
+		this.sentMap = map;
+		this.sentPosition = currentPos;
 	}
 	
 	public void receiveMap(HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate rc) {

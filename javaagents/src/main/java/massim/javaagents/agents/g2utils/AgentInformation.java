@@ -8,8 +8,8 @@ public class AgentInformation {
 	private String role;
 	private int energy;
 	
-	public AgentInformation(int x, int y) {
-		this.rc = new RelativeCoordinate(x, y);
+	public AgentInformation(RelativeCoordinate position) {
+		this.rc = position;
 	}
 	
 	public void setName(String name) {
