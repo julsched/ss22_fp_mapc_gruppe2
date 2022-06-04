@@ -82,4 +82,52 @@ public class PathCalc {
         }
         return null;
     }
+
+    public static Direction calculateShortestPathMap(HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate currentPos, Set<RelativeCoordinate> destinations) {
+        // Position of agent inside the map
+        int xA = currentPos.getX();
+        int yA = currentPos.getY();
+
+        // Set for keeping track of the fields that have been already analyzed
+        Set<RelativeCoordinate> discovered = new HashSet<>();
+        discovered.add(currentPos);
+
+
+        // Start of algorithm
+        Queue<Node> queue = new ArrayDeque<>();
+        queue.add(new Node(xA, yA, null));
+        while (!queue.isEmpty()) {
+            Node node = queue.poll();
+
+            // TODO: check if agent can walk in certain direction when it has block(s) attached in this direction
+
+            for (Direction dir : Direction.values()) {
+                int newX = node.x + dir.getDx();
+                int newY = node.y + dir.getDy();
+                Direction newDir = node.initialDir == null ? dir : node.initialDir;
+                for (RelativeCoordinate destination : destinations) {
+                    int xG = destination.getX();
+                    int yG = destination.getY();
+                    // Destination reached?
+                    if (newX == xG && newY == yG) {
+                        return newDir;
+                    }
+                }
+
+                // Is there a path in the direction and has that field not yet been analyzed?
+                boolean occupied = false;
+                Cell cell = map.get(new RelativeCoordinate(newX, newY));
+                // TODO: add '|| cell instanceof Entity' (once Entity implements Cell)
+                if (cell != null && (cell instanceof Obstacle || cell instanceof Block)) { // Beware: Block could also be attached
+                    occupied = true;
+                }
+                if (!occupied && !discovered.contains(new RelativeCoordinate(newX, newY))) {
+                    // Mark field as 'discovered' and add it to the queue
+                    discovered.add(new RelativeCoordinate(newX, newY));
+                    queue.add(new Node(newX, newY, newDir));
+                }
+            }
+        }
+        return null;
+    }
 }
