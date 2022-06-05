@@ -108,6 +108,7 @@ public class AgentG2 extends Agent {
 		
 		saveStepPercepts(percepts);
 		
+		/*
 		mapManager.setEntities(entities);
 		
 		analyzeAttachedThings();
@@ -147,6 +148,7 @@ public class AgentG2 extends Agent {
 			this.sendMap(this.seenAgent.getName(), map, this.seenAgent.getRelativeCoordinate());
 		}
 		this.initiateMapExchange = false;
+		*/
 
 		if (explorerAgent.equals(getName())) {
             say("My mission: I am the explorer of the team!");
@@ -1124,7 +1126,7 @@ public class AgentG2 extends Agent {
 				int x = this.currentPos.getX() + relCo.getX();
 				int y = this.currentPos.getY() + relCo.getY();
 				if (Math.abs(x) + Math.abs(y) > this.currentRole.getVision() - 1) {
-					this.friendlyAgents.remove(relCo);
+					it.remove();
 				}
 			}
 			if (!this.friendlyAgents.isEmpty()) {
