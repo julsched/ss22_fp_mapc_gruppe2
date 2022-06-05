@@ -39,6 +39,14 @@ public class Task {
     public List<TaskRequirement> getRequirements() {
         return this.requirements;
     }
+    
+	public String[][] getBlockMatrix() {
+		return blockMatrix;
+	}
+
+	public HashMap<String, Integer> getBlockTypeMap() {
+		return blockTypeMap;
+	}
 
     public boolean equals(Task task) {
         if (this.name.equals(task.getName())) {
@@ -74,16 +82,18 @@ public class Task {
 		for (int i =0; i< this.requirements.size(); i++) {
 			matrix
 				[this.requirements.get(i).getRelativeCoordinate().getX()+2]
-				[this.requirements.get(i).getRelativeCoordinate().getY()] 
+				[this.requirements.get(i).getRelativeCoordinate().getY()-1] 
 						= this.requirements.get(i).getBlockType();
+			//matrix[X][Y]
 		}
-		//test
+		/*test for a noob
 		for (int i = 0; i < matrix.length; i++) {
 		    for (int j = 0; j < matrix[i].length; j++) {
-		        System.out.print(matrix[i][j] + " ");
+		        System.out.print(matrix[j][i] + " ");
 		    }
 		    System.out.println();
 		}
+		*/
 		return matrix;		
 	}
 	
@@ -103,28 +113,25 @@ public class Task {
 		map.put("b3",0);
 		
 		for (int i =0; i< this.requirements.size(); i++) {			
-			switch(this.requirements.get(i).getBlockType()) {
+			switch((String)this.requirements.get(i).getBlockType()) {
 			case "b0":
 				map.put("b0", map.get("b0")+1);
+				break;
 			case "b1":
 				map.put("b1", map.get("b1")+1);
+				break;
 			case "b2":
 				map.put("b2", map.get("b2")+1);
+				break;
 			case "b3":
 				map.put("b3", map.get("b3")+1);
+				break;
 			default:
-				System.out.println("setBlockTypeMap cannot handle: "+this.requirements.get(i).getBlockType());
+				System.out.println("createBlockTypeMap cannot handle: "+this.requirements.get(i).getBlockType()+"!");
+				break;
 			}
 		}
 		return map;
-	}
-
-	public String[][] getBlockMatrix() {
-		return blockMatrix;
-	}
-
-	public HashMap<String, Integer> getBlockTypeMap() {
-		return blockTypeMap;
 	}
 	
 }
