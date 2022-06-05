@@ -108,11 +108,11 @@ public class AgentG2 extends Agent {
 		
 		saveStepPercepts(percepts);
 		
-		/*
-		mapManager.setEntities(entities);
+		
+		//mapManager.setEntities(entities);
 		
 		analyzeAttachedThings();
-		
+		/*
 		// Auswertung der abgespeicherten Ergebnisse der lastAction
 		evaluateLastAction();
 		
