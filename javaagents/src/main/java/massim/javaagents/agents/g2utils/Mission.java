@@ -10,6 +10,6 @@ public class Mission {
         if (explorer.length() == 0) {
             explorer = agentName;
         }
-        return explorer;
+        return agentName;
     }
 }

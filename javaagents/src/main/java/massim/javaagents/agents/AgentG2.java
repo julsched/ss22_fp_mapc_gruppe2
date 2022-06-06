@@ -45,7 +45,7 @@ public class AgentG2 extends Agent {
 	
 	private MapManagement mapManager;
 	private boolean initiateMapExchange = false;
-
+	private int counterMapExchange = 0;
 	private AgentInformation seenAgent = null;
 	private boolean requestForMap = false;
 	private String requestingExplorer;
@@ -109,10 +109,10 @@ public class AgentG2 extends Agent {
 		saveStepPercepts(percepts);
 		
 		
-		//mapManager.setEntities(entities);
+		mapManager.setEntities(entities);
 		
 		analyzeAttachedThings();
-		/*
+		
 		// Auswertung der abgespeicherten Ergebnisse der lastAction
 		evaluateLastAction();
 		
@@ -121,11 +121,13 @@ public class AgentG2 extends Agent {
 		
 		// Einleiten des Austausches der maps
 		if (initiateMapExchange) {
+			say("I want your map, " + mapManager.getExchangePartner().getName());
 			requestMap(mapManager.getExchangePartner().getName(), currentStep);
 		}
 		
 		// Übergeben der aktuellen Map
 		if (requestForMap) {
+			say("I give you my map");
 			if (stepOfRequest == currentStep) {
 				mailbox.deliverMap(requestingExplorer, getName(), mapManager.getMap(), currentPos, currentStep);
 				stepOfRequest = -3;
@@ -138,17 +140,16 @@ public class AgentG2 extends Agent {
 			if (exchangeCounter > 1) {
 				stepOfRequest = -3;
 				requestForMap = false;
-			}
-			
+			}	
 		}
 		
 		// Zusammenführen der Maps und Übergeben der geupdateten Map
 		if (!(sentMap == null)) {
+			say("I merge the maps");
 			mapManager.mergeMaps(sentMap, sentPosition, stepOfSentMap);
 			this.sendMap(this.seenAgent.getName(), map, this.seenAgent.getRelativeCoordinate());
 		}
 		this.initiateMapExchange = false;
-		*/
 
 		if (explorerAgent.equals(getName())) {
             say("My mission: I am the explorer of the team!");
@@ -186,6 +187,7 @@ public class AgentG2 extends Agent {
         dispensers.clear();
         blocks.clear();
         entities.clear();
+        friendlyAgents.clear();
         occupiedFields.clear();
         goalZoneFields.clear();
         roleZoneFields.clear();
@@ -282,13 +284,14 @@ public class AgentG2 extends Agent {
 					break;
 				}
 				if (thingType.equals("entity")) {
-					String teamName = ((Identifier) percept.getParameters().get(3)).getValue();
-					Entity entity = new Entity(relativeCoordinate, teamName);
+					String team = ((Identifier) percept.getParameters().get(3)).getValue();
+					Entity entity = new Entity(relativeCoordinate, team);
 					entities.add(entity);
 					occupiedFields.add(relativeCoordinate);
-					if (this.teamName.equals(teamName)) {
+					if (teamName.equals(team)) {
 						RelativeCoordinate relCo = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
 						this.friendlyAgents.add(relCo);
+						say("Friend at: " + relCo.getX() + ", " + relCo.getY());
 					}
 					break;
 				}
@@ -411,6 +414,7 @@ public class AgentG2 extends Agent {
 					String name = ((Identifier) percept.getParameters().get(1)).getValue();
 					String role = ((Identifier) percept.getParameters().get(2)).getValue();
 					int energy = ((Numeral) percept.getParameters().get(3)).getValue().intValue();
+					say("Partner: " + name);
 					mapManager.setExchangePartner(name, role, energy);
 					this.initiateMapExchange = true;
 					break;
@@ -671,37 +675,36 @@ public class AgentG2 extends Agent {
 	// TODO: eigentliche Evaluation
 	private void evaluateLastAction() {
 		switch (lastAction) {
+		/*
 		case "skip":
 			break;
+		*/
 		case "move":
 			if (this.lastActionResult.equals("success")) {
-				Iterator<Object> it = this.lastActionParams.iterator();
+				Iterator<Object> it = lastActionParams.iterator();
 				int counter = 1;
 				while (it.hasNext()) {
-					Parameter dir = (Parameter) it.next();
-					if (dir instanceof Identifier) {
-						int x = this.currentPos.getX();
-						int y = this.currentPos.getY();
-						String dirString = ((Identifier) dir).getValue();
-						mapManager.updatePosition(x, y, dirString, counter);
-						counter = counter + 1;
-					}
+					Object temp = it.next();
+					String dir = temp.toString();
+					say("Direction is: " + dir);
+					int x = currentPos.getX();
+					int y = currentPos.getY();
+					mapManager.updatePosition(x, y, dir, counter);
+					counter = counter + 1;
 				}
 			} else if (this.lastActionResult.equals("partial_success")) {
-				Parameter dir = (Parameter) this.lastActionParams.get(0);
-				if (dir instanceof Identifier) {
-					int x = this.currentPos.getX();
-					int y = this.currentPos.getY();
-					String dirString = ((Identifier) dir).getValue();
-					mapManager.updatePosition(x, y, dirString, 1);
-					// TODO: Fehlerbehandlung, falls Agent mehr als zwei Schritte laufen kann
-				}
+				String dir = (String) this.lastActionParams.get(0);
+				int x = currentPos.getX();
+				int y = currentPos.getY();
+				mapManager.updatePosition(x, y, dir, 1);
+				// TODO: Fehlerbehandlung, falls Agent mehr als zwei Schritte laufen kann
 			} else if (this.lastActionResult.equals("failed_parameter")) {
 				// Fehlerbehandlung
 			} else {
 				// Fehlerbehandlung
 			}
 			break;
+		/*
 		case "attach":
 			switch (lastActionResult) {
 			case "success":
@@ -812,7 +815,7 @@ public class AgentG2 extends Agent {
 					// Behandlung
 					break;
 				case "failed_parameter":
-					// FEhlerbehandlung
+					// Fehlerbehandlung
 					break;
 				case "failed_partner":
 					// Fehlerbehandlung
@@ -909,9 +912,9 @@ public class AgentG2 extends Agent {
 				break;
 			default:
 				break;
+			*/
 			}
 
-		}
 	}
 
 	private void setCurrentPosition(RelativeCoordinate relativeCoordinate) {
@@ -1119,21 +1122,28 @@ public class AgentG2 extends Agent {
 	private Action explorerStep() {
 		// falls mindestens ein Teammitglied sichtbar, wird dies nach seinem Namen befragt, um einen map-Austausch einzuleiten
 		// TODO: Bedingung sollte weiter eingeschränkt, weil sonst nur surveyed und nicht explort wird
-		if (!this.friendlyAgents.isEmpty()) {
+		
+		say("Friendly Agents: " + friendlyAgents.size() + " und Counter: " + counterMapExchange);
+		
+		if (!this.friendlyAgents.isEmpty() && counterMapExchange > 7) {
+			counterMapExchange = 0;
 			Iterator<RelativeCoordinate> it = this.friendlyAgents.iterator();
 			while (it.hasNext()) {
 				RelativeCoordinate relCo = it.next();
 				int x = this.currentPos.getX() + relCo.getX();
 				int y = this.currentPos.getY() + relCo.getY();
-				if (Math.abs(x) + Math.abs(y) > this.currentRole.getVision() - 1) {
+				RelativeCoordinate pos = new RelativeCoordinate(x, y);
+				if ((Math.abs(x) + Math.abs(y) > this.currentRole.getVision() - 1) || (x == currentPos.getX() && y == currentPos.getY())) {
 					it.remove();
 				}
 			}
 			if (!this.friendlyAgents.isEmpty()) {
+				say("I try to exchange my map");
 				this.mapManager.createExchangePartner(new RelativeCoordinate(this.currentPos.getX() + this.friendlyAgents.get(0).getX(), this.currentPos.getY() + this.friendlyAgents.get(0).getY()));
 				return new Action("survey", new Numeral(this.friendlyAgents.get(0).getX()), new Numeral(this.friendlyAgents.get(0).getY()));
 			}
 		}
+		counterMapExchange = counterMapExchange + 1;
 		ArrayList<String> possibleDirs = getPossibleDirs();
 		ArrayList<String> prefDirs = getPreferredDirs();
 		say("this is my map: " + map);
