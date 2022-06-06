@@ -8,13 +8,17 @@ public class RelativeCoordinate {
     private final int y;
 
     public static RelativeCoordinate getClosestCoordinate(List<RelativeCoordinate> relativeCoordinates) {
+        return RelativeCoordinate.getClosestCoordinate(relativeCoordinates, new RelativeCoordinate(0, 0));
+    }
+
+    public static RelativeCoordinate getClosestCoordinate(List<RelativeCoordinate> relativeCoordinates, RelativeCoordinate agentPos) {
         RelativeCoordinate shortestCoordinate = null;
         for (RelativeCoordinate relativeCoordinate : relativeCoordinates) {
             if (shortestCoordinate == null) {
                 shortestCoordinate = relativeCoordinate;
                 continue;
             }
-            if (relativeCoordinate.isCloserThan(shortestCoordinate)) {
+            if (relativeCoordinate.isCloserThan(shortestCoordinate, agentPos)) {
                 shortestCoordinate = relativeCoordinate;
             }
         }
@@ -135,11 +139,20 @@ public class RelativeCoordinate {
 
     // Manhattan distance
     public int distanceFromAgent() {
-        return Math.abs(this.x) + Math.abs(this.y);
+        return distanceFromAgent(new RelativeCoordinate(0, 0));
+    }
+
+    // Manhattan distance
+    public int distanceFromAgent(RelativeCoordinate agentPos) {
+        return Math.abs(this.x - agentPos.getX()) + Math.abs(this.y - agentPos.getY());
     }
 
     public boolean isCloserThan(RelativeCoordinate relativeCoordinate) {
-        if (this.distanceFromAgent() < relativeCoordinate.distanceFromAgent()) {
+        return isCloserThan(relativeCoordinate, new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isCloserThan(RelativeCoordinate relativeCoordinate, RelativeCoordinate agentPos) {
+        if (this.distanceFromAgent(agentPos) < relativeCoordinate.distanceFromAgent(agentPos)) {
             return true;
         } else {
             return false;

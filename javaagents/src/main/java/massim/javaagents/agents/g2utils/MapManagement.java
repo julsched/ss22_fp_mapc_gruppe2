@@ -8,7 +8,7 @@ import eis.iilang.Percept;
 
 public class MapManagement {
 	
-	private HashMap<RelativeCoordinate, Cell> currentMap;
+	private HashMap<RelativeCoordinate, List<Cell>> currentMap;
 	private RelativeCoordinate currentPosition;
 	private int currentStep;
 	private List<Entity> entities = new ArrayList<>();
@@ -17,15 +17,17 @@ public class MapManagement {
 	
 	private AgentInformation exchangePartner;
 	
-	private HashMap<RelativeCoordinate, Cell> lastMap;
+	private HashMap<RelativeCoordinate, List<Cell>> lastMap;
 	private RelativeCoordinate lastPosition;
 	private List<Entity> lastEntities = new ArrayList<>();
+
+
 	
 	public MapManagement(int currentStep, RelativeCoordinate currentPosition) {
-		this.currentMap = new HashMap<RelativeCoordinate, Cell>();
+		this.currentMap = new HashMap<RelativeCoordinate, List<Cell>>();
 		this.currentPosition = currentPosition;
 		this.currentStep = currentStep;
-		this.lastMap = new HashMap<RelativeCoordinate, Cell>();
+		this.lastMap = new HashMap<RelativeCoordinate, List<Cell>>();
 		this.lastPosition = new RelativeCoordinate(0, 0);
 	}
 	
@@ -56,18 +58,18 @@ public class MapManagement {
 			currentPosition = new RelativeCoordinate(currentPosition.getX() - 1, currentPosition.getY());
 		}
 	}
-	
+
 	public void updateOrientation(boolean clockwise) {
 		this.rotated = Orientation.changeOrientation(rotated, clockwise);
 	}
 	
-	public void updateMap(List<Percept> percepts, int currentStep, int vision) {
+	public void updateMap(List<Percept> percepts, int currentStep, int vision, List<RelativeCoordinate> attachedBlocks) {
 		
 		this.percepts = percepts;
 		this.currentStep = currentStep;
 		
 		// alte Map kopieren
-		HashMap<RelativeCoordinate, Cell> temp = new HashMap<RelativeCoordinate, Cell>();
+		HashMap<RelativeCoordinate, List<Cell>> temp = new HashMap<RelativeCoordinate, List<Cell>>();
 		for (RelativeCoordinate key : currentMap.keySet()) {
 			temp.put(key, currentMap.get(key));
 		}
@@ -86,21 +88,57 @@ public class MapManagement {
 					String thingType = ((Identifier) percept.getParameters().get(2)).getValue();
 					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
 					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-					visionCells.remove(new RelativeCoordinate(x, y));
 					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPosition.getX() + x, this.currentPosition.getY() + y);
+					List<Cell> cells = currentMap.get(absolutePosition);
 					if (thingType.equals("dispenser")) {
 						String type = ((Identifier) percept.getParameters().get(3)).getValue();
 						Dispenser dispenser = new Dispenser(absolutePosition, type, currentStep);
-						currentMap.put(absolutePosition, dispenser);
+						if (cells == null || cells.get(0).getLastSeen() < currentStep) {
+							cells = new ArrayList<>();
+						}
+						cells.add(dispenser);
+						currentMap.put(absolutePosition, cells);
+						visionCells.remove(new RelativeCoordinate(x, y));
 					}
-					/*if (thingType.equals("block")) {
-						String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
-						Block block = new Block(absolutePosition, blockType, currentStep);
-						currentMap.put(absolutePosition, block);
-					}*/
+					if (thingType.equals("block")) {
+						visionCells.remove(new RelativeCoordinate(x, y));
+						if (!attachedBlocks.contains(new RelativeCoordinate(x, y))) {
+							String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
+							Block block = new Block(absolutePosition, blockType, currentStep);
+							if (cells == null || cells.get(0).getLastSeen() < currentStep) {
+								cells = new ArrayList<>();
+							}
+							cells.add(block);
+							currentMap.put(absolutePosition, cells);
+						} else {
+							if (cells == null || (cells != null && cells.get(0).getLastSeen() < currentStep)) {
+								//currentMap.remove(absolutePosition);
+								currentMap.put(absolutePosition, null);
+							}
+						}
+					}
 					if (thingType.equals("obstacle")) {
 						Obstacle obstacle = new Obstacle(absolutePosition, currentStep);
-						currentMap.put(absolutePosition, obstacle);
+						if (cells == null || cells.get(0).getLastSeen() < currentStep) {
+							cells = new ArrayList<>();
+						}
+						cells.add(obstacle);
+						currentMap.put(absolutePosition, cells);
+						visionCells.remove(new RelativeCoordinate(x, y));
+					}
+					// TODO: do with entity
+					if (thingType.equals("entity")) {
+						// Agent itself should not be saved in Map since we know its current Position already
+						if (x == 0 && y == 0) {
+							continue;
+						}
+						Obstacle obstacle = new Obstacle(absolutePosition, currentStep);
+						if (cells == null || cells.get(0).getLastSeen() < currentStep) {
+							cells = new ArrayList<>();
+						}
+						cells.add(obstacle);
+						currentMap.put(absolutePosition, cells);
+						visionCells.remove(new RelativeCoordinate(x, y));
 					}
 				}
 				if (percept.getName().equals("goalZone")) {		
@@ -108,27 +146,32 @@ public class MapManagement {
 					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
 					visionCells.remove(new RelativeCoordinate(x, y));
 					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPosition.getX() + x, this.currentPosition.getY() + y);
-					Cell cell = currentMap.get(absolutePosition);
-					// What if it is a role zone or a block?
-					// TODO: add '|| cell instanceof Entity' (once Entity implements Cell)
-					if ((cell instanceof Obstacle || cell instanceof Block) && cell.getLastSeen() == this.currentStep) {
-
-					} else {
-						currentMap.put(absolutePosition, new Goalzone(absolutePosition, currentStep));
-					}	
+					List<Cell> cells = currentMap.get(absolutePosition);
+					if (cells == null || cells.get(0).getLastSeen() < currentStep) {
+						cells = new ArrayList<>();
+					}
+					cells.add(new Goalzone(absolutePosition, currentStep));
+					currentMap.put(absolutePosition, cells);	
 				}
 				if (percept.getName().equals("roleZone")) {		
 					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
 					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
 					visionCells.remove(new RelativeCoordinate(x, y));
 					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPosition.getX() + x, this.currentPosition.getY() + y);
-					currentMap.put(absolutePosition, new Rolezone(absolutePosition, currentStep));	
+					List<Cell> cells = currentMap.get(absolutePosition);
+					if (cells == null || cells.get(0).getLastSeen() < currentStep) {
+						cells = new ArrayList<>();
+					}
+					cells.add(new Rolezone(absolutePosition, currentStep));
+					currentMap.put(absolutePosition, cells);	
 				}
 			}
 			for (RelativeCoordinate visionCell : visionCells) {
-				currentMap.put(new RelativeCoordinate(this.currentPosition.getX() + visionCell.getX(), this.currentPosition.getY() + visionCell.getY()), null);
-				//currentMap.remove(new RelativeCoordinate(this.currentPosition.getX() + visionCell.getX(), this.currentPosition.getY() + visionCell.getY()));
-			}	
+				List<Cell> cells = currentMap.get(new RelativeCoordinate(this.currentPosition.getX() + visionCell.getX(), this.currentPosition.getY() + visionCell.getY()));
+				if (cells == null || (cells != null && cells.get(0).getLastSeen() < currentStep)) {
+					currentMap.put(new RelativeCoordinate(this.currentPosition.getX() + visionCell.getX(), this.currentPosition.getY() + visionCell.getY()), null);
+				}
+			}
 		}
 		//System.out.println("Current Position:");
 		//System.out.println(currentPosition);
@@ -157,11 +200,11 @@ public class MapManagement {
 		return exchangePartner;
 	}
 	
-	public HashMap<RelativeCoordinate, Cell> getMap() {
+	public HashMap<RelativeCoordinate, List<Cell>> getMap() {
 		return currentMap;
 	}
 	
-	public HashMap<RelativeCoordinate, Cell> getLastMap() {
+	public HashMap<RelativeCoordinate, List<Cell>> getLastMap() {
 		return lastMap;
 	}
 	
@@ -242,7 +285,7 @@ public class MapManagement {
 		return visionCells;
 	}
 
-	public void analyzeMapDimensions() {
+	public HashMap<String, RelativeCoordinate> analyzeMapDimensions() {
 		// Most northern cell that has been analyzed
 		RelativeCoordinate north = new RelativeCoordinate(0, 0);
 		// Most eastern cell that has been analyzed
@@ -265,5 +308,11 @@ public class MapManagement {
 				north = relativeCoordinate;
 			}
 		}
+		HashMap<String, RelativeCoordinate> map = new HashMap<>();
+		map.put("north", north);
+		map.put("east", east);
+		map.put("south", south);
+		map.put("west", west);
+		return map;
 	}
 }
