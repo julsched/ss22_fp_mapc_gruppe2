@@ -9,10 +9,15 @@ import eis.iilang.Percept;
 public class MapManagement {
 	
 	private HashMap<RelativeCoordinate, Cell> currentMap;
+	private HashMap<RelativeCoordinate, Block> blockLayer;
+	private HashMap<RelativeCoordinate, Dispenser> dispenserLayer;
+	private HashMap<RelativeCoordinate, Goalzone> goalzoneLayer;
+	private HashMap<RelativeCoordinate, Obstacle> obstacleLayer;
+	private HashMap<RelativeCoordinate, Rolezone> rolezoneLayer;
+	private HashMap<RelativeCoordinate, Cell> knownArea;
 	private RelativeCoordinate currentPosition;
 	private int currentStep;
 	private List<Entity> entities = new ArrayList<>();
-	private Orientation rotated = Orientation.NORTH;
 	private List<Percept> percepts;
 	
 	private AgentInformation exchangePartner;
@@ -23,6 +28,12 @@ public class MapManagement {
 	
 	public MapManagement(int currentStep, RelativeCoordinate currentPosition) {
 		this.currentMap = new HashMap<RelativeCoordinate, Cell>();
+		this.blockLayer = new HashMap<RelativeCoordinate, Block>();
+		this.dispenserLayer = new HashMap<RelativeCoordinate, Dispenser>();
+		this.goalzoneLayer = new HashMap<RelativeCoordinate, Goalzone>();
+		this.obstacleLayer = new HashMap<RelativeCoordinate, Obstacle>();
+		this.rolezoneLayer = new HashMap<RelativeCoordinate, Rolezone>();
+		this.knownArea = new HashMap<RelativeCoordinate, Cell>();
 		this.currentPosition = currentPosition;
 		this.currentStep = currentStep;
 		this.lastMap = new HashMap<RelativeCoordinate, Cell>();
@@ -30,49 +41,30 @@ public class MapManagement {
 	}
 	
 	public void updatePosition(int x, int y, String direction, int counter) {
-		if ((direction.equals("n") && rotated.equals(Orientation.NORTH))
-				|| (direction.equals("w") && rotated.equals(Orientation.EAST))
-				|| (direction.equals("s") && rotated.equals(Orientation.SOUTH))
-				|| (direction.equals("e") && rotated.equals(Orientation.WEST))) {
+		if (direction.equals("n")) {
 			if (counter == 1) {
 				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
 			}
 			currentPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY() + 1);
-		} else if ((direction.equals("s") && rotated.equals(Orientation.NORTH))
-				|| (direction.equals("e") && rotated.equals(Orientation.EAST))
-				|| (direction.equals("n") && rotated.equals(Orientation.SOUTH))
-				|| (direction.equals("e") && rotated.equals(Orientation.WEST))) {
+		} else if (direction.equals("s")) {
 			if (counter == 1) {
 				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
 			}
 			currentPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY() - 1);
-		} else if ((direction.equals("e") && rotated.equals(Orientation.NORTH))
-				|| (direction.equals("n") && rotated.equals(Orientation.EAST))
-				|| (direction.equals("w") && rotated.equals(Orientation.SOUTH))
-				|| (direction.equals("s") && rotated.equals(Orientation.WEST))) {
+		} else if (direction.equals("e")) {
 			if (counter == 1) {
 				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
 			}
 			currentPosition = new RelativeCoordinate(currentPosition.getX() + 1, currentPosition.getY());
-		} else if ((direction.equals("w") && rotated.equals(Orientation.NORTH))
-				|| (direction.equals("s") && rotated.equals(Orientation.EAST))
-				|| (direction.equals("e") && rotated.equals(Orientation.SOUTH))
-				|| (direction.equals("n") && rotated.equals(Orientation.WEST))) {
+		} else if (direction.equals("w")) {
 			if (counter == 1) {
 				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
 			}
 			currentPosition = new RelativeCoordinate(currentPosition.getX() - 1, currentPosition.getY() - 1);
-		}
-		
+		}		
 	}
 	
-	public void updateOrientation(boolean clockwise) {
-		this.rotated = Orientation.changeOrientation(rotated, clockwise);
-	}
-	
-	public void updateMap(List<Percept> percepts) {
-		
-		this.percepts = percepts;
+	public void updateMap(HashMap<RelativeCoordinate, List<Cell>> tempMap, int vision) {
 		
 		// alte Map kopieren
 		HashMap<RelativeCoordinate, Cell> temp = new HashMap<RelativeCoordinate, Cell>();
@@ -81,48 +73,190 @@ public class MapManagement {
 		}
 		this.lastMap = temp;
 		
-		// Map aktualisieren
-		if (percepts == null) { // Error handling if no percepts are available
-			return;
-		} else {
-			Iterator<Percept> it = percepts.iterator();
-			Percept percept;
-			while (it.hasNext()) {
-				percept = it.next();
-				if (percept.getName().equals("things")) {
-					String thingType = ((Identifier) percept.getParameters().get(2)).getValue();
-					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPosition.getX() + x, this.currentPosition.getY() + y);
-					if (thingType.equals("dispenser")) {
-						String type = ((Identifier) percept.getParameters().get(3)).getValue();
-						Dispenser dispenser = new Dispenser(absolutePosition, type, currentStep);
-						currentMap.put(absolutePosition, dispenser);
+		int currentX = currentPosition.getX();
+		int currentY = currentPosition.getY();
+		
+		for (int x = -vision; x < (vision + 1); x++) {
+			for (int y = 0; (y + Math.abs(x)) < (vision + 1); y++) {
+				RelativeCoordinate tempPos = new RelativeCoordinate(x, y);
+				RelativeCoordinate absolutePos = new RelativeCoordinate(x + currentX, y + currentY);
+				if (tempMap.containsKey(tempPos)) {
+					Iterator<Cell> it = tempMap.get(tempPos).iterator();
+					while (it.hasNext()) {
+						Cell cell = it.next();
+						String type = cell.getClass().toString();
+						switch (type) {
+						case ("Dispenser"):
+							Dispenser disp = (Dispenser) cell;
+							dispenserLayer.put(absolutePos, disp);
+							obstacleLayer.put(absolutePos, null);
+							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								blockLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							break;
+						case ("Rolezone"):
+							Rolezone rz = (Rolezone) cell;
+							rolezoneLayer.put(absolutePos, rz);
+							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								obstacleLayer.put(absolutePos, null);
+							}
+							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								blockLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								dispenserLayer.put(absolutePos, null);
+							}
+							break;
+						case ("Obstacle"):
+							Obstacle obs = (Obstacle) cell;
+							obstacleLayer.put(absolutePos, obs);
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								blockLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							dispenserLayer.put(absolutePos, null);
+							break;
+						case ("Block"):
+							Block block = (Block) cell;
+							blockLayer.put(absolutePos, block);
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								dispenserLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							obstacleLayer.put(absolutePos, null);
+							break;
+						case ("Goalzone"):
+							Goalzone gz = (Goalzone) cell;
+							goalzoneLayer.put(absolutePos, gz);
+							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								obstacleLayer.put(absolutePos, null);
+							}
+							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								blockLayer.put(absolutePos, null);
+							}
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								dispenserLayer.put(absolutePos, null);
+							}
+							break;
+						default:
+							break;
+						}
+						knownArea.put(absolutePos, null);
 					}
-					if (thingType.equals("block")) {
-						String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
-						Block block = new Block(absolutePosition, blockType, currentStep);
-						currentMap.put(absolutePosition, block);
-					}
-					if (thingType.equals("obstacle")) {
-						Obstacle obstacle = new Obstacle(absolutePosition, currentStep);
-						currentMap.put(absolutePosition, obstacle);
-					}
-				}
-				if (percept.getName().equals("goalzone")) {		
-					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPosition.getX() + x, this.currentPosition.getY() + y);
-					currentMap.put(absolutePosition, new Goalzone(absolutePosition, currentStep));	
-				}
-				if (percept.getName().equals("rolezone")) {		
-					int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-					int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
-					RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPosition.getX() + x, this.currentPosition.getY() + y);
-					currentMap.put(absolutePosition, new Rolezone(absolutePosition, currentStep));	
 				}
 			}
-				
+			for (int y = 0; (Math.abs(y) + Math.abs(x)) < (vision + 1); y--) {
+				RelativeCoordinate tempPos = new RelativeCoordinate(x, y);
+				RelativeCoordinate absolutePos = new RelativeCoordinate(x + currentX, y + currentY);
+				if (tempMap.containsKey(tempPos)) {
+					Iterator<Cell> it = tempMap.get(tempPos).iterator();
+					while (it.hasNext()) {
+						Cell cell = it.next();
+						String type = cell.getClass().toString();
+						switch (type) {
+						case ("Dispenser"):
+							Dispenser disp = (Dispenser) cell;
+							dispenserLayer.put(absolutePos, disp);
+							obstacleLayer.put(absolutePos, null);
+							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								blockLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							break;
+						case ("Rolezone"):
+							Rolezone rz = (Rolezone) cell;
+							rolezoneLayer.put(absolutePos, rz);
+							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								obstacleLayer.put(absolutePos, null);
+							}
+							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								blockLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								dispenserLayer.put(absolutePos, null);
+							}
+							break;
+						case ("Obstacle"):
+							Obstacle obs = (Obstacle) cell;
+							obstacleLayer.put(absolutePos, obs);
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								blockLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							dispenserLayer.put(absolutePos, null);
+							break;
+						case ("Block"):
+							Block block = (Block) cell;
+							blockLayer.put(absolutePos, block);
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								dispenserLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							obstacleLayer.put(absolutePos, null);
+							break;
+						case ("Goalzone"):
+							Goalzone gz = (Goalzone) cell;
+							goalzoneLayer.put(absolutePos, gz);
+							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								obstacleLayer.put(absolutePos, null);
+							}
+							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								blockLayer.put(absolutePos, null);
+							}
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								dispenserLayer.put(absolutePos, null);
+							}
+							break;
+						default:
+							break;
+						}
+						knownArea.put(absolutePos, null);
+					}
+				}
+			}
 		}
 		
 	}
@@ -217,7 +351,7 @@ public class MapManagement {
 				}			
 			}
 			currentMap = temp;
-			updateMap(percepts);
+	//		updateMap(percepts);
 		}
 	}
 

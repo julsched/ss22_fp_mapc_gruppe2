@@ -30,6 +30,8 @@ public class AgentG2 extends Agent {
 	private String lastActionResult;
 	private RelativeCoordinate hitFrom;
 	private List<Norm> violations = new ArrayList<>();
+	
+	private HashMap<RelativeCoordinate, List<Cell>> tempMap = new HashMap<RelativeCoordinate, List<Cell>>();
 
 	private List<Percept> attachedThingsPercepts = new ArrayList<>();
 	private List<Dispenser> dispensers = new ArrayList<>();
@@ -117,7 +119,8 @@ public class AgentG2 extends Agent {
 		evaluateLastAction();
 		
 		// nach der Evaluation ist die currentPosition korrekt bestimmt und es können die things der map hinzugefügt werden
-		mapManager.updateMap(percepts);
+		mapManager.updateMap(tempMap, currentRole.getVision());
+		tempMap = new HashMap<RelativeCoordinate, List<Cell>>();
 		
 		// Einleiten des Austausches der maps
 		if (initiateMapExchange) {
@@ -177,6 +180,7 @@ public class AgentG2 extends Agent {
 	}
 
 	private void saveStepPercepts(List<Percept> percepts) {
+		
 		if (percepts == null) { // Error handling if no percepts are available
 			return;
 		}
@@ -273,6 +277,14 @@ public class AgentG2 extends Agent {
 					Dispenser dispenser = new Dispenser(relativeCoordinate, type, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, dispenser);
 					dispensers.add(dispenser);
+					if (!tempMap.containsKey(relativeCoordinate)) {
+						ArrayList<Cell> cellList = new ArrayList<Cell>();
+						cellList.add(dispenser);
+						tempMap.put(relativeCoordinate, cellList);
+					} else {
+						List<Cell> cellList = tempMap.get(relativeCoordinate);
+						cellList.add(dispenser);
+					}
 					break;
 				}
 				if (thingType.equals("block")) {
@@ -281,6 +293,14 @@ public class AgentG2 extends Agent {
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, block);
 					blocks.add(block);
 					occupiedFields.add(relativeCoordinate);
+					if (!tempMap.containsKey(relativeCoordinate)) {
+						ArrayList<Cell> cellList = new ArrayList<Cell>();
+						cellList.add(block);
+						tempMap.put(relativeCoordinate, cellList);
+					} else {
+						List<Cell> cellList = tempMap.get(relativeCoordinate);
+						cellList.add(block);
+					}
 					break;
 				}
 				if (thingType.equals("entity")) {
@@ -298,6 +318,14 @@ public class AgentG2 extends Agent {
 				if (thingType.equals("obstacle")) {
 					occupiedFields.add(relativeCoordinate);
 					Obstacle obstacle = new Obstacle(relativeCoordinate, currentStep);
+					if (!tempMap.containsKey(relativeCoordinate)) {
+						ArrayList<Cell> cellList = new ArrayList<Cell>();
+						cellList.add(obstacle);
+						tempMap.put(relativeCoordinate, cellList);
+					} else {
+						List<Cell> cellList = tempMap.get(relativeCoordinate);
+						cellList.add(obstacle);
+					}
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, obstacle); //TODO @Carina -> make current AbsolutePos work. Then we can make a Map. 
 					break;
 				}
@@ -385,6 +413,14 @@ public class AgentG2 extends Agent {
 
 				RelativeCoordinate goalZoneField = new RelativeCoordinate(x, y);
 				goalZoneFields.add(goalZoneField);
+				if (!tempMap.containsKey(goalZoneField)) {
+					ArrayList<Cell> cellList = new ArrayList<Cell>();
+					cellList.add(new Goalzone(goalZoneField, currentStep));
+					tempMap.put(goalZoneField, cellList);
+				} else {
+					List<Cell> cellList = tempMap.get(goalZoneField);
+					cellList.add(new Goalzone(goalZoneField, currentStep));
+				}
 				break;
 			}
 			case "roleZone" -> {
@@ -393,6 +429,14 @@ public class AgentG2 extends Agent {
 
 				RelativeCoordinate roleZoneField = new RelativeCoordinate(x, y);
 				roleZoneFields.add(roleZoneField);
+				if (!tempMap.containsKey(roleZoneField)) {
+					ArrayList<Cell> cellList = new ArrayList<Cell>();
+					cellList.add(new Rolezone(roleZoneField, currentStep));
+					tempMap.put(roleZoneField, cellList);
+				} else {
+					List<Cell> cellList = tempMap.get(roleZoneField);
+					cellList.add(new Goalzone(roleZoneField, currentStep));
+				}
 				break;
 			}
 			case "role" -> {
