@@ -54,12 +54,17 @@ public class AgentG2 extends Agent {
 	private int stepOfRequest = -3;
 	private int exchangeCounter = 0;
 	private int stepOfSentMap;
-	private HashMap<RelativeCoordinate, Cell> sentMap;
-	private RelativeCoordinate sentPosition;
+	private HashMap<RelativeCoordinate, Block> receivedBlocks;
+	private HashMap<RelativeCoordinate, Dispenser> receivedDispensers;
+	private HashMap<RelativeCoordinate, Goalzone> receivedGoalzones;
+	private HashMap<RelativeCoordinate, Rolezone> receivedRolezones;
+	private HashMap<RelativeCoordinate, Obstacle> receivedObstacles;
+	private RelativeCoordinate receivedPosition;
 	
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
 	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); //see map
 	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
+	private Orientation orientation = Orientation.NORTH;
 	private HashMap<RelativeCoordinate, Cell> attachedBlocksWithPositions = new HashMap<>();
 	private String roleName = ""; // TODO -> automatisch aktualisieren, wenn Rolle geändert wird
 
@@ -111,7 +116,7 @@ public class AgentG2 extends Agent {
 		saveStepPercepts(percepts);
 		
 		
-		mapManager.setEntities(entities);
+		mapManager.setTeamMembers(friendlyAgents);
 		
 		analyzeAttachedThings();
 		
@@ -132,11 +137,11 @@ public class AgentG2 extends Agent {
 		if (requestForMap) {
 			say("I give you my map");
 			if (stepOfRequest == currentStep) {
-				mailbox.deliverMap(requestingExplorer, getName(), mapManager.getMap(), currentPos, currentStep);
+				mailbox.deliverMap(requestingExplorer, getName(), mapManager.getBlockLayer(), mapManager.getDispenserLayer(), mapManager.getGoalzoneLayer(), mapManager.getRolezoneLayer(), mapManager.getObstacleLayer(), currentPos, currentStep);
 				stepOfRequest = -3;
 			}
 			if (stepOfRequest == currentStep - 1) {
-				mailbox.deliverMap(requestingExplorer, getName(), mapManager.getLastMap(), mapManager.getLastPosition(), currentStep - 1);
+				mailbox.deliverMap(requestingExplorer, getName(), mapManager.getBlockLayer(), mapManager.getDispenserLayer(), mapManager.getGoalzoneLayer(), mapManager.getRolezoneLayer(), mapManager.getObstacleLayer(), mapManager.getLastPosition(), currentStep - 1);
 				stepOfRequest = -3;
 			}
 			exchangeCounter = exchangeCounter + 1;
@@ -147,12 +152,17 @@ public class AgentG2 extends Agent {
 		}
 		
 		// Zusammenführen der Maps und Übergeben der geupdateten Map
-		if (!(sentMap == null)) {
+		if (!(receivedBlocks == null)) {
 			say("I merge the maps");
-			mapManager.mergeMaps(sentMap, sentPosition, stepOfSentMap);
-			this.sendMap(this.seenAgent.getName(), map, this.seenAgent.getRelativeCoordinate());
+			mapManager.mergeMaps(receivedBlocks, receivedDispensers, receivedGoalzones, receivedRolezones, receivedObstacles, receivedPosition, stepOfSentMap);
+			sendMap(seenAgent.getName(), mapManager, seenAgent.getRelativeCoordinate());
+			receivedBlocks = null;
+			receivedDispensers = null;
+			receivedGoalzones = null;
+			receivedRolezones = null;
+			receivedObstacles = null;
 		}
-		this.initiateMapExchange = false;
+		initiateMapExchange = false;
 
 		if (explorerAgent.equals(getName())) {
             say("My mission: I am the explorer of the team!");
@@ -308,10 +318,10 @@ public class AgentG2 extends Agent {
 					Entity entity = new Entity(relativeCoordinate, team);
 					entities.add(entity);
 					occupiedFields.add(relativeCoordinate);
-					if (teamName.equals(team)) {
-						RelativeCoordinate relCo = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
-						this.friendlyAgents.add(relCo);
-						say("Friend at: " + relCo.getX() + ", " + relCo.getY());
+					RelativeCoordinate ownPosition = new RelativeCoordinate(0, 0);
+					if (teamName.equals(team) && (!relativeCoordinate.equals(ownPosition))) {
+						RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPos.getX() + x, this.currentPos.getY() + y);
+						this.friendlyAgents.add(absolutePosition);
 					}
 					break;
 				}
@@ -719,10 +729,8 @@ public class AgentG2 extends Agent {
 	// TODO: eigentliche Evaluation
 	private void evaluateLastAction() {
 		switch (lastAction) {
-		/*
 		case "skip":
 			break;
-		*/
 		case "move":
 			if (this.lastActionResult.equals("success")) {
 				Iterator<Object> it = lastActionParams.iterator();
@@ -748,37 +756,33 @@ public class AgentG2 extends Agent {
 				// Fehlerbehandlung
 			}
 			break;
-		/*
 		case "attach":
 			switch (lastActionResult) {
 			case "success":
-				Parameter dir = (Parameter) this.lastActionParams.get(0);
-				if (dir instanceof Identifier) {
-					String dirString = ((Identifier) dir).getValue();
-					RelativeCoordinate pos;
-					Cell cell;
-					switch (dirString) {
-					case "n":
-						pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() + 1);
-						cell = this.map.get(pos);
-						this.attachedBlocksWithPositions.put(pos, cell);
-						break;
-					case "s":
-						pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() - 1);
-						cell = this.map.get(pos);
-						this.attachedBlocksWithPositions.put(pos, cell);
-						break;
-					case "e":
-						pos = new RelativeCoordinate(this.currentPos.getX() + 1, this.currentPos.getY());
-						cell = this.map.get(pos);
-						this.attachedBlocksWithPositions.put(pos, cell);
-						break;
-					case "w":
-						pos = new RelativeCoordinate(this.currentPos.getX() - 1, this.currentPos.getY());
-						cell = this.map.get(pos);
-						this.attachedBlocksWithPositions.put(pos, cell);
-						break;
-					}
+				String direction = (String) this.lastActionParams.get(0);
+				RelativeCoordinate pos;
+				Cell cell;
+				switch (direction) {
+				case "n":
+					pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() + 1);
+					cell = this.map.get(pos);
+					this.attachedBlocksWithPositions.put(pos, cell);
+					break;
+				case "s":
+					pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() - 1);
+					cell = this.map.get(pos);
+					this.attachedBlocksWithPositions.put(pos, cell);
+					break;
+				case "e":
+					pos = new RelativeCoordinate(this.currentPos.getX() + 1, this.currentPos.getY());
+					cell = this.map.get(pos);
+					this.attachedBlocksWithPositions.put(pos, cell);
+					break;
+				case "w":
+					pos = new RelativeCoordinate(this.currentPos.getX() - 1, this.currentPos.getY());
+					cell = this.map.get(pos);
+					this.attachedBlocksWithPositions.put(pos, cell);
+					break;
 				}
 			case "failed_parameter":
 				break;
@@ -795,53 +799,46 @@ public class AgentG2 extends Agent {
 		case "detach":
 			switch (lastActionResult) {
 			case "success":
-				Parameter dir = (Parameter) this.lastActionParams.get(0);
-				if (dir instanceof Identifier) {
-					String dirString = ((Identifier) dir).getValue();
-					RelativeCoordinate pos;
-					switch (dirString) {
-					case "n":
-						pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() + 1);
-						this.attachedBlocks.remove(pos);
-						break;
-					case "s":
-						pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() - 1);
-						this.attachedBlocks.remove(pos);
-						break;
-					case "e":
-						pos = new RelativeCoordinate(this.currentPos.getX() + 1, this.currentPos.getY());
-						this.attachedBlocks.remove(pos);
-						break;
-					case "w":
-						pos = new RelativeCoordinate(this.currentPos.getX() - 1, this.currentPos.getY());
-						this.attachedBlocks.remove(pos);
-						break;
-					default:
-						break;
-					}
+				String direction = (String) this.lastActionParams.get(0);
+				RelativeCoordinate pos;
+				switch (direction) {
+				case "n":
+					pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() + 1);
+					this.attachedBlocks.remove(pos);
+					break;
+				case "s":
+					pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() - 1);
+					this.attachedBlocks.remove(pos);
+					break;
+				case "e":
+					pos = new RelativeCoordinate(this.currentPos.getX() + 1, this.currentPos.getY());
+					this.attachedBlocks.remove(pos);
+					break;
+				case "w":
+					pos = new RelativeCoordinate(this.currentPos.getX() - 1, this.currentPos.getY());
+					this.attachedBlocks.remove(pos);
+					break;
+				default:
+					break;
 				}
 				break;
 			case "rotate":
 				switch (lastActionResult) {
 				case "success":
-					Parameter rot = (Parameter) this.lastActionParams.get(0);
-					if (rot instanceof Identifier) {
-						String rotString = ((Identifier) rot).getValue();
-						HashMap<RelativeCoordinate, Cell> temp = new HashMap<RelativeCoordinate, Cell>();
-						if (rotString.equals("cw")) {
-							mapManager.updateOrientation(true);
-							for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
-								Cell cell = this.attachedBlocksWithPositions.get(key);
-								temp.put(new RelativeCoordinate(key.getY(), -key.getX()), cell);
-							}
-						} else {
-							mapManager.updateOrientation(false);
-							for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
-								Cell cell = this.attachedBlocksWithPositions.get(key);
-								temp.put(new RelativeCoordinate(-key.getY(), key.getX()), cell);
-							}
+					String rot = (String) this.lastActionParams.get(0);
+					HashMap<RelativeCoordinate, Cell> temp = new HashMap<RelativeCoordinate, Cell>();
+					if (rot.equals("cw")) {
+						Orientation.changeOrientation(orientation, true);
+						for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
+							Cell cell = this.attachedBlocksWithPositions.get(key);
+							temp.put(new RelativeCoordinate(key.getY(), -key.getX()), cell);
 						}
-						this.attachedBlocksWithPositions = temp;
+					} else {
+						Orientation.changeOrientation(orientation, false);
+						for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
+							Cell cell = this.attachedBlocksWithPositions.get(key);
+							temp.put(new RelativeCoordinate(-key.getY(), key.getX()), cell);
+						}
 					}
 				case "failed_parameter":
 					// Fehlerbehandlung
@@ -877,10 +874,10 @@ public class AgentG2 extends Agent {
 			case "disconnect":
 				switch (lastActionResult) {
 				case "success":
-					Parameter xCellA = (Parameter) this.lastActionParams.get(0);
-					Parameter yCellA = (Parameter) this.lastActionParams.get(1);
-					Parameter xCellB = (Parameter) this.lastActionParams.get(2);
-					Parameter yCellB = (Parameter) this.lastActionParams.get(3);
+					int xCellA = (int) lastActionParams.get(0);
+					int yCellA = (int) lastActionParams.get(1);
+					int xCellB = (int) lastActionParams.get(2);
+					int yCellB = (int) lastActionParams.get(3);
 					// Bestimmung, ob Blöcke aus der attached-Liste entfernt werden müssen
 					break;
 				case "failed_parameter":
@@ -900,21 +897,9 @@ public class AgentG2 extends Agent {
 			case "clear":
 				switch (lastActionResult) {
 				case "success":
-					int xCoor = 0;
-					int yCoor = 0;
-					Parameter xCell = (Parameter) this.lastActionParams.get(0);
-					if (xCell instanceof Numeral) {
-						xCoor = ((Numeral) xCell).getValue().intValue();
-					} else {
-						break;
-					}
-					Parameter yCell = (Parameter) this.lastActionParams.get(1);
-					if (yCell instanceof Numeral) {
-						yCoor = ((Numeral) yCell).getValue().intValue();
-					} else {
-						break;
-					}
-					this.map.remove(new RelativeCoordinate(xCoor, yCoor));
+					int xCoordinate = (int) lastActionParams.get(0);
+					int yCoordinate = (int) lastActionParams.get(1);
+					mapManager.removeObstacle(new RelativeCoordinate(xCoordinate, yCoordinate));
 					break;
 				case "failed_parameter":
 					// Fehlerbehandlung
@@ -938,10 +923,8 @@ public class AgentG2 extends Agent {
 			case "adopt":
 				switch (lastActionResult) {
 				case "success":
-					Parameter role = (Parameter) this.lastActionParams.get(0);
-					if (role instanceof Identifier) {
-						this.roleName = ((Identifier) role).getValue();
-					}
+					String role = (String) lastActionParams.get(0);
+					roleName = role;
 				case "failed_parameter":
 					// Fehlerbehandlung
 					break;
@@ -956,8 +939,8 @@ public class AgentG2 extends Agent {
 				break;
 			default:
 				break;
-			*/
 			}
+		}
 
 	}
 
@@ -1755,15 +1738,26 @@ public class AgentG2 extends Agent {
     	this.exchangeCounter = 0;
     }
 	
-	public void handleMap(String from, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate currentPos, int step) {
+	public void handleMap(String from, HashMap<RelativeCoordinate, Block> sentBlocks, HashMap<RelativeCoordinate, Dispenser> sentDispensers, HashMap<RelativeCoordinate, Goalzone> sentGoalzones, HashMap<RelativeCoordinate, Rolezone> sentRolezones, HashMap<RelativeCoordinate, Obstacle> sentObstacles, RelativeCoordinate sentPosition, int step) {
 		this.stepOfSentMap = step;
-		this.sentMap = map;
-		this.sentPosition = currentPos;
+		receivedBlocks = sentBlocks;
+		receivedDispensers = sentDispensers;
+		receivedGoalzones = sentGoalzones;
+		receivedRolezones = sentRolezones;
+		receivedObstacles = sentObstacles;
+		receivedPosition = sentPosition;
 	}
 	
-	public void receiveMap(HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate rc) {
-		this.currentPos = rc;
-		this.map = map;
+	public void receiveMap(MapManagement mapManager, RelativeCoordinate newPosition) {
+		int xDiff = currentPos.getX() - newPosition.getX();
+		int yDiff = currentPos.getY() - newPosition.getY();
+		this.currentPos = newPosition;
+		this.mapManager = mapManager;
+		mapManager.updateLastPosition(xDiff, yDiff);
+	}
+	
+	public void sendMap(String addressee, MapManagement mapManager, RelativeCoordinate addresseePosition) {
+		mailbox.sendMap(addressee, mapManager, addresseePosition);
 	}
 
 }

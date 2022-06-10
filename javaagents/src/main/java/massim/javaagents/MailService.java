@@ -3,8 +3,14 @@ package massim.javaagents;
 import eis.iilang.Percept;
 import massim.javaagents.agents.Agent;
 import massim.javaagents.agents.AgentG2;
+import massim.javaagents.agents.g2utils.Block;
 import massim.javaagents.agents.g2utils.Cell;
+import massim.javaagents.agents.g2utils.Dispenser;
+import massim.javaagents.agents.g2utils.Goalzone;
+import massim.javaagents.agents.g2utils.MapManagement;
+import massim.javaagents.agents.g2utils.Obstacle;
 import massim.javaagents.agents.g2utils.RelativeCoordinate;
+import massim.javaagents.agents.g2utils.Rolezone;
 
 import java.util.HashMap;
 import java.util.List;
@@ -76,25 +82,25 @@ public class MailService {
         }
     }
     
-    public void deliverMap(String to, String from, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate currentPosition, int currentStep) {
+    public void deliverMap(String to, String from, HashMap<RelativeCoordinate, Block> blocks, HashMap<RelativeCoordinate, Dispenser> dispensers, HashMap<RelativeCoordinate, Goalzone> goalzones, HashMap<RelativeCoordinate, Rolezone> rolezones, HashMap<RelativeCoordinate, Obstacle> obstacles, RelativeCoordinate currentPosition, int currentStep) {
     	
     	Agent recipient = register.get(to);
         if (recipient == null && !(recipient instanceof AgentG2)) {
             logger.warning("Cannot deliver message to " + to + "; unknown target,");
         } else {
         	AgentG2 rec = (AgentG2) recipient;
-        	rec.handleMap(from, map, currentPosition, currentStep);
+        	rec.handleMap(from, blocks, dispensers, goalzones, rolezones, obstacles, currentPosition, currentStep);
         }
     }
     
     // sendet eine geupdatete Map
-    public void sendMap(String to, HashMap<RelativeCoordinate, Cell> map, RelativeCoordinate rc) {
+    public void sendMap(String to, MapManagement mapManager, RelativeCoordinate toPosition) {
     	Agent recipient = register.get(to);
         if (recipient == null && !(recipient instanceof AgentG2)) {
             logger.warning("Cannot deliver message to " + to + "; unknown target,");
         } else {
         	AgentG2 rec = (AgentG2) recipient;
-        	rec.receiveMap(map, rc);
+        	rec.receiveMap(mapManager, toPosition);
         }
     }
 }
