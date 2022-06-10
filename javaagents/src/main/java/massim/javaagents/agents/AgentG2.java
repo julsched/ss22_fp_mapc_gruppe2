@@ -71,6 +71,8 @@ public class AgentG2 extends Agent {
 	private String lastMoveDir = "";
 //	private MapOfAgent map = new MapOfAgent();
 //	private RelativeCoordinate currentAbsolutePos = new RelativeCoordinate(0, 0);
+	
+	private HashMap<String, Integer> attachedBlockTypeMap;
 
 	/**
 	 * Constructor.
@@ -119,6 +121,7 @@ public class AgentG2 extends Agent {
 		mapManager.setTeamMembers(friendlyAgents);
 		
 		analyzeAttachedThings();
+		setAttachedBlockTypeMap();
 		
 		// Auswertung der abgespeicherten Ergebnisse der lastAction
 		evaluateLastAction();
@@ -1072,7 +1075,87 @@ public class AgentG2 extends Agent {
             return this.workerActionDetach();
         }
         // chooses or searches goalzone
-        return this.workerActionSearchGoalzone(correspondingTasks);
+        Task currentTask = determineCurrentTask();
+
+        if (gotAllBlockTypes(currentTask)) {
+        	// chooses or searches goalzone
+        	return this.workerActionSearchGoalzone(correspondingTasks);        	
+        } else {
+        	return this.workerActionSearchDispenser();
+        }
+	}
+
+	//todo
+	private Task determineCurrentTask() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	/**
+	 * editor: michael
+	 * 
+	 * creates HashMap to connect blockName and amount needed for task
+	 * sets the field attachedBlockTypeMap
+	 *
+	 * @return
+	 */
+	public void setAttachedBlockTypeMap(){
+		HashMap<String, Integer> map = new HashMap<String, Integer>();
+		map.put("b0",0);
+		map.put("b1",0);
+		map.put("b2",0);
+		map.put("b3",0);
+
+		for (int i =0; i< this.attachedBlocks.size(); i++) {			
+			switch((String)this.attachedBlocks.get(i).getType()) {
+			case "b0":
+				map.put("b0", map.get("b0")+1);
+				break;
+			case "b1":
+				map.put("b1", map.get("b1")+1);
+				break;
+			case "b2":
+				map.put("b2", map.get("b2")+1);
+				break;
+			case "b3":
+				map.put("b3", map.get("b3")+1);
+				break;
+			default:
+				System.out.println("createBlockTypeMap cannot handle: "+this.attachedBlocks.get(i).getType()+"!");
+				break;
+			}
+		}
+		this.attachedBlockTypeMap = map;
+	}
+
+
+
+	/**
+	 * editor: michael
+	 * 
+	 * returns true if agent has all blocks to fulfill current Task
+	 *
+	 * @return
+	 */
+	private boolean gotAllBlockTypes(Task task) {
+		int b0task = task.getBlockTypeMap().get("b0");
+		int b1task = task.getBlockTypeMap().get("b1");
+		int b2task = task.getBlockTypeMap().get("b2");
+		int b3task = task.getBlockTypeMap().get("b3");
+		int b0attached = this.getAttachedBlockTypeMap().get("b0");
+		int b1attached = this.getAttachedBlockTypeMap().get("b1");
+		int b2attached = this.getAttachedBlockTypeMap().get("b2");
+		int b3attached = this.getAttachedBlockTypeMap().get("b3");
+
+		if (b0task == b0attached && b1task == b1attached && b2task == b2attached && b3task == b3attached) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private HashMap<String, Integer> getAttachedBlockTypeMap() {
+		return this.attachedBlockTypeMap;
 	}
 	
 	private Action workerActionSearchDispenser() {
@@ -1646,6 +1729,7 @@ public class AgentG2 extends Agent {
 	/**
     Analyzes the currently attached blocks and determines tasks which require these blocks
     @return A list of the tasks which require the currently attached blocks
+    todo
      */
 	private List<Task> determineCorrespondingTasks() {
         List<Task> correspondingTasks = new ArrayList<>();
