@@ -55,19 +55,6 @@ public class Task {
             return false;
         }
     }
-    
-	/**
-	 * editor: michael
-	 *
-	 * determine if task needs more than a single block
-	 *
-	 * @return
-	 */
-	public boolean isMultiBlockTask() {
-		if (this.requirements.size() > 1) return true;
-		return false;		
-	}
-	
 
 	/**
 	 * editor: michael
@@ -134,4 +121,29 @@ public class Task {
 		return map;
 	}
 	
+	public int getNumberOfDifferentBlocks() {
+		int i = 0;
+		for (Map.Entry<String, Integer> it : this.blockTypeMap.entrySet()) {
+			if (it.getValue() > 0) {
+				i++;
+			}
+		}
+		return i;		
+	}
+	
+	public boolean isOneBlockTask() {
+		return !this.isMultiBlockTask();
+	}
+	
+	/**
+	 * editor: michael
+	 *
+	 * determine if task needs more than a single block
+	 *
+	 * @return
+	 */
+	public boolean isMultiBlockTask() {
+		if (this.requirements.size() > 1) return true;
+		return false;		
+	}
 }
