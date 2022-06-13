@@ -1036,8 +1036,7 @@ public class AgentG2 extends Agent {
 		say("Need to look for goal zone");
 		// Identify goal zone field candidates (= goal zone fields which are not
 		// occupied and which have enough space around them to submit a task)
-		HashMap<RelativeCoordinate, List<Task>> goalZoneFieldCandidates = determineGoalZoneFieldCandidates(
-				taskToFinish);
+		HashMap<RelativeCoordinate, List<Task>> goalZoneFieldCandidates = determineGoalZoneFieldCandidates();
 
 		if (!goalZoneFieldCandidates.isEmpty()) {
 			say("Suitable goal zone fields identified");
@@ -1092,9 +1091,46 @@ public class AgentG2 extends Agent {
 		return moveRandomly(currentRole.getSpeedWithoutAttachments());
 	}
 
-	private HashMap<RelativeCoordinate, List<Task>> determineGoalZoneFieldCandidates(Task taskToFinish) {
-		// TODO Auto-generated method stub
-		return null;
+	/**
+	 * Determines which goal zone cells the agent can walk towards for submitting a
+	 * task, taking into account surrounding obstacles and the list of corresponding
+	 * tasks provided
+	 * 
+	 * @param
+	 * 
+	 * @return A map of relative coordinates of goal zone cells the agent can walk
+	 *         to to submit a task and the tasks that can be submitted in this cell
+	 */
+	// Works for one-block tasks only
+	private HashMap<RelativeCoordinate, List<Task>> determineGoalZoneFieldCandidates() {
+		// First check which goal zone fields are free (meaning no obstacle/block/entity
+		// on them)
+		RelativeCoordinate agentPosition = new RelativeCoordinate(0, 0);
+		List<RelativeCoordinate> attachedBlockLocations = determineLocations("attachedBlock", null);
+		List<RelativeCoordinate> goalZoneFieldsFree = new ArrayList<>();
+		for (RelativeCoordinate goalZoneField : goalZoneFields) {
+			if (goalZoneField.equals(agentPosition) || attachedBlockLocations.contains(goalZoneField)
+					|| !occupiedFields.contains(goalZoneField)) {
+				goalZoneFieldsFree.add(goalZoneField);
+			}
+		}
+
+		// Then check which ones of the free goal zone fields have enough space around
+		// them to submit a task
+		HashMap<RelativeCoordinate, List<Task>> goalZoneFieldCandidates = new HashMap<>();
+		for (RelativeCoordinate goalZoneField : goalZoneFieldsFree) {
+			List<Task> tasks = new ArrayList<>();
+			RelativeCoordinate requirement = this.currentTask.getRequirements().get(0).getRelativeCoordinate();
+			RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getX(),
+					goalZoneField.getY() + requirement.getY());
+			if (goalZoneFieldsFree.contains(fieldToBeChecked)) {
+				tasks.add(this.currentTask);
+			}
+			if (!tasks.isEmpty()) {
+				goalZoneFieldCandidates.put(goalZoneField, tasks);
+			}
+		}
+		return goalZoneFieldCandidates;
 	}
 
 	// worker searches or chooses Goalzone
