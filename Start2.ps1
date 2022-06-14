@@ -1,4 +1,4 @@
-cd C:\Users\carin\Documents\FaPra\Zusammenfuehrung\server\target
+cd C:\Users\carin\Documents\FaPra\ss22_fp_mapc_gruppe2\server\target
 Write-Host "Starting Server"
 Start-Process -FilePath java -ArgumentList '-jar server-2020-2.0-jar-with-dependencies.jar -conf ../conf/SampleConfig.json --monitor'
 
