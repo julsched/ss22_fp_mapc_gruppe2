@@ -31,12 +31,8 @@ public abstract class Cell {
         }
     }
 
-    public boolean isNextToAgent() {
-        return isNextToAgent(new RelativeCoordinate(0, 0));
-    }
-
-	public boolean isNextToAgent(RelativeCoordinate agentPos) {
-        if (this.relativeCoordinate.isNextToAgent(agentPos)) {
+	public boolean isNextToAgent() {
+        if (this.relativeCoordinate.isNextToAgent()) {
             return true;
         } else {
             return false;
@@ -48,10 +44,6 @@ public abstract class Cell {
     }
 
     public String getDirectDirection() {
-        return getDirectDirection(new RelativeCoordinate(0, 0));
-    }
-
-    public String getDirectDirection(RelativeCoordinate pos) {
-        return this.relativeCoordinate.getDirectDirection(pos);
+        return this.relativeCoordinate.getDirectDirection();
     }
 }
