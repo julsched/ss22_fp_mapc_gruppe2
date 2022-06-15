@@ -68,6 +68,7 @@ public class AgentG2 extends Agent {
 	private boolean comesFromDeadEnd = false;
 	private String preferredDir = "";
 	private int preferredDirTimer = -1;
+	private List<RelativeCoordinate> occupiedFieldsWithoutBlocks = new ArrayList<>();
 
 //	private MapOfAgent map = new MapOfAgent();
 //	private RelativeCoordinate currentAbsolutePos = new RelativeCoordinate(0, 0);
@@ -144,10 +145,11 @@ public class AgentG2 extends Agent {
 		 * workerStep(); }
 		 */
 		if (explorerAgent.equals(getName())) {
-			say("My mission: I am the explorer of the team!");
+//			say("My mission: I am the explorer of the team!");
 			if (!lastActionResult.equals("success")) {
 				return handleError();
 			}
+//			return workerStep();
 			return borderExplorerStep();
 		} else {
 			// say("My mission: I am just a normal worker :("); //TODO wieder
@@ -157,6 +159,7 @@ public class AgentG2 extends Agent {
 			}
 //			return borderExplorerStep();
 			return workerStep();
+//			return new Action("skip");
 
 		}
 
@@ -192,6 +195,7 @@ public class AgentG2 extends Agent {
 		norms.clear();
 		hitFrom = null;
 		obstaclesInSight.clear();
+		occupiedFieldsWithoutBlocks.clear();
 
 		// Save new step percepts
 		for (Percept percept : percepts) {
@@ -286,6 +290,7 @@ public class AgentG2 extends Agent {
 					Entity entity = new Entity(relativeCoordinate, teamName);
 					entities.add(entity);
 					occupiedFields.add(relativeCoordinate);
+					occupiedFieldsWithoutBlocks.add(relativeCoordinate);
 					if (this.teamName.equals(teamName)) {
 						RelativeCoordinate relCo = new RelativeCoordinate(this.currentPos.getX() + x,
 								this.currentPos.getY() + y);
@@ -295,6 +300,7 @@ public class AgentG2 extends Agent {
 				}
 				if (thingType.equals("obstacle")) {
 					occupiedFields.add(relativeCoordinate);
+					occupiedFieldsWithoutBlocks.add(relativeCoordinate);
 					Obstacle obstacle = new Obstacle(relativeCoordinate, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, obstacle); //TODO @Carina -> make current AbsolutePos work. Then we can make a Map. 
 					obstaclesInSight.add(relativeCoordinate);
@@ -978,6 +984,7 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action handleError() {
+		say("Handle Error!");
 		if (lastAction.equals("move") && !lastActionResult.equals("success") && lastActionParams.size() == 1) {
 			// Get direction
 			String direction = (String) lastActionParams.get(0);
@@ -1017,11 +1024,11 @@ public class AgentG2 extends Agent {
 		if (lastAction.equals("rotate") && !lastActionResult.equals("success")) {
 //			say("Rotation was not succesfull.");//TODO wieder Einkommentierne @Carina
 			return moveRandomly(1);// //TODO wieder Einkommentierne @Carina
-//			return explorerStep();
+
 		}
 		// TODO: expand error handling
-		return moveRandomly(currentRole.getSpeedWithoutAttachments());//TODO wieder Einkommentierne @Carina
-//		return explorerStep();
+		return moveRandomly(currentRole.getSpeedWithoutAttachments());// TODO wieder Einkommentierne @Carina
+
 	}
 
 	private Action workerActionAttach() {
@@ -1055,8 +1062,9 @@ public class AgentG2 extends Agent {
 						determineLocations("attachedBlock", null), goalZoneFieldCandidates.keySet());
 				if (dir == null) {
 //					say("No path towards identified goal zone fields.");//TODO wieder Einkommentierne @Carina
-					return moveRandomly(currentRole.getSpeedWithoutAttachments()); //TODO wieder Einkommentierne @Carina
-//					return explorerStep();
+//					return moveRandomly(currentRole.getSpeedWithoutAttachments()); // TODO wieder Einkommentierne
+					// @Carina
+					return explorerStep();
 				}
 //				say("Path identified. Moving towards next suitable goal zone field...");//TODO wieder Einkommentierne @Carina
 				switch (dir) {
@@ -1175,6 +1183,7 @@ public class AgentG2 extends Agent {
 
 	// default (main) worker method
 	private Action workerStep() {
+		say("attached Blocks: "+ attachedBlocks);
 		// If a block has been requested in the last step, then attach this block
 		if (lastAction.equals("request") && lastActionResult.equals("success")) {
 			return this.workerActionAttach();
@@ -1341,8 +1350,9 @@ public class AgentG2 extends Agent {
 		boolean blockedWayEast = false;
 		boolean blockedWaySouth = false;
 		boolean blockedWayWest = false;
-		for (RelativeCoordinate pos : occupiedFields) {
+		for (RelativeCoordinate pos : occupiedFieldsWithoutBlocks) {
 			String dir = pos.getDirectDirection();
+
 			switch (dir) {
 			case ("n"): {
 				if (pos.distanceFromAgent() == 1) {
@@ -1368,6 +1378,7 @@ public class AgentG2 extends Agent {
 				}
 				break;
 			}
+
 			}
 		}
 		if (!blockedWayNorth) {
@@ -1382,7 +1393,7 @@ public class AgentG2 extends Agent {
 		if (!blockedWayWest) {
 			possibleDirs.add("w");
 		}
-
+		say("get all possibleDirs: " + possibleDirs);
 		return possibleDirs;
 	}
 
@@ -1432,32 +1443,53 @@ public class AgentG2 extends Agent {
 //		}
 		ArrayList<String> possibleDirs = getAllPossibleDirs();
 		String prefDir = getPreferredDir();
-		// say("this is my map: " + map);
 		if (possibleDirs != null && possibleDirs.size() != 0) {
 			if (!prefDir.equals("")) {
 				if (possibleDirs.contains(prefDir)) {
-					say("moving in prefferred Dir: " + prefDir);
+//					if(!(attachedBlocks.size() == 1)) {
+//						ArrayList<String> attachedBlocksDirs = getAttachedBlocksDirs();
+//						return rotateAccordingToAttachedBlock(prefDir, attachedBlocksDirs);
+//					}
 					return move(prefDir);
 				} else {
 //					if (attachedBlocks.size() ==0) {
-					return clear(prefDir);}
+					return clear(prefDir);
+				}
 //				}
 
 			}
+			// What to do when there is no preferred Direction:
 			if (possibleDirs.size() > 1) { // remove Dir where you came from
 				if (lastMoveDir != null) {
+					say("removing Dir where I came from: " + getOppositeDirection(lastMoveDir));
 					possibleDirs.remove(getOppositeDirection(lastMoveDir));
 				}
 			}
 			if (possibleDirs.size() > 1) {
+				say("Removing opposite dir from pref: " + getOppositeDirection(prefDir));
 				possibleDirs.remove(getOppositeDirection(prefDir));
 			}
+			say("possible Dirs after: " + possibleDirs);
 			return moveRandomly(1, possibleDirs); // TODO adjust 1 to current step length
+
 		}
 		return new Action("skip");
 	}
 
+
+
+//	private ArrayList<String> getAttachedBlocksDirs() {
+//		ArrayList<String> attachedBlocksDirs = new ArrayList<>();
+//		for(Block b : attachedBlocks) {
+//			if(b.distanceFromAgent()==1) {
+//				attachedBlocksDirs.add(b.getDirectDirection());
+//			}
+//		}
+//		return attachedBlocksDirs;
+//	}
+
 	private Action clear(String prefDir) {
+		say("clearing " + prefDir);
 		int x = 0;
 		int y = 0;
 		switch (prefDir) {
@@ -1545,7 +1577,7 @@ public class AgentG2 extends Agent {
 	}
 
 	private String getPreferredDir() {
-		say("TIMER: " + (preferredDirTimer < 1) + " EQUAL? " + (preferredDir.equals("")));
+
 		if (preferredDir.equals("") || preferredDirTimer < 1) {
 
 			String newDir = getRandomDir();
@@ -1562,6 +1594,7 @@ public class AgentG2 extends Agent {
 		} else {
 			preferredDirTimer--;
 		}
+		say("get Preferred Dir: " + preferredDir);
 		return preferredDir;
 	}
 
@@ -1770,6 +1803,7 @@ public class AgentG2 extends Agent {
 	 * @return The move action
 	 */
 	private Action move(String dir) {
+		say("moving " + dir);
 		return new Action("move", new Identifier(dir));
 	}
 
@@ -1806,6 +1840,7 @@ public class AgentG2 extends Agent {
 		case 1 -> {
 			String direction = randomDirections.get(0);
 //			say("Moving one step randomly..."); //TODO wieder Einkommentierne @Carina
+//			say("Moving "+ direction);
 			return new Action("move", new Identifier(direction));
 		}
 		case 2 -> {

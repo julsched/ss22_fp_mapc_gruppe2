@@ -65,7 +65,7 @@ public class Main {
         System.out.println("PHASE 4: RUNNING");
         int step = 0;
         while ((ei.getState() == EnvironmentState.RUNNING)) {
-            System.out.println("SCHEDULER STEP " + step);
+//            System.out.println("SCHEDULER STEP " + step); // TODO @Carina: WIEDER REIN!
             scheduler.step();
             step++;
         }
