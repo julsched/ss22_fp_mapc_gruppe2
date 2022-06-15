@@ -1463,6 +1463,7 @@ public class AgentG2 extends Agent {
 					// block
 					if (relativeCoordinate.getX() == 0 && relativeCoordinate.getY() == 0) {
 						return moveRandomly(1);
+						
 					}
 				}
 				// Move towards dispenser
@@ -1575,7 +1576,6 @@ public class AgentG2 extends Agent {
 		}
 		return false;
 	}
-
 
 	private Action walkToObstacle() {
 		if (dirOfBorders.size() == 0) {
@@ -1736,7 +1736,7 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action explorerStep() {
-	// falls mindestens ein Teammitglied sichtbar, wird dies nach seinem Namen
+		// falls mindestens ein Teammitglied sichtbar, wird dies nach seinem Namen
 		// befragt, um einen map-Austausch einzuleiten
 		// TODO: Bedingung sollte weiter eingeschränkt, weil sonst nur surveyed und
 		// nicht explort wird
@@ -1771,10 +1771,13 @@ public class AgentG2 extends Agent {
 		if (possibleDirs != null && possibleDirs.size() != 0) {
 			if (!prefDir.equals("")) {
 				if (possibleDirs.contains(prefDir)) {
-//					if(!(attachedBlocks.size() == 1)) {
-//						ArrayList<String> attachedBlocksDirs = getAttachedBlocksDirs();
-//						return rotateAccordingToAttachedBlock(prefDir, attachedBlocksDirs);
-//					}
+					if ((attachedBlocks.size() == 1)) {
+						/*if (attachedBlockInTunnel(attachedBlocks.get(0))) {
+						} else {*/
+							String attachedBlockDir = getBlockDir(attachedBlocks.get(0));
+							return rotateAccordingToAttachedBlock(prefDir, attachedBlockDir);
+//						}
+					}
 					return move(prefDir);
 				} else {
 //					if (attachedBlocks.size() ==0) {
@@ -1801,17 +1804,99 @@ public class AgentG2 extends Agent {
 		return new Action("skip");
 	}
 
+	/*
+	private boolean attachedBlockInTunnel(Block block) { //TODO @Carina
+		String blockDir = getBlockDir(block);
+		int x = 0;
+		int y = 0;
 
+		switch (blockDir) {
+		case ("n"): {
+			y = -1;
+			break;
+		}
+		case ("e"): {
+			x = 1;
+			break;
+		}
+		case ("s"): {
+			y = 1;
+			break;
+		}
+		case ("w"): {
+			x = -1;
+			break;
+		}
+		}
+		int currentX = currentPos.getX();
+		int currentY = currentPos.getY();
+		if (x == 0) {
+			if (y == 1) {// case s
+				RelativeCoordinate pos = new RelativeCoordinate(currentX+x, currentY+y);
+				
 
-//	private ArrayList<String> getAttachedBlocksDirs() {
-//		ArrayList<String> attachedBlocksDirs = new ArrayList<>();
-//		for(Block b : attachedBlocks) {
-//			if(b.distanceFromAgent()==1) {
-//				attachedBlocksDirs.add(b.getDirectDirection());
-//			}
-//		}
-//		return attachedBlocksDirs;
-//	}
+			} else if (y == -1) { // case n
+
+			}
+		} else if (y == 0) { // dir is w or e
+			if (x == 1) {// case e
+
+			} else if (x == -1) { // case w
+
+			}
+		}
+		return false;
+	}*/
+
+	// makes sure agent drags block behind him
+	private Action rotateAccordingToAttachedBlock(String prefDir, String attachedBlockDir) {
+		if (getOppositeDirection(attachedBlockDir) == prefDir) { // no Rotation necessary
+			return move(prefDir);
+		} else if (attachedBlockDir.equals(prefDir)) { // Rotation direction irrelevant
+			return new Action("rotate", new Identifier("cw"));
+		} else {
+			switch (prefDir) {
+			case ("n"): {
+				if (attachedBlockDir.equals("e")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			case ("e"): {
+				if (attachedBlockDir.equals("s")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			case ("s"): {
+				if (attachedBlockDir.equals("w")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			case ("w"): {
+				if (attachedBlockDir.equals("n")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			}
+		}
+		return null;
+	}
+
+	private String getBlockDir(Block b) {
+		if (b.distanceFromAgent() == 1) {
+			say("attachedBlock direction " + b.getDirectDirection());
+			return b.getDirectDirection();
+		}
+
+		return "";
+	}
 
 	private Action clear(String prefDir) {
 		say("clearing " + prefDir);
