@@ -2,7 +2,7 @@ package massim.javaagents.agents.g2utils;
 
 public abstract class Cell {
 
-	final RelativeCoordinate relativeCoordinate;
+	private RelativeCoordinate relativeCoordinate;
 	private int lastSeen;
 	
 	public Cell (RelativeCoordinate relativeCoordinate, int lastSeen) {
@@ -12,6 +12,10 @@ public abstract class Cell {
 	
 	public RelativeCoordinate getRelativeCoordinate() {
         return this.relativeCoordinate;
+    }
+
+    public void setRelativeCoordinate(RelativeCoordinate relativeCoordinate) {
+        this.relativeCoordinate = relativeCoordinate;
     }
 
 	public int getLastSeen() {
@@ -31,8 +35,12 @@ public abstract class Cell {
         }
     }
 
-	public boolean isNextToAgent() {
-        if (this.relativeCoordinate.isNextToAgent()) {
+    public boolean isNextToAgent() {
+        return isNextToAgent(new RelativeCoordinate(0, 0));
+    }
+
+	public boolean isNextToAgent(RelativeCoordinate agentPos) {
+        if (this.relativeCoordinate.isNextToAgent(agentPos)) {
             return true;
         } else {
             return false;
@@ -44,6 +52,10 @@ public abstract class Cell {
     }
 
     public String getDirectDirection() {
-        return this.relativeCoordinate.getDirectDirection();
+        return getDirectDirection(new RelativeCoordinate(0, 0));
+    }
+
+    public String getDirectDirection(RelativeCoordinate pos) {
+        return this.relativeCoordinate.getDirectDirection(pos);
     }
 }
