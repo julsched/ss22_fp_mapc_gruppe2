@@ -1039,6 +1039,10 @@ public class AgentG2 extends Agent {
 			return moveRandomly(1);// //TODO wieder Einkommentierne @Carina
 
 		}
+		if (lastAction.equals("clear") && !lastActionResult.equals("success")) {
+			say("Last attempt to clear failed.");
+			return new Action("skip"); // TODO: improve
+		}
 		// TODO: expand error handling
 		return moveRandomly(currentRole.getSpeedWithoutAttachments());// TODO wieder Einkommentierne @Carina
 
