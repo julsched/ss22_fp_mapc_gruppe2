@@ -9,6 +9,7 @@ public class MapManagement {
 	private HashMap<RelativeCoordinate, Goalzone> goalzoneLayer;
 	private HashMap<RelativeCoordinate, Obstacle> obstacleLayer;
 	private HashMap<RelativeCoordinate, Rolezone> rolezoneLayer;
+	private HashMap<RelativeCoordinate, ClearMarker> clearLayer;
 	private HashMap<RelativeCoordinate, Cell> knownArea;
 	private RelativeCoordinate currentPosition;
 	private int currentStep;
@@ -145,6 +146,10 @@ public class MapManagement {
 								dispenserLayer.put(absolutePos, null);
 							}
 							break;
+						case ("ClearMarker"):
+							ClearMarker cm = (ClearMarker) cell;
+							clearLayer.put(absolutePos, cm);
+							break;
 						default:
 							break;
 						}
@@ -156,6 +161,7 @@ public class MapManagement {
 					dispenserLayer.put(absolutePos, null);
 					blockLayer.put(absolutePos, null);
 					obstacleLayer.put(absolutePos, null);
+					clearLayer.put(absolutePos, null);
 					knownArea.put(absolutePos, null);
 				}
 			}
@@ -242,6 +248,10 @@ public class MapManagement {
 								dispenserLayer.put(absolutePos, null);
 							}
 							break;
+						case ("ClearMarker"):
+							ClearMarker cm = (ClearMarker) cell;
+							clearLayer.put(absolutePos, cm);
+							break;
 						default:
 							break;
 						}
@@ -253,6 +263,7 @@ public class MapManagement {
 					dispenserLayer.put(absolutePos, null);
 					blockLayer.put(absolutePos, null);
 					obstacleLayer.put(absolutePos, null);
+					clearLayer.put(absolutePos, null);
 					knownArea.put(absolutePos, null);
 				}
 			}

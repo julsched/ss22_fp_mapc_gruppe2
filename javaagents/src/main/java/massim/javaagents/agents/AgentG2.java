@@ -371,8 +371,25 @@ public class AgentG2 extends Agent {
 				}
 				if (thingType.equals("marker")) {
 					String info = ((Identifier) percept.getParameters().get(3)).getValue();
-					// TODO
-					break;
+					ClearMarker clearMarker = null;
+					switch (info) {
+					case ("ci"):
+						clearMarker = new ClearMarker(relativeCoordinate, currentStep, true);
+						break;
+					case ("clear"):
+						clearMarker = new ClearMarker(relativeCoordinate, currentStep, false);
+						break;
+					default:
+						break;
+					}
+					if (!tempMap.containsKey(relativeCoordinate)) {
+						ArrayList<Cell> cellList = new ArrayList<Cell>();
+						cellList.add(clearMarker);
+						tempMap.put(relativeCoordinate, cellList);
+					} else {
+						List<Cell> cellList = tempMap.get(relativeCoordinate);
+						cellList.add(clearMarker);
+					}
 				}
 				break;
 			}
