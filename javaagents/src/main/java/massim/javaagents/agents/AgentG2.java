@@ -205,9 +205,9 @@ public class AgentG2 extends Agent {
 		for (Percept percept : percepts) {
 			if (percept.getName().equals("step")) {
 				currentStep = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-				if (explorerAgent.equals(getName())) { // TODO wieder ohne if @Carina
+				//if (explorerAgent.equals(getName())) { // TODO wieder ohne if @Carina
 					say("------------------ Current step: " + currentStep + " ------------------");
-				}
+				//}
 				return;
 			}
 		}
@@ -394,7 +394,7 @@ public class AgentG2 extends Agent {
 				// Remove this if-statement, once agent can handle tasks with more than one
 				// block
 				if (params.size() > 1) {
-					// say("Task " + name + " has more than one block. Ignore."); //TODO wieder
+					say("Task " + name + " has more than one block. Ignore."); //TODO wieder
 					// Einkommentierne @Carina
 					break;
 				}
@@ -488,7 +488,7 @@ public class AgentG2 extends Agent {
 						currentRole = Role.getRole(roles, roleName);
 					}
 					if (currentRole != null) {
-//						say("My current role: " + currentRole.getName()); //TODO wieder Einkommentierne @Carina
+						say("My current role: " + currentRole.getName()); //TODO wieder Einkommentierne @Carina
 					}
 				}
 				break;
@@ -659,7 +659,7 @@ public class AgentG2 extends Agent {
 
 		say("Attached blocks: ");
 		for (Block block : attachedBlocks) {
-//			say("(" + block.getRelativeCoordinate().getX() + "|" + block.getRelativeCoordinate().getY() + ")"); //TODO wieder Einkommentierne @Carina
+			say("(" + block.getRelativeCoordinate().getX() + "|" + block.getRelativeCoordinate().getY() + ")"); //TODO wieder Einkommentierne @Carina
 		}
 	}
 
@@ -1001,29 +1001,29 @@ public class AgentG2 extends Agent {
 		if (lastAction.equals("move") && !lastActionResult.equals("success") && lastActionParams.size() == 1) {
 			// Get direction
 			String direction = (String) lastActionParams.get(0);
-//			say("I got stuck when trying to walk '" + direction + "'"); //TODO wieder Einkommentierne @Carina
+			say("I got stuck when trying to walk '" + direction + "'"); //TODO wieder Einkommentierne @Carina
 
 			RelativeCoordinate desiredField = RelativeCoordinate.getRelativeCoordinate(direction);
 			for (RelativeCoordinate relativeCoordinate : occupiedFields) {
 				if (relativeCoordinate.equals(desiredField)) {
-//					say("Reason: field towards direction '" + direction + "' is already occupied"); //TODO wieder Einkommentierne @Carina
+					say("Reason: field towards direction '" + direction + "' is already occupied"); //TODO wieder Einkommentierne @Carina
 					// This will ensure that agent will try all possible directions if one step
 					// after another fails due to occupied fields
 					switch (direction) {
 					case "n":
-//						say("Moving one step east..."); //TODO wieder Einkommentierne @Carina
+						say("Moving one step east..."); //TODO wieder Einkommentierne @Carina
 						return new Action("move", new Identifier("e"));
 
 					case "e":
-//						say("Moving one step south...");//TODO wieder Einkommentierne @Carina
+						say("Moving one step south...");//TODO wieder Einkommentierne @Carina
 						return new Action("move", new Identifier("s"));
 
 					case "s":
-//						say("Moving one step west...");//TODO wieder Einkommentierne @Carina
+						say("Moving one step west...");//TODO wieder Einkommentierne @Carina
 						return new Action("move", new Identifier("w"));
 
 					case "w":
-//						say("Moving one step north...");//TODO wieder Einkommentierne @Carina
+						say("Moving one step north...");//TODO wieder Einkommentierne @Carina
 						return new Action("move", new Identifier("n"));
 					}
 				}
@@ -1031,11 +1031,11 @@ public class AgentG2 extends Agent {
 		}
 		if (lastAction.equals("attach") && !lastActionResult.equals("success")) {
 			String direction = (String) lastActionParams.get(0);
-//			say("Last attempt to attach failed. Trying to attach...");//TODO wieder Einkommentierne @Carina
+			say("Last attempt to attach failed. Trying to attach...");//TODO wieder Einkommentierne @Carina
 			return new Action("attach", new Identifier(direction));
 		}
 		if (lastAction.equals("rotate") && !lastActionResult.equals("success")) {
-//			say("Rotation was not succesfull.");//TODO wieder Einkommentierne @Carina
+			say("Rotation was not succesfull.");//TODO wieder Einkommentierne @Carina
 			return moveRandomly(1);// //TODO wieder Einkommentierne @Carina
 
 		}
@@ -1448,7 +1448,7 @@ public class AgentG2 extends Agent {
 				}
 			}
 			if (dispenserLocations.isEmpty()) {
-//				say("No corresponding tasks for identified dispenser(s)."); //TODO wieder Einkommentierne @Carina
+				say("No corresponding tasks for identified dispenser(s)."); //TODO wieder Einkommentierne @Carina
 				// Keep moving randomly to find a different dispenser
 //				return moveRandomly(currentRole.getSpeedWithoutAttachments()); //TODO wieder Einkommentierne @Carina
 				return explorerStep();
@@ -1469,7 +1469,7 @@ public class AgentG2 extends Agent {
 				Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields,
 						determineLocations("attachedBlock", null), dispenserLocations);
 				if (dir == null) {
-					say("No path towards goal zone.");
+					say("No path towards dispenser.");
 					return explorerStep();
 				}
 				say("Path identified. Moving towards dispenser...");
@@ -2045,7 +2045,7 @@ public class AgentG2 extends Agent {
 	 * @return The request action
 	 */
 	private Action requestBlock(String direction) {
-//		say("Requesting block...");//TODO wieder Einkommentierne @Carina
+		say("Requesting block...");//TODO wieder Einkommentierne @Carina
 		return new Action("request", new Identifier(direction));
 	}
 
@@ -2080,41 +2080,41 @@ public class AgentG2 extends Agent {
 		}
 		if ((currentBlockPos.isOneStepNorth() && targetBlockPos.isOneStepSouth())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(1, 0))) {
-//				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("cw"));
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(-1, 0))) {
-//				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("ccw"));
 			}
 		}
 		if ((currentBlockPos.isOneStepEast() && targetBlockPos.isOneStepWest())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(0, 1))) {
-//				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("cw"));
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(0, -1))) {
-//				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("ccw"));
 			}
 		}
 		if ((currentBlockPos.isOneStepSouth() && targetBlockPos.isOneStepNorth())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(-1, 0))) {
-//				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("cw"));
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(1, 0))) {
-//				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("ccw"));
 			}
 		}
 		if ((currentBlockPos.isOneStepWest() && targetBlockPos.isOneStepEast())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(0, -1))) {
-//				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("cw"));
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(0, 1))) {
-//				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("ccw"));
 			}
 		}
@@ -2164,8 +2164,8 @@ public class AgentG2 extends Agent {
 		switch (stepNum) {
 		case 1 -> {
 			String direction = randomDirections.get(0);
-//			say("Moving one step randomly..."); //TODO wieder Einkommentierne @Carina
-//			say("Moving "+ direction);
+			say("Moving one step randomly..."); //TODO wieder Einkommentierne @Carina
+			say("Moving "+ direction);
 			return new Action("move", new Identifier(direction));
 		}
 		case 2 -> {
