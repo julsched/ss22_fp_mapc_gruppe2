@@ -3,7 +3,7 @@
 
     <groupId>massim</groupId>
     <artifactId>monitor</artifactId>
-    <version>2.4</version>
+    <version>2.5</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -77,7 +77,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20210307</version>
+            <version>20220320</version>
         </dependency>
     </dependencies>
 </project>

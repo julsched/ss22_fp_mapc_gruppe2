@@ -2,7 +2,17 @@
 
 ## 2022
 
-### MASSim 2022-1.0 - Agents Assemble III (Beta to be sure)
+### MASSim 2022-1.1.0 - Agents Assemble III
+
+* scenario
+  * Norms
+    * Fixing the kinds of norms. An algorithmic description of each can be found [here](/docs/scenario.md#norms)
+  * Actions
+    * Introduces an alias for the `adopt` action: `adapt`
+  * Add config option to deliver an agent's absolute position as percept (only for getting started/testing/debugging)
+  * General bug fixes, some dependencies updated
+
+### MASSim 2022-1.0.0 - Agents Assemble III (Beta to be sure)
 
 This time, some more things have changed. Please tell us soon if you think something doesn't work as expected.
 
