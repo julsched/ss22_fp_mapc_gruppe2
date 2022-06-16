@@ -62,6 +62,7 @@ public class AgentG2 extends Agent {
 	private RelativeCoordinate receivedPosition;
 
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
+	private ArrayList<String> knownAgents;
 	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); // see map
 	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
 	private Orientation orientation = Orientation.NORTH;
@@ -146,13 +147,13 @@ public class AgentG2 extends Agent {
 
 		// Einleiten des Austausches der maps
 		if (initiateMapExchange) {
-			say("I want your map, " + mapManager.getExchangePartner().getName());
+			say("I want your map, " + mapManager.getExchangePartner().getName() + " in step " + currentStep);
 			requestMap(mapManager.getExchangePartner().getName(), currentStep);
 		}
 
 		// Übergeben der aktuellen Map
 		if (requestForMap) {
-			say("I give you my map");
+			say("I give you my map in step" + currentStep);
 			if (stepOfRequest == currentStep) {
 				mailbox.deliverMap(requestingExplorer, getName(), mapManager.getBlockLayer(),
 						mapManager.getDispenserLayer(), mapManager.getGoalzoneLayer(), mapManager.getRolezoneLayer(),
@@ -175,8 +176,9 @@ public class AgentG2 extends Agent {
 		// Zusammenführen der Maps und Übergeben der geupdateten Map
 		if (!(receivedBlocks == null)) {
 			say("I merge the maps");
-			mapManager.mergeMaps(receivedBlocks, receivedDispensers, receivedGoalzones, receivedRolezones,
+			boolean success = mapManager.mergeMaps(receivedBlocks, receivedDispensers, receivedGoalzones, receivedRolezones,
 					receivedObstacles, receivedPosition, stepOfSentMap);
+			say("Exchange was success: " + success);
 			sendMap(seenAgent.getName(), mapManager, seenAgent.getRelativeCoordinate());
 			receivedBlocks = null;
 			receivedDispensers = null;
@@ -347,9 +349,10 @@ public class AgentG2 extends Agent {
 					occupiedFieldsWithoutBlocks.add(relativeCoordinate);
 					RelativeCoordinate ownPosition = new RelativeCoordinate(0, 0);
 					if (teamName.equals(team) && (!relativeCoordinate.equals(ownPosition))) {
-						RelativeCoordinate absolutePosition = new RelativeCoordinate(this.currentPos.getX() + x,
-								this.currentPos.getY() + y);
-						this.friendlyAgents.add(absolutePosition);
+						say("I add agent at " + relativeCoordinate.getX() + ", " + relativeCoordinate.getY() + "to my friendlist");
+						RelativeCoordinate absolutePosition = new RelativeCoordinate(currentPos.getX() + x,
+								currentPos.getY() + y);
+						friendlyAgents.add(absolutePosition);
 					}
 					break;
 				}
@@ -519,7 +522,7 @@ public class AgentG2 extends Agent {
 					int energy = ((Numeral) percept.getParameters().get(3)).getValue().intValue();
 					say("Partner: " + name);
 					mapManager.setExchangePartner(name, role, energy);
-					this.initiateMapExchange = true;
+					initiateMapExchange = true;
 					break;
 				}
 				case "goal" -> {
@@ -1014,7 +1017,7 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action handleError() {
-		say("Handle Error!");
+		say("Handle Error: " + lastAction + " - " + lastActionResult);
 		if (lastAction.equals("move") && !lastActionResult.equals("success") && lastActionParams.size() == 1) {
 			// Get direction
 			String direction = (String) lastActionParams.get(0);
@@ -1760,26 +1763,25 @@ public class AgentG2 extends Agent {
 
 		say("Friendly Agents: " + friendlyAgents.size() + " und Counter: " + counterMapExchange);
 
-		if (!this.friendlyAgents.isEmpty() && counterMapExchange > 7) {
-			counterMapExchange = 0;
-			Iterator<RelativeCoordinate> it = this.friendlyAgents.iterator();
+		if (!friendlyAgents.isEmpty() && counterMapExchange > 7) {
+			Iterator<RelativeCoordinate> it = friendlyAgents.iterator();
 			while (it.hasNext()) {
 				RelativeCoordinate relCo = it.next();
-				int x = this.currentPos.getX() + relCo.getX();
-				int y = this.currentPos.getY() + relCo.getY();
-				RelativeCoordinate pos = new RelativeCoordinate(x, y);
-				if ((Math.abs(x) + Math.abs(y) > this.currentRole.getVision() - 1)
-						|| (x == currentPos.getX() && y == currentPos.getY())) {
+				int x = relCo.getX() - currentPos.getX();
+				int y = relCo.getY() - currentPos.getY();
+				if ((Math.abs(x) + Math.abs(y) > currentRole.getVision() - 1)) {
 					it.remove();
 				}
 			}
 			if (!this.friendlyAgents.isEmpty()) {
 				say("I try to exchange my map");
-				this.mapManager.createExchangePartner(
-						new RelativeCoordinate(this.currentPos.getX() + this.friendlyAgents.get(0).getX(),
-								this.currentPos.getY() + this.friendlyAgents.get(0).getY()));
-				return new Action("survey", new Numeral(this.friendlyAgents.get(0).getX()),
-						new Numeral(this.friendlyAgents.get(0).getY()));
+				counterMapExchange = 0;
+				mapManager.createExchangePartner(friendlyAgents.get(0));
+				int xValue = friendlyAgents.get(0).getX() - currentPos.getX();
+				int yValue = friendlyAgents.get(0).getY() - currentPos.getY();
+				say("I try to exchange my map with agent at (" + xValue + ", " + yValue + ")");
+				return new Action("survey", new Numeral(xValue),
+						new Numeral(yValue));
 			}
 		}
 		counterMapExchange = counterMapExchange + 1;

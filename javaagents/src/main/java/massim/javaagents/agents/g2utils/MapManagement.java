@@ -27,6 +27,7 @@ public class MapManagement {
 		this.goalzoneLayer = new HashMap<RelativeCoordinate, Goalzone>();
 		this.obstacleLayer = new HashMap<RelativeCoordinate, Obstacle>();
 		this.rolezoneLayer = new HashMap<RelativeCoordinate, Rolezone>();
+		this.clearLayer = new HashMap<RelativeCoordinate, ClearMarker>();
 		this.knownArea = new HashMap<RelativeCoordinate, Cell>();
 		this.currentPosition = currentPosition;
 		this.currentStep = currentStep;
@@ -316,7 +317,7 @@ public class MapManagement {
 		return lastPosition;
 	}
 	
-	public void mergeMaps(HashMap<RelativeCoordinate, Block> sentBlocks, HashMap<RelativeCoordinate, Dispenser> sentDispensers, HashMap<RelativeCoordinate, Goalzone> sentGoalzones, HashMap<RelativeCoordinate, Rolezone> sentRolezones, HashMap<RelativeCoordinate, Obstacle> sentObstacles, RelativeCoordinate sentPosition, int stepOfSentMap) {
+	public boolean mergeMaps(HashMap<RelativeCoordinate, Block> sentBlocks, HashMap<RelativeCoordinate, Dispenser> sentDispensers, HashMap<RelativeCoordinate, Goalzone> sentGoalzones, HashMap<RelativeCoordinate, Rolezone> sentRolezones, HashMap<RelativeCoordinate, Obstacle> sentObstacles, RelativeCoordinate sentPosition, int stepOfSentMap) {
 		
 		RelativeCoordinate rc = exchangePartner.getRelativeCoordinate();
 		ArrayList<RelativeCoordinate> agents = new ArrayList<RelativeCoordinate>();
@@ -343,10 +344,10 @@ public class MapManagement {
 				}
 			}
 		} else {
-			return;
+			return false;
 		}
 		if (agents.size() < 1 || agents.size() > 1) {
-			return;
+			return false;
 		}
 		
 		// Mergen der verschiedenen KartenLayer
@@ -384,6 +385,8 @@ public class MapManagement {
 				obstacleLayer.put(newKey, sentObstacles.get(key));
 			}			
 		}
+		
+		return true;
 	}
 	
 	public void removeObstacle(RelativeCoordinate obstaclePosition) {
@@ -393,5 +396,5 @@ public class MapManagement {
 	public void updateLastPosition(int x, int y) {
 		lastPosition = new RelativeCoordinate(lastPosition.getX() + x, lastPosition.getY() + y);
 	}
-
+	
 }
