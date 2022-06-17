@@ -7,6 +7,7 @@ import massim.javaagents.agents.g2utils.Block;
 import massim.javaagents.agents.g2utils.Cell;
 import massim.javaagents.agents.g2utils.Dispenser;
 import massim.javaagents.agents.g2utils.Goalzone;
+import massim.javaagents.agents.g2utils.MapBundle;
 import massim.javaagents.agents.g2utils.MapManagement;
 import massim.javaagents.agents.g2utils.Obstacle;
 import massim.javaagents.agents.g2utils.RelativeCoordinate;
@@ -70,6 +71,13 @@ public class MailService {
                 .forEach(ag -> sendMessage(message, ag, sender));
     }
     
+    public void broadcastMapRequest(int currentStep, String sender) {
+        agentsByTeam.get(teamForAgent.get(sender)).stream()
+                .map(Agent::getName)
+                .filter(ag -> !ag.equals(sender))
+                .forEach(ag -> requestMap(ag, sender, currentStep));
+    }
+    
     public void requestMap(String to, String from, int currentStep){
 
         Agent recipient = register.get(to);
@@ -82,14 +90,14 @@ public class MailService {
         }
     }
     
-    public void deliverMap(String to, String from, HashMap<RelativeCoordinate, Block> blocks, HashMap<RelativeCoordinate, Dispenser> dispensers, HashMap<RelativeCoordinate, Goalzone> goalzones, HashMap<RelativeCoordinate, Rolezone> rolezones, HashMap<RelativeCoordinate, Obstacle> obstacles, RelativeCoordinate currentPosition, int currentStep) {
+    public void deliverMap(String to, MapBundle mapBundle) {
     	
     	Agent recipient = register.get(to);
         if (recipient == null && !(recipient instanceof AgentG2)) {
             logger.warning("Cannot deliver message to " + to + "; unknown target,");
         } else {
         	AgentG2 rec = (AgentG2) recipient;
-        	rec.handleMap(from, blocks, dispensers, goalzones, rolezones, obstacles, currentPosition, currentStep);
+        	rec.handleMap(mapBundle);
         }
     }
     

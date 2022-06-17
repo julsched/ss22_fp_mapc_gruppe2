@@ -277,6 +277,14 @@ public class MapManagement {
 		teamMembers = seenTeamMembers;
 	}
 	
+	public ArrayList<RelativeCoordinate> getTeamMembers() {
+		return teamMembers;
+	}
+	
+	public ArrayList<RelativeCoordinate> getLastTeamMembers() {
+		return lastTeamMembers;
+	}
+	
 	public void createExchangePartner(RelativeCoordinate position) {
 		exchangePartner = new AgentInformation(position);
 	}
@@ -317,8 +325,9 @@ public class MapManagement {
 		return lastPosition;
 	}
 	
-	public boolean mergeMaps(HashMap<RelativeCoordinate, Block> sentBlocks, HashMap<RelativeCoordinate, Dispenser> sentDispensers, HashMap<RelativeCoordinate, Goalzone> sentGoalzones, HashMap<RelativeCoordinate, Rolezone> sentRolezones, HashMap<RelativeCoordinate, Obstacle> sentObstacles, RelativeCoordinate sentPosition, int stepOfSentMap) {
+	public String mergeMaps(MapBundle mapBundle, RelativeCoordinate exchangePartner) {
 		
+		/*
 		RelativeCoordinate rc = exchangePartner.getRelativeCoordinate();
 		ArrayList<RelativeCoordinate> agents = new ArrayList<RelativeCoordinate>();
 		
@@ -349,44 +358,45 @@ public class MapManagement {
 		if (agents.size() < 1 || agents.size() > 1) {
 			return false;
 		}
+		*/
 		
 		// Mergen der verschiedenen KartenLayer
-		RelativeCoordinate pos = agents.get(0);
-		int xDiff = pos.getX() - sentPosition.getX();
-		int yDiff = pos.getY() - sentPosition.getY();
-		for (RelativeCoordinate key : sentBlocks.keySet()) {
+		RelativeCoordinate pos = mapBundle.getPosition();
+		int xDiff = pos.getX() - exchangePartner.getX();
+		int yDiff = pos.getY() - exchangePartner.getY();
+		for (RelativeCoordinate key : mapBundle.getBlockLayer().keySet()) {
 			RelativeCoordinate newKey = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
-			if (!blockLayer.containsKey(newKey) || blockLayer.get(newKey).getLastSeen() < sentBlocks.get(key).getLastSeen()) {
-				blockLayer.put(newKey, sentBlocks.get(key));
+			if (!blockLayer.containsKey(newKey) || blockLayer.get(newKey).getLastSeen() < mapBundle.getBlockLayer().get(key).getLastSeen()) {
+				blockLayer.put(newKey, mapBundle.getBlockLayer().get(key));
 			}
 			knownArea.put(newKey, null);
 		}
-		for (RelativeCoordinate key : sentDispensers.keySet()) {
+		for (RelativeCoordinate key : mapBundle.getDispenserLayer().keySet()) {
 			RelativeCoordinate newKey = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
-			if (!dispenserLayer.containsKey(newKey) || dispenserLayer.get(newKey).getLastSeen() < sentDispensers.get(key).getLastSeen()) {
-				dispenserLayer.put(newKey, sentDispensers.get(key));
+			if (!dispenserLayer.containsKey(newKey) || dispenserLayer.get(newKey).getLastSeen() < mapBundle.getDispenserLayer().get(key).getLastSeen()) {
+				dispenserLayer.put(newKey, mapBundle.getDispenserLayer().get(key));
 			}			
 		}
-		for (RelativeCoordinate key : sentGoalzones.keySet()) {
+		for (RelativeCoordinate key : mapBundle.getGoalzoneLayer().keySet()) {
 			RelativeCoordinate newKey = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
-			if (!goalzoneLayer.containsKey(newKey) || goalzoneLayer.get(newKey).getLastSeen() < sentGoalzones.get(key).getLastSeen()) {
-				goalzoneLayer.put(newKey, sentGoalzones.get(key));
+			if (!goalzoneLayer.containsKey(newKey) || goalzoneLayer.get(newKey).getLastSeen() < mapBundle.getGoalzoneLayer().get(key).getLastSeen()) {
+				goalzoneLayer.put(newKey, mapBundle.getGoalzoneLayer().get(key));
 			}			
 		}
-		for (RelativeCoordinate key : sentRolezones.keySet()) {
+		for (RelativeCoordinate key : mapBundle.getRolezoneLayer().keySet()) {
 			RelativeCoordinate newKey = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
-			if (!rolezoneLayer.containsKey(newKey) || rolezoneLayer.get(newKey).getLastSeen() < sentRolezones.get(key).getLastSeen()) {
-				rolezoneLayer.put(newKey, sentRolezones.get(key));
+			if (!rolezoneLayer.containsKey(newKey) || rolezoneLayer.get(newKey).getLastSeen() < mapBundle.getRolezoneLayer().get(key).getLastSeen()) {
+				rolezoneLayer.put(newKey, mapBundle.getRolezoneLayer().get(key));
 			}			
 		}
-		for (RelativeCoordinate key : sentObstacles.keySet()) {
+		for (RelativeCoordinate key : mapBundle.getObstacleLayer().keySet()) {
 			RelativeCoordinate newKey = new RelativeCoordinate(key.getX() + xDiff, key.getY() + yDiff);
-			if (!obstacleLayer.containsKey(newKey) || obstacleLayer.get(newKey).getLastSeen() < sentObstacles.get(key).getLastSeen()) {
-				obstacleLayer.put(newKey, sentObstacles.get(key));
+			if (!obstacleLayer.containsKey(newKey) || obstacleLayer.get(newKey).getLastSeen() < mapBundle.getObstacleLayer().get(key).getLastSeen()) {
+				obstacleLayer.put(newKey, mapBundle.getObstacleLayer().get(key));
 			}			
 		}
 		
-		return true;
+		return mapBundle.getOwner();
 	}
 	
 	public void removeObstacle(RelativeCoordinate obstaclePosition) {
