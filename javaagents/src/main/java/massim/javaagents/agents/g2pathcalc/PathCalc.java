@@ -5,7 +5,17 @@ import java.util.*;
 
 public class PathCalc {
 
-    public static Direction calculateShortestPathVision(int vision, List<RelativeCoordinate> occupiedFields, List<RelativeCoordinate> attachedBlocks, Set<RelativeCoordinate> destinations) {
+    private MapManagement mapManager;
+    private List<Block> attachedBlocks; // relative coordinates
+
+    public PathCalc(MapManagement mapManager, List<Block> attachedBlocks) {
+        this.mapManager = mapManager;
+        this.attachedBlocks = attachedBlocks;
+    }
+
+    public String calculateShortestPathVision(int vision, List<RelativeCoordinate> occupiedFields, Set<RelativeCoordinate> destinations) {
+        List<RelativeCoordinate> attachedBlockCoordinates = getRelativeCoordinates(attachedBlocks);
+        
         // Boolean array representing a map (true means field is occupied)
         boolean[][] map = new boolean[2 * vision + 3][2 * vision + 3];
         // Position of agent inside the map (center)
@@ -38,7 +48,7 @@ public class PathCalc {
         //Fill occupied fields inside the vision zone with 'true'
         //System.out.println("Occupied fields:");
         for (RelativeCoordinate field : occupiedFields) {
-            if (!attachedBlocks.contains(field)) {
+            if (!attachedBlockCoordinates.contains(field)) {
                 int x = field.getX();
                 int y = field.getY();
                 map[x + vision + 1][y + vision + 1] = true;
@@ -68,7 +78,7 @@ public class PathCalc {
                     int yG = destination.getY() + vision + 1;
                     // Destination reached?
                     if (newX == xG && newY == yG) {
-                        return newDir;
+                        return newDir.toString();
                     }
                 }
 
@@ -83,21 +93,17 @@ public class PathCalc {
         return null;
     }
 
-    public static Direction calculateShortestPathMap(MapManagement mapManager, Set<RelativeCoordinate> destinations, List<RelativeCoordinate> attachedBlocks) {
+    public String calculateShortestPathMap(Set<RelativeCoordinate> destinations) {
         if (destinations == null || destinations.size() == 0) {
             return null;
         }
         
+        List<RelativeCoordinate> attachedBlocksRelative = getRelativeCoordinates(attachedBlocks);
         RelativeCoordinate currentPos = mapManager.getCurrentPosition();
         HashMap<String, RelativeCoordinate> mapDimensions = mapManager.analyzeMapDimensions();
         HashMap<RelativeCoordinate, Block> blockLayer = mapManager.getBlockLayer();
         HashMap<RelativeCoordinate, Obstacle> obstacleLayer = mapManager.getObstacleLayer();
         HashMap<RelativeCoordinate, Entity> entityLayer = mapManager.getEntityLayer();
-        List<RelativeCoordinate> attachedBlocksAbsolute = new ArrayList<>();
-        for (RelativeCoordinate relativeCoordinate : attachedBlocks) {
-            attachedBlocksAbsolute.add(new RelativeCoordinate(currentPos.getX() + relativeCoordinate.getX(), currentPos.getY() + relativeCoordinate.getY()));
-        }
-
 
         // Position of agent inside the map
         int xA = currentPos.getX();
@@ -146,13 +152,13 @@ public class PathCalc {
                 }
 
                 // Check if the cell is occupied
-                boolean occupied = PathCalc.checkIfOccupied(new RelativeCoordinate(newX, newY), obstacleLayer, blockLayer, entityLayer, attachedBlocksAbsolute);
+                boolean occupied = checkIfOccupied(new RelativeCoordinate(newX, newY));
 
                 // Check if attachedBlocks of agent fit into the cell's surrounding cells
                 if (!occupied) {
-                    for (RelativeCoordinate attachedBlock : attachedBlocks) {
+                    for (RelativeCoordinate attachedBlock : attachedBlocksRelative) {
                         RelativeCoordinate absolutePosition = new RelativeCoordinate(newX + attachedBlock.getX(), newY + attachedBlock.getY());
-                        occupied = PathCalc.checkIfOccupied(absolutePosition, obstacleLayer, blockLayer, entityLayer, attachedBlocksAbsolute);
+                        occupied = checkIfOccupied(absolutePosition);
                         if (occupied) {
                             break;
                         }
@@ -168,7 +174,7 @@ public class PathCalc {
                         // Destination reached?
                         if (newX == xG && newY == yG) {
                             System.out.println("Destination: (" + newX + "|" + newY + ")");
-                            return newDir;
+                            return newDir.toString();
                         }
                     }
                     // Mark field as 'discovered' and add it to the queue
@@ -180,10 +186,13 @@ public class PathCalc {
         return null;
     }
 
-    public static boolean checkIfOccupied(RelativeCoordinate coordinate, HashMap<RelativeCoordinate, Obstacle> obstacleLayer,
-            HashMap<RelativeCoordinate, Block> blockLayer, HashMap<RelativeCoordinate, Entity> entityLayer, List<RelativeCoordinate> attachedBlocks) {
+    public boolean checkIfOccupied(RelativeCoordinate coordinate) {
         int x = coordinate.getX();
         int y = coordinate.getY();
+        HashMap<RelativeCoordinate, Obstacle> obstacleLayer = mapManager.getObstacleLayer();
+        HashMap<RelativeCoordinate, Block> blockLayer = mapManager.getBlockLayer();
+        HashMap<RelativeCoordinate, Entity> entityLayer = mapManager.getEntityLayer();
+        List<RelativeCoordinate> attachedBlocksAbsolute = getAbsoluteCoordinates(attachedBlocks);
         boolean occupied = false;
 
         // Check if cell is occupied by an obstacle
@@ -201,11 +210,104 @@ public class PathCalc {
         // Check if cell is occupied by a (non-attached) block
         if (!occupied) {
             Block block = blockLayer.get(new RelativeCoordinate(x, y));
-            if (block != null && !attachedBlocks.contains(new RelativeCoordinate(x, y))) {
+            if (block != null && !attachedBlocksAbsolute.contains(new RelativeCoordinate(x, y))) {
                 occupied = true;
             }
         }
-
         return occupied;
+    }
+
+    public List<RelativeCoordinate> getRelativeCoordinates(List<Block> blocks) {
+        List<RelativeCoordinate> coordinates = new ArrayList<>();
+        if (blocks != null && !blocks.isEmpty()) {
+			for (Block block : blocks) {
+				coordinates.add(block.getRelativeCoordinate());
+			}	
+		}
+		return coordinates;
+    }
+
+    public List<RelativeCoordinate> getAbsoluteCoordinates(List<Block> blocks) {
+        List<RelativeCoordinate> coordinatesRelative = getRelativeCoordinates(blocks);
+        List<RelativeCoordinate> coordinatesAbsolute = new ArrayList<>();
+        if (coordinatesRelative != null && !coordinatesRelative.isEmpty()) {
+			for (RelativeCoordinate relativeCoordinate : coordinatesRelative) {
+                coordinatesAbsolute.add(new RelativeCoordinate(mapManager.getCurrentPosition().getX() + relativeCoordinate.getX(), 
+                    mapManager.getCurrentPosition().getY() + relativeCoordinate.getY()));
+            }
+		}
+		return coordinatesAbsolute;
+    }
+
+    /**
+	 * Determines non-occupied goal zone cells which have enough space around them for the task to be submitted
+	 * 
+	 * @param currentTask The task to be submitted
+	 * 
+	 * @return The absolute coordinates of the identified goal zone cells
+	 */
+	public Set<RelativeCoordinate> determineGoalZoneFieldCandidates(Task currentTask) {
+		// First check which goal zone cells are free (no obstacle/block/entity)
+		List<RelativeCoordinate> goalZoneFieldsFree = new ArrayList<>();
+		HashMap<RelativeCoordinate, Goalzone> goalzoneLayer = mapManager.getGoalzoneLayer();
+		for (Map.Entry<RelativeCoordinate, Goalzone> entry : goalzoneLayer.entrySet()) {
+			if (entry.getValue() != null) {
+				boolean occupied = checkIfOccupied(entry.getKey());
+				if (!occupied) {
+					goalZoneFieldsFree.add(entry.getKey());
+				}
+			}
+		}
+
+		// Check which ones of the free goal zone fields have enough space around
+		// them to submit the current task (surroundings fields do not have to be goal zone fields)
+		Set<RelativeCoordinate> goalZoneFieldCandidates = new HashSet<>();
+		for (RelativeCoordinate goalZoneField : goalZoneFieldsFree) {
+			// TODO: Adjust for multi-block tasks
+			RelativeCoordinate requirement = currentTask.getRequirements().get(0).getRelativeCoordinate();
+			RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getX(),
+					goalZoneField.getY() + requirement.getY());
+			if (!checkIfOccupied(fieldToBeChecked)) {
+				goalZoneFieldCandidates.add(goalZoneField);
+			}
+		}
+		return goalZoneFieldCandidates;
+	}
+
+    /**
+	 * Determines dispensers of the required type
+	 * 
+	 * @param dispenserType The required dispenser type
+	 * 
+	 * @return The absolute coordinates of the identified dispensers
+	 */
+	public Set<RelativeCoordinate> determineDispenserCandidates(String dispenserType) {
+        // Atm not checking if dispenser is occupied
+        Set<RelativeCoordinate> dispenserCandidates = new HashSet<>();
+		HashMap<RelativeCoordinate, Dispenser> dispenserLayer = mapManager.getDispenserLayer();
+		for (Map.Entry<RelativeCoordinate, Dispenser> entry : dispenserLayer.entrySet()) {
+			if (entry.getValue() != null) {
+                if (entry.getValue().getType().equals(dispenserType)) {
+                    dispenserCandidates.add(entry.getKey());
+                }
+			}
+		}
+        return dispenserCandidates;
+    }
+
+    public int calcStepsToNextDispenser(String dispenserType) {
+        // TODO
+        return 0;
+    }
+
+    public String calculateShortestPathNextObstacle() {
+        Set<RelativeCoordinate> obstacles = new HashSet<>();
+        HashMap<RelativeCoordinate, Obstacle> obstacleLayer = mapManager.getObstacleLayer();
+		for (Map.Entry<RelativeCoordinate, Obstacle> entry : obstacleLayer.entrySet()) {
+			if (entry.getValue() != null) {
+                obstacles.add(entry.getKey());
+            }
+        }
+        return calculateShortestPathMap(obstacles);
     }
 }
