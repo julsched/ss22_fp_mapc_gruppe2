@@ -318,7 +318,7 @@ public class AgentG2 extends Agent {
 					String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
 					Block block = new Block(relativeCoordinate, blockType, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, block);
-					blocks.add(new Block(relativeCoordinate, blockType, currentStep));
+					blocks.add(block);
 					occupiedFields.add(relativeCoordinate);
 					if (!tempMap.containsKey(relativeCoordinate)) {
 						ArrayList<Cell> cellList = new ArrayList<Cell>();
@@ -334,7 +334,7 @@ public class AgentG2 extends Agent {
 					String team = ((Identifier) percept.getParameters().get(3)).getValue();
 					Entity entity = new Entity(relativeCoordinate, team, currentStep);
 					// Only add entity to map if it's not the agent itself
-					if (x != 0 && y != 0) {
+					if (!(x == 0 && y == 0)) {
 						if (!tempMap.containsKey(relativeCoordinate)) {
 							ArrayList<Cell> cellList = new ArrayList<Cell>();
 							cellList.add(entity);
@@ -344,7 +344,6 @@ public class AgentG2 extends Agent {
 							cellList.add(entity);
 						}
 					}
-					
 					occupiedFields.add(relativeCoordinate);
 					occupiedFieldsWithoutBlocks.add(relativeCoordinate);
 					RelativeCoordinate ownPosition = new RelativeCoordinate(0, 0);
@@ -2046,24 +2045,6 @@ public class AgentG2 extends Agent {
 	}
 
 	/**
-	 * Checks if there is task which requires the specific block type
-	 * 
-	 * @param blockType The block type which is analyzed
-	 * @return True if there is a task that requires the block type, otherwise false
-	 */
-	private boolean checkForCorrespondingTask(String blockType) {
-		// At the moment this method only checks if there is a task for the given block
-		// type. And it only works for one-block-tasks.
-		// TODO: also keep in mind the deadline and rewards of tasks
-		for (Task task : tasks) {
-			if (task.getRequirements().get(0).getBlockType().equals(blockType)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
 	 * Checks if two directions are opposite directions
 	 * 
 	 * @param direction1 First direction
@@ -2156,5 +2137,4 @@ public class AgentG2 extends Agent {
 	public void sendMap(String addressee, MapManagement mapManager, RelativeCoordinate addresseePosition) {
 		mailbox.sendMap(addressee, mapManager, addresseePosition);
 	}
-
 }

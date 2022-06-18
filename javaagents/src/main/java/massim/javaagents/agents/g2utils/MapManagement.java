@@ -329,17 +329,19 @@ public class MapManagement {
 				}
 			}
 		}
-		System.out.println("Current Position:");
+
+		// For testing
+		/*System.out.println("Current Position:");
 		System.out.println(currentPosition);
-		//System.out.println("Goal Zone Layer:");
-		//System.out.println(goalzoneLayer);
-		/*System.out.println("Role Zone Layer:");
-		System.out.println(rolezoneLayer);*/
-		//System.out.println("Dispenser Layer:");
-		//System.out.println(dispenserLayer);
-		//System.out.println("Block Layer:");
-		//System.out.println(blockLayer);
-		/*System.out.println("Obstacle Layer:");
+		System.out.println("Goal Zone Layer:");
+		System.out.println(goalzoneLayer);
+		System.out.println("Role Zone Layer:");
+		System.out.println(rolezoneLayer);
+		System.out.println("Dispenser Layer:");
+		System.out.println(dispenserLayer);
+		System.out.println("Block Layer:");
+		System.out.println(blockLayer);
+		System.out.println("Obstacle Layer:");
 		System.out.println(obstacleLayer);
 		System.out.println("Entity Layer:");
 		System.out.println(entityLayer);
