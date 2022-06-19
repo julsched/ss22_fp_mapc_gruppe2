@@ -318,7 +318,7 @@ public class AgentG2 extends Agent {
 					String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
 					Block block = new Block(relativeCoordinate, blockType, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, block);
-					blocks.add(block);
+					blocks.add(new Block(relativeCoordinate, blockType, currentStep)); // Should not have same block object as in map since coordinates differ
 					occupiedFields.add(relativeCoordinate);
 					if (!tempMap.containsKey(relativeCoordinate)) {
 						ArrayList<Cell> cellList = new ArrayList<Cell>();
