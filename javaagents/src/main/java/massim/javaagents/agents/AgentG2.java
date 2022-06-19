@@ -2035,18 +2035,17 @@ public class AgentG2 extends Agent {
 					correspondingTasks.add(task);
 				}
 			}
-			return correspondingTasks;
 		}
 		// check if any attached block fits to a multiBlockTask
 		// todo
 		for (Task task : tasks) {
-			System.out.println("Checking Tasks");
+			//System.out.println("Checking Tasks");
 			for (int i = 0; i < task.getRequirements().size(); i++) {
-				System.out.println("iterating tasks");
+				//System.out.println("iterating tasks");
 				for (int j = 0; j < attachedBlocks.size(); j++) {
-					System.out.println("iterating attachedblocks");
+					//System.out.println("iterating attachedblocks");
 					if (task.getRequirements().get(i).getBlockType().equals(attachedBlocks.get(j).getType())) {
-						System.out.println("Task added");
+						System.out.println("Task added: " + task.getName());
 						correspondingTasks.add(task);
 						break;
 					}

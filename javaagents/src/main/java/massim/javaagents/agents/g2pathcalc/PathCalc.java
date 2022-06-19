@@ -289,7 +289,18 @@ public class PathCalc {
 		// them to submit the current task (surrounding fields do not have to be goal zone fields)
 		Set<RelativeCoordinate> goalZoneFieldCandidates = new HashSet<>();
 		for (RelativeCoordinate goalZoneField : goalZoneFieldsFree) {
-			// TODO: Adjust for multi-block tasks
+            boolean enoughSpace = true;
+            for (TaskRequirement requirement : currentTask.getRequirements()) {
+                RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getRelativeCoordinate().getX(),
+					goalZoneField.getY() + requirement.getRelativeCoordinate().getY());
+                if (checkIfOccupied(fieldToBeChecked)) { // if (!goalZoneFieldsFree.contains(fieldToBeChecked)) {}
+                    enoughSpace = false;
+                    break;
+                }
+            }
+            if (enoughSpace) {
+                goalZoneFieldCandidates.add(goalZoneField);
+            }
 			RelativeCoordinate requirement = currentTask.getRequirements().get(0).getRelativeCoordinate();
 			RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getX(),
 					goalZoneField.getY() + requirement.getY());
