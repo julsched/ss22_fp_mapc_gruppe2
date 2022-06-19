@@ -1168,6 +1168,7 @@ public class AgentG2 extends Agent {
 		}
 		// not on task and chooses task
 		setCurrentTask(determineCurrentTask(correspondingTasks));
+		say("my new task is: "+ this.getCurrentTask().getName());
 
 		if (this.getCurrentTask() != null) {
 			if (this.getCurrentTask().isOneBlockTask()) {
@@ -1246,6 +1247,8 @@ public class AgentG2 extends Agent {
 	 * editor: michael
 	 * 
 	 * decides which task to fulfill returns the fastest to complete task
+	 * 
+	 * todo: fastest task 
 	 *
 	 * @return
 	 */
@@ -1257,6 +1260,9 @@ public class AgentG2 extends Agent {
 		}
 		// find fastest task
 		Task fastestTask = null;
+		
+		//Task fastestTask = findFastestTask();
+		
 		int blocksMissingForTask = 10;
 		for (Task task : tasks) {
 			if (this.numberOfBlocksMissingForTask(task) < blocksMissingForTask) {
@@ -1266,6 +1272,18 @@ public class AgentG2 extends Agent {
 
 		}
 		return fastestTask;
+	}
+
+	/**
+	 * editor: michael
+	 *
+	 * finds best task, to get most points in shortest time
+	 *
+	 * @return
+	 */
+	private Task findFastestTask() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	/**
