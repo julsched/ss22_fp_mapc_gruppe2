@@ -318,7 +318,8 @@ public class AgentG2 extends Agent {
 					String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
 					Block block = new Block(relativeCoordinate, blockType, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, block);
-					blocks.add(block);
+					blocks.add(new Block(relativeCoordinate, blockType, currentStep)); 
+					// Should not have same block object as in map since coordinates differ
 					occupiedFields.add(relativeCoordinate);
 					if (!tempMap.containsKey(relativeCoordinate)) {
 						ArrayList<Cell> cellList = new ArrayList<Cell>();
@@ -392,11 +393,14 @@ public class AgentG2 extends Agent {
 				for (int i = 0; i < ((ParameterList) paramRequirements).size(); i++) {
 					params.add(((ParameterList) paramRequirements).get(i));
 				}
+				/*
 				// Remove if-statement once agent can handle multi-block tasks
 				if (params.size() > 1) {
 					say("Task " + name + " has more than one block. Ignore.");
 					break;
 				}
+				**/
+				
 				List<TaskRequirement> requirements = new ArrayList<>();
 				for (Parameter param : params) {
 					Parameter paramCoordinateX = ((Function) param).getParameters().get(0);
@@ -1135,6 +1139,8 @@ public class AgentG2 extends Agent {
 	 * @return
 	 */
 	private Action workerActionHandleBlock() {
+		
+		// maybe first check if working on task, if not choose task and work on it
 		if (this.attachedBlocks.size() == 0) {
 			return this.workerActionSearchDispenser();
 		}
@@ -2031,6 +2037,7 @@ public class AgentG2 extends Agent {
 			return correspondingTasks;
 		}
 		// check if any attached block fits to a multiBlockTask
+		// todo
 		for (Task task : tasks) {
 			for (int i = 0; i < task.getRequirements().size(); i++) {
 				for (int j = 0; j < attachedBlocks.size(); j++) {
