@@ -2024,6 +2024,7 @@ public class AgentG2 extends Agent {
 	 * @return A list of the tasks which require the currently attached blocks todo
 	 */
 	private List<Task> determineCorrespondingTasks() {
+		System.out.println("determineCorrespondingTasks:");
 		List<Task> correspondingTasks = new ArrayList<>();
 
 		// check first if there are oneBlockTasks to solve
@@ -2039,9 +2040,13 @@ public class AgentG2 extends Agent {
 		// check if any attached block fits to a multiBlockTask
 		// todo
 		for (Task task : tasks) {
+			System.out.println("Checking Tasks");
 			for (int i = 0; i < task.getRequirements().size(); i++) {
+				System.out.println("iterating tasks");
 				for (int j = 0; j < attachedBlocks.size(); j++) {
+					System.out.println("iterating attachedblocks");
 					if (task.getRequirements().get(i).getBlockType().equals(attachedBlocks.get(j).getType())) {
+						System.out.println("Task added");
 						correspondingTasks.add(task);
 						break;
 					}
