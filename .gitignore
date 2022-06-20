@@ -19,3 +19,4 @@ docs/*.html
 logs/*
 replays/*
 results/*
+/.metadata/

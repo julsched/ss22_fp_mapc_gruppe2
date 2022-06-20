@@ -1412,19 +1412,25 @@ public class AgentG2 extends Agent {
 		return sortHashMapKeysToList(nextDispenserTypeHashMap());
 	}
 	
-	// todo - not working yet
 	private List<String> sortHashMapKeysToList(HashMap<String, Integer> nextDispenserTypeHashMap) {
 		List<String> list = new ArrayList<>();
 		
 		for (Map.Entry<String, Integer> set : nextDispenserTypeHashMap.entrySet()) {
-			if (list.isEmpty()) list.add(set.getKey());
+			System.out.println(set.getKey());
+			if (list.isEmpty()) {
+				System.out.println("list empty");
+				list.add(set.getKey());
+				System.out.println("add "+set.getKey()+" to empty list");
+			}
 			for (int i = 0; i < list.size(); i++) {
-				if (nextDispenserTypeHashMap.get(list.get(i)) > set.getValue()) {
+				if (list.contains(set.getKey())) break;
+				if (nextDispenserTypeHashMap.get(list.get(i)) >= set.getValue()) {
 					list.add(i, set.getKey());
-				} else {
-					list.add(set.getKey());
+					System.out.println("add "+set.getKey()+" to "+ i);
+					break;
 				}
 			}
+			if (!list.contains(set.getKey())) list.add(set.getKey());
 		}
 		return list;
 	}
