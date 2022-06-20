@@ -1191,6 +1191,8 @@ public class AgentG2 extends Agent {
 			// chooses or searches goalzone
 			return this.workerActionSearchGoalzone(currentTask);
 		}
+		
+		
 		// worker needs blocks and should search for dispensers
 		// TODO
 		return this.workerActionSearchDispenser();
@@ -1294,7 +1296,7 @@ public class AgentG2 extends Agent {
 	 *
 	 * @return
 	 */
-	public void setAttachedBlockTypeMap() {
+	private void setAttachedBlockTypeMap() {
 		HashMap<String, Integer> map = new HashMap<String, Integer>();
 		map.put("b0", 0);
 		map.put("b1", 0);
@@ -1340,7 +1342,7 @@ public class AgentG2 extends Agent {
 		int b2attached = this.getAttachedBlockTypeMap().get("b2");
 		int b3attached = this.getAttachedBlockTypeMap().get("b3");
 
-		if (b0task == b0attached && b1task == b1attached && b2task == b2attached && b3task == b3attached) {
+		if ((b0task == b0attached) && (b1task == b1attached) && (b2task == b2attached) && (b3task == b3attached)) {
 			return true;
 		}
 
@@ -1361,13 +1363,85 @@ public class AgentG2 extends Agent {
 
 		return result;
 	}
+	
+	private HashMap<String, Integer> missingBlocksForTaskHash(){
+		if (this.attachedBlocks.isEmpty()) {
+			return this.currentTask.getBlockTypeMap();
+		}
+		HashMap<String, Integer> map = new HashMap<String, Integer>();
+		map.put("b0", this.getCurrentTask().getBlockTypeMap().get("b0") - this.getAttachedBlockTypeMap().get("b0"));
+		map.put("b1", this.getCurrentTask().getBlockTypeMap().get("b1") - this.getAttachedBlockTypeMap().get("b1"));
+		map.put("b2", this.getCurrentTask().getBlockTypeMap().get("b2") - this.getAttachedBlockTypeMap().get("b2"));
+		map.put("b3", this.getCurrentTask().getBlockTypeMap().get("b3") - this.getAttachedBlockTypeMap().get("b3"));
+				
+		return map;
+	}
+	
+	private List<String> missingBlockTypesList(){
+		List<String> list = new ArrayList<>();
+		
+		if (this.missingBlocksForTaskHash().get("b0")>0) list.add("b0");
+		if (this.missingBlocksForTaskHash().get("b1")>0) list.add("b1");
+		if (this.missingBlocksForTaskHash().get("b2")>0) list.add("b2");
+		if (this.missingBlocksForTaskHash().get("b3")>0) list.add("b3");
+		
+		return list;
+	}
 
 	private HashMap<String, Integer> getAttachedBlockTypeMap() {
 		return this.attachedBlockTypeMap;
 	}
+	
+	private HashMap<String, Integer> nextDispenserTypeHashMap(){
+		// todo get distance from pathcalc
+		int b0distance = 0;
+		int b1distance = 0;
+		int b2distance = 0;
+		int b3distance = 0;
+		
+		HashMap<String, Integer> map = new HashMap<String, Integer>();
+		
+		map.put("b0", b0distance);
+		map.put("b1", b1distance);
+		map.put("b2", b2distance);
+		map.put("b3", b3distance);
+		return map;
+	}
+	
+	private List<String> nextDispenserTypeList(){		
+		return sortHashMapKeysToList(nextDispenserTypeHashMap());
+	}
+	
+	// todo - not working yet
+	private List<String> sortHashMapKeysToList(HashMap<String, Integer> nextDispenserTypeHashMap) {
+		List<String> list = new ArrayList<>();
+		
+		for (Map.Entry<String, Integer> set : nextDispenserTypeHashMap.entrySet()) {
+			if (list.isEmpty()) list.add(set.getKey());
+			for (int i = 0; i < list.size(); i++) {
+				if (nextDispenserTypeHashMap.get(list.get(i)) > set.getValue()) {
+					list.add(i, set.getKey());
+				} else {
+					list.add(set.getKey());
+				}
+			}
+		}
+		return list;
+	}
 
 	private Action workerActionSearchDispenser() {
 		Set<RelativeCoordinate> dispenserCandidates = new HashSet<>();
+		
+		
+		// iterate over nextDispenserTypeList (contains...)
+		
+		
+		if (this.missingBlockTypesList().contains("b0")) {
+			Set<RelativeCoordinate> dispenserCandidatesTemp = pathCalc.determineDispenserCandidates(task.getRequirements().get(0).getBlockType());
+			dispenserCandidates.addAll(dispenserCandidatesTemp);
+		}
+		
+		
 		// TODO: Adjust for using the currentTask and passing the required dispenser type into determineDispenserCandidates()
 		for (Task task : tasks) {
 			Set<RelativeCoordinate> dispenserCandidatesTemp = pathCalc.determineDispenserCandidates(task.getRequirements().get(0).getBlockType());
