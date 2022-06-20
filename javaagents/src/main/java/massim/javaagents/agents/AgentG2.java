@@ -1441,12 +1441,13 @@ public class AgentG2 extends Agent {
 		
 		// iterate over nextDispenserTypeList (contains...)
 		
-		
+		//todo
+		/*
 		if (this.missingBlockTypesList().contains("b0")) {
 			Set<RelativeCoordinate> dispenserCandidatesTemp = pathCalc.determineDispenserCandidates(task.getRequirements().get(0).getBlockType());
 			dispenserCandidates.addAll(dispenserCandidatesTemp);
 		}
-		
+		**/
 		
 		// TODO: Adjust for using the currentTask and passing the required dispenser type into determineDispenserCandidates()
 		for (Task task : tasks) {
