@@ -20,7 +20,7 @@ public class MapManagement {
 	private RelativeCoordinate lastPosition;
 	private ArrayList<RelativeCoordinate> lastTeamMembers = new ArrayList<>();
 	
-	public MapManagement(int currentStep, RelativeCoordinate currentPosition) {
+	public MapManagement(int currentStep) {
 		
 		this.blockLayer = new HashMap<RelativeCoordinate, Block>();
 		this.dispenserLayer = new HashMap<RelativeCoordinate, Dispenser>();
@@ -29,33 +29,33 @@ public class MapManagement {
 		this.rolezoneLayer = new HashMap<RelativeCoordinate, Rolezone>();
 		this.clearLayer = new HashMap<RelativeCoordinate, ClearMarker>();
 		this.knownArea = new HashMap<RelativeCoordinate, Cell>();
-		this.currentPosition = currentPosition;
+		this.currentPosition = new RelativeCoordinate(0, 0);
 		this.currentStep = currentStep;
 		this.lastPosition = new RelativeCoordinate(0, 0);
 	}
 	
-	public void updatePosition(int x, int y, String direction, int counter) {
+	public void updatePosition(String direction, boolean fromLastStep) {
 		if (direction.equals("n")) {
-			if (counter == 1) {
-				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
-			}
-			currentPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY() + 1);
-		} else if (direction.equals("s")) {
-			if (counter == 1) {
+			if (fromLastStep == true) {
 				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
 			}
 			currentPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY() - 1);
+		} else if (direction.equals("s")) {
+			if (fromLastStep == true) {
+				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
+			}
+			currentPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY() + 1);
 		} else if (direction.equals("e")) {
-			if (counter == 1) {
+			if (fromLastStep == true) {
 				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
 			}
 			currentPosition = new RelativeCoordinate(currentPosition.getX() + 1, currentPosition.getY());
 		} else if (direction.equals("w")) {
-			if (counter == 1) {
+			if (fromLastStep == true) {
 				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
 			}
-			currentPosition = new RelativeCoordinate(currentPosition.getX() - 1, currentPosition.getY() - 1);
-		}		
+			currentPosition = new RelativeCoordinate(currentPosition.getX() - 1, currentPosition.getY());
+		}	
 	}
 	
 	public void updateMap(HashMap<RelativeCoordinate, List<Cell>> tempMap, int vision) {
@@ -272,17 +272,34 @@ public class MapManagement {
 		
 	}
 	
-	public void setTeamMembers(ArrayList<RelativeCoordinate> seenTeamMembers) {
+	public String setTeamMembers(ArrayList<RelativeCoordinate> seenTeamMembers) {
 		lastTeamMembers = teamMembers;
 		teamMembers = seenTeamMembers;
+		return "Länge FL: " + teamMembers.size() + " und Länge alte FL: " + lastTeamMembers.size();
 	}
 	
 	public ArrayList<RelativeCoordinate> getTeamMembers() {
 		return teamMembers;
 	}
 	
+	public ArrayList<RelativeCoordinate> copyTeamMembers() {
+		ArrayList<RelativeCoordinate> temp = new ArrayList<RelativeCoordinate>();
+		for (RelativeCoordinate rc : teamMembers) {
+			temp.add(new RelativeCoordinate(rc.getX(), rc.getY()));
+		}
+		return temp;
+	}
+	
 	public ArrayList<RelativeCoordinate> getLastTeamMembers() {
 		return lastTeamMembers;
+	}
+	
+	public ArrayList<RelativeCoordinate> copyLastTeamMembers() {
+		ArrayList<RelativeCoordinate> temp = new ArrayList<RelativeCoordinate>();
+		for (RelativeCoordinate rc : lastTeamMembers) {
+			temp.add(new RelativeCoordinate(rc.getX(), rc.getY()));
+		}
+		return temp;
 	}
 	
 	public void createExchangePartner(RelativeCoordinate position) {
@@ -319,6 +336,14 @@ public class MapManagement {
 	
 	public HashMap<RelativeCoordinate, Obstacle> getObstacleLayer() {
 		return obstacleLayer;
+	}
+	
+	public RelativeCoordinate getPosition() {
+		return currentPosition;
+	}
+	
+	public void setPosition(RelativeCoordinate newPosition) {
+		currentPosition = newPosition;
 	}
 	
 	public RelativeCoordinate getLastPosition() {

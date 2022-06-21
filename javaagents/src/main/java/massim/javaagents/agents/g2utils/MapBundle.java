@@ -6,6 +6,7 @@ import java.util.HashMap;
 public class MapBundle {
 	
 	private String owner;
+	private int step;
 	private HashMap<RelativeCoordinate, Block> blockLayer;
 	private HashMap<RelativeCoordinate, Dispenser> dispenserLayer;
 	private HashMap<RelativeCoordinate, Goalzone> goalzoneLayer;
@@ -15,8 +16,9 @@ public class MapBundle {
 	private RelativeCoordinate currentPos;
 	int currentStep;
 	
-	public MapBundle(String owner, HashMap<RelativeCoordinate, Block> blockLayer, HashMap<RelativeCoordinate, Dispenser> dispenserLayer, HashMap<RelativeCoordinate, Goalzone> goalzoneLayer, HashMap<RelativeCoordinate, Obstacle> obstacleLayer, HashMap<RelativeCoordinate, Rolezone> rolezoneLayer, ArrayList<RelativeCoordinate> teamMembers, RelativeCoordinate currentPos, int currentStep) {
+	public MapBundle(String owner, int step, HashMap<RelativeCoordinate, Block> blockLayer, HashMap<RelativeCoordinate, Dispenser> dispenserLayer, HashMap<RelativeCoordinate, Goalzone> goalzoneLayer, HashMap<RelativeCoordinate, Obstacle> obstacleLayer, HashMap<RelativeCoordinate, Rolezone> rolezoneLayer, ArrayList<RelativeCoordinate> teamMembers, RelativeCoordinate currentPos, int currentStep) {
 		this.owner = owner;
+		this.step = step;
 		this.blockLayer = blockLayer;
 		this.dispenserLayer = dispenserLayer;
 		this.goalzoneLayer = goalzoneLayer;

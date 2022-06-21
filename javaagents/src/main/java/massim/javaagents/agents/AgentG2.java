@@ -57,7 +57,7 @@ public class AgentG2 extends Agent {
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
 	private ArrayList<String> knownAgents = new ArrayList<String>();
 	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); // see map
-	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
+//	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
 	private Orientation orientation = Orientation.NORTH;
 	private HashMap<RelativeCoordinate, Cell> attachedBlocksWithPositions = new HashMap<>();
 	private String roleName = ""; // TODO -> automatisch aktualisieren, wenn Rolle geändert wird
@@ -89,7 +89,7 @@ public class AgentG2 extends Agent {
 	 */
 	public AgentG2(String name, MailService mailbox) {
 		super(name, mailbox);
-		this.mapManager = new MapManagement(this.currentStep, this.currentPos);
+		this.mapManager = new MapManagement(currentStep);
 	}
 
 	@Override
@@ -102,10 +102,6 @@ public class AgentG2 extends Agent {
 
 	@Override
 	public Action step() {
-		
-		if (exchangeCounter > 0) {
-			exchangeCounter = exchangeCounter + 1;
-		}
 		
 		List<Percept> percepts = getPercepts();
 		if (simSteps != 0 && currentStep == simSteps - 1) {
@@ -130,38 +126,49 @@ public class AgentG2 extends Agent {
 
 		saveStepPercepts(percepts);
 
-		mapManager.setTeamMembers(friendlyAgents);
-
 		analyzeAttachedThings();
 		setAttachedBlockTypeMap();
 
 		// Auswertung der abgespeicherten Ergebnisse der lastAction
 		evaluateLastAction();
+		
+		String str = mapManager.setTeamMembers(friendlyAgents);
+		say(str);
+		for (MapBundle mb : mapBundleList) {
+			say("Friend " + mb.getOwner() + ":");
+			for (RelativeCoordinate rc :  mb.getTeamMembers()) {
+				say("Seeing agent at (" + rc.getX() + ", " + rc.getY() + ")");
+			}
+		}
+
 
 		// nach der Evaluation ist die currentPosition korrekt bestimmt und es können
 		// die things der map hinzugefügt werden
 		mapManager.updateMap(tempMap, currentRole.getVision());
+		say("Map updated: Version step " + currentStep);
 		tempMap = new HashMap<RelativeCoordinate, List<Cell>>();
-/*
-		// Einleiten des Austausches der maps
-		if (initiateMapExchange) {
-			say("I want your map, " + mapManager.getExchangePartner().getName() + " in step " + currentStep);
-//			requestMap(mapManager.getExchangePartner().getName(), currentStep);
-		}
-*/
+
 		// Übergeben der gewünschten Map
 		if (requestForMap) {
-			say("I give you my map in step" + currentStep);
+			say("I give you my map in step " + currentStep);
 			if (stepOfRequest == currentStep) {
-				mailbox.deliverMap(requestingExplorer, new MapBundle(getName(), mapManager.getBlockLayer(),
+				say("My position: (" + mapManager.getPosition().getX() + ", " + mapManager.getPosition().getY() + ")");
+				for (RelativeCoordinate p : mapManager.getTeamMembers()) {
+					say("Pos of friend: (" + p.getX() + ", " + p.getY() + ")");  
+				}
+				mailbox.deliverMap(requestingExplorer, new MapBundle(getName(), currentStep, mapManager.getBlockLayer(),
 						mapManager.getDispenserLayer(), mapManager.getGoalzoneLayer(), 
-						mapManager.getObstacleLayer(), mapManager.getRolezoneLayer(), mapManager.getTeamMembers(), currentPos, currentStep));
+						mapManager.getObstacleLayer(), mapManager.getRolezoneLayer(), mapManager.copyTeamMembers(), mapManager.getPosition(), currentStep));
 				stepOfRequest = -3;
 			}
 			if (stepOfRequest == currentStep - 1) {
-				mailbox.deliverMap(requestingExplorer, new MapBundle(getName(), mapManager.getBlockLayer(),
+				say("My position: (" + mapManager.getLastPosition().getX() + ", " + mapManager.getLastPosition().getY() + ")");
+				for (RelativeCoordinate p : mapManager.getLastTeamMembers()) {
+					say("Pos: (" + p.getX() + ", " + p.getY() + ")");  
+				}
+				mailbox.deliverMap(requestingExplorer, new MapBundle(getName(), currentStep - 1, mapManager.getBlockLayer(),
 						mapManager.getDispenserLayer(), mapManager.getGoalzoneLayer(), 
-						mapManager.getObstacleLayer(), mapManager.getRolezoneLayer(), mapManager.getLastTeamMembers(), mapManager.getLastPosition(), currentStep - 1));
+						mapManager.getObstacleLayer(), mapManager.getRolezoneLayer(), mapManager.copyLastTeamMembers(), mapManager.getLastPosition(), currentStep - 1));
 				stepOfRequest = -3;
 			}
 			requestForMap = false;
@@ -175,29 +182,43 @@ public class AgentG2 extends Agent {
 				ArrayList<MapBundle> candidates = new ArrayList<MapBundle>();
 				int xDistance = exchangePartner.getX();
 				int yDistance = exchangePartner.getY();
+				say("Exchange partner relative coordinates: (" + xDistance + ", " + yDistance + ")");
 				Iterator<MapBundle> it = mapBundleList.iterator();
 				while (it.hasNext()) {
 					MapBundle analyzedMap = it.next();
+					say("Map of agent " + analyzedMap.getOwner());
 					int xPos = analyzedMap.getPosition().getX();
 					int yPos = analyzedMap.getPosition().getY();
+					say("Position of analyzed agent: (" + xPos + ", " + yPos + ")");
 					ArrayList<RelativeCoordinate> seenAgents = analyzedMap.getTeamMembers();
 					Iterator<RelativeCoordinate> itAgents = seenAgents.iterator();
 					while (itAgents.hasNext()) {
 						RelativeCoordinate agentPos = itAgents.next();
-						if ((agentPos.getX() - xPos == xDistance) && (agentPos.getY() - yPos == yDistance)) {
+						say("Position of seen agent: (" + agentPos.getX() + ", " + agentPos.getY() + ")");
+						if ((agentPos.getX() == -xDistance) && (agentPos.getY() == -yDistance)) {
 							candidates.add(analyzedMap);
 						}
 					}
 				}
+				say("I found a candidate: " + (candidates.size() == 1));
+				if (candidates.size() == 1) {
+					say("I dont know the candidate: " + (!knownAgents.contains(candidates.get(0).getOwner())));
+				}
 				if (candidates.size() == 1 && !(knownAgents.contains(candidates.get(0).getOwner()))) {
 					String newAgent = mapManager.mergeMaps(candidates.get(0), exchangePartner);
-					say("I sand the updated map to my partner");
+					say("I send the updated map to my partner");
 					sendMap(newAgent, mapManager, exchangePartner);
 					knownAgents.add(newAgent);
 					counterMapExchange = 0;
 				}
 				exchangePartner = null;
+				mapBundleList = new ArrayList<MapBundle>();
 			}
+		}
+		
+		// Fortschritt Map-Austausch verfolgen
+		if (exchangeCounter > 0) {
+			exchangeCounter = exchangeCounter + 1;
 		}
 
 		if (explorerAgent.equals(getName())) {
@@ -354,19 +375,19 @@ public class AgentG2 extends Agent {
 					break;
 				}
 				if (thingType.equals("entity")) {
-					say("I add an entity");
 					String team = ((Identifier) percept.getParameters().get(3)).getValue();
 					Entity entity = new Entity(relativeCoordinate, team);
 					entities.add(entity);
 					occupiedFields.add(relativeCoordinate);
 					occupiedFieldsWithoutBlocks.add(relativeCoordinate);
 					RelativeCoordinate ownPosition = new RelativeCoordinate(0, 0);
-					say("I found a friend: " + teamName.equals(team));
+					if (explorerAgent.equals(getName())) {
+						say("I found a friend: " + teamName.equals(team));
+					}
+
 					if (teamName.equals(team) && (!relativeCoordinate.equals(ownPosition))) {
 						say("I add agent at " + relativeCoordinate.getX() + ", " + relativeCoordinate.getY() + "to my friendlist");
-						RelativeCoordinate absolutePosition = new RelativeCoordinate(currentPos.getX() + x,
-								currentPos.getY() + y);
-						friendlyAgents.add(absolutePosition);
+						friendlyAgents.add(relativeCoordinate);
 					}
 					break;
 				}
@@ -814,21 +835,16 @@ public class AgentG2 extends Agent {
 		case "move":
 			if (this.lastActionResult.equals("success")) {
 				Iterator<Object> it = lastActionParams.iterator();
-				int counter = 1;
+				boolean lastPosition = true;
 				while (it.hasNext()) {
 					Object temp = it.next();
 					String dir = temp.toString();
-					say("Direction is: " + dir);
-					int x = currentPos.getX();
-					int y = currentPos.getY();
-					mapManager.updatePosition(x, y, dir, counter);
-					counter = counter + 1;
+					mapManager.updatePosition(dir, lastPosition);
+					lastPosition = false;
 				}
 			} else if (this.lastActionResult.equals("partial_success")) {
 				String dir = (String) this.lastActionParams.get(0);
-				int x = currentPos.getX();
-				int y = currentPos.getY();
-				mapManager.updatePosition(x, y, dir, 1);
+				mapManager.updatePosition(dir, true);
 				// TODO: Fehlerbehandlung, falls Agent mehr als zwei Schritte laufen kann
 			} else if (this.lastActionResult.equals("failed_parameter")) {
 				// Fehlerbehandlung
@@ -844,22 +860,22 @@ public class AgentG2 extends Agent {
 				Cell cell;
 				switch (direction) {
 				case "n":
-					pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() + 1);
+					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() + 1);
 					cell = this.map.get(pos);
 					this.attachedBlocksWithPositions.put(pos, cell);
 					break;
 				case "s":
-					pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() - 1);
+					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() - 1);
 					cell = this.map.get(pos);
 					this.attachedBlocksWithPositions.put(pos, cell);
 					break;
 				case "e":
-					pos = new RelativeCoordinate(this.currentPos.getX() + 1, this.currentPos.getY());
+					pos = new RelativeCoordinate(mapManager.getPosition().getX() + 1, mapManager.getPosition().getY());
 					cell = this.map.get(pos);
 					this.attachedBlocksWithPositions.put(pos, cell);
 					break;
 				case "w":
-					pos = new RelativeCoordinate(this.currentPos.getX() - 1, this.currentPos.getY());
+					pos = new RelativeCoordinate(mapManager.getPosition().getX() - 1, mapManager.getPosition().getY());
 					cell = this.map.get(pos);
 					this.attachedBlocksWithPositions.put(pos, cell);
 					break;
@@ -883,19 +899,19 @@ public class AgentG2 extends Agent {
 				RelativeCoordinate pos;
 				switch (direction) {
 				case "n":
-					pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() + 1);
+					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() + 1);
 					this.attachedBlocks.remove(pos);
 					break;
 				case "s":
-					pos = new RelativeCoordinate(this.currentPos.getX(), this.currentPos.getY() - 1);
+					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() - 1);
 					this.attachedBlocks.remove(pos);
 					break;
 				case "e":
-					pos = new RelativeCoordinate(this.currentPos.getX() + 1, this.currentPos.getY());
+					pos = new RelativeCoordinate(mapManager.getPosition().getX() + 1, mapManager.getPosition().getY());
 					this.attachedBlocks.remove(pos);
 					break;
 				case "w":
-					pos = new RelativeCoordinate(this.currentPos.getX() - 1, this.currentPos.getY());
+					pos = new RelativeCoordinate(mapManager.getPosition().getX() - 1, mapManager.getPosition().getY());
 					this.attachedBlocks.remove(pos);
 					break;
 				default:
@@ -1021,11 +1037,6 @@ public class AgentG2 extends Agent {
 				break;
 			}
 		}
-
-	}
-
-	private void setCurrentPosition(RelativeCoordinate relativeCoordinate) {
-		this.currentPos = relativeCoordinate;
 
 	}
 
@@ -1472,7 +1483,7 @@ public class AgentG2 extends Agent {
 
 	private Action workerActionSearchDispenser() {
 		if (!dispensers.isEmpty()) {
-			say("Dispenser(s) identified");
+	//		say("Dispenser(s) identified");
 			Set<RelativeCoordinate> dispenserLocations = new HashSet<>();
 			for (Dispenser dispenser : dispensers) {
 				// Check whether there is a task for this block type
@@ -1502,25 +1513,25 @@ public class AgentG2 extends Agent {
 				Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields,
 						determineLocations("attachedBlock", null), dispenserLocations);
 				if (dir == null) {
-					say("No path towards goal zone.");
+	//				say("No path towards goal zone.");
 					return explorerStep();
 				}
-				say("Path identified. Moving towards dispenser...");
+	//			say("Path identified. Moving towards dispenser...");
 				switch (dir) {
 				case NORTH -> {
-					say("NORTH");
+//					say("NORTH");
 					return new Action("move", new Identifier("n"));
 				}
 				case EAST -> {
-					say("EAST");
+//					say("EAST");
 					return new Action("move", new Identifier("e"));
 				}
 				case SOUTH -> {
-					say("SOUTH");
+		//			say("SOUTH");
 					return new Action("move", new Identifier("s"));
 				}
 				case WEST -> {
-					say("WEST");
+	//				say("WEST");
 					return new Action("move", new Identifier("w"));
 				}
 				}
@@ -1547,9 +1558,9 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action borderExplorerStep() {
-		say("I was next to obstacle last step: " + wasNextToObstacleLastStep);
+//		say("I was next to obstacle last step: " + wasNextToObstacleLastStep);
 		if (nextToObstacle()) {
-			say("IAM NEXTTO BORDER");
+	//		say("IAM NEXTTO BORDER");
 			wasNextToObstacleLastStep = true;
 			dirToFindBorder = ""; // resets dir to find border
 
@@ -1626,7 +1637,7 @@ public class AgentG2 extends Agent {
 
 	private Action walkAlongsideBorder() {
 		findBorders();
-		say("Borders: " + dirOfBorders);
+//		say("Borders: " + dirOfBorders);
 		if (dirOfBorders.size() == 0) {
 			if (comesFromDeadEnd && !moveDir3StepsAgo.equals("")) {
 				return move(moveDir3StepsAgo);
@@ -1769,16 +1780,18 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action explorerStep() {
-	// falls mindestens ein Teammitglied sichtbar, wird dies nach seinem Namen
+	// falls mindestens in Teammitglied sichtbar, wird dies nach seinem Namen
 		// befragt, um einen map-Austausch einzuleiten
 		// TODO: Bedingung sollte weiter eingeschränkt, weil sonst nur surveyed und
 		// nicht explort wird
 
 		say("Friendly Agents: " + friendlyAgents.size() + " und Counter: " + counterMapExchange);
+		say("Exchange partner exists: " + !(exchangePartner == null));
 
-		if (!(friendlyAgents.size() == 1) && counterMapExchange > 10 && !(exchangePartner == null)) {
+		if ((friendlyAgents.size() == 1) && (counterMapExchange > 10) && (exchangePartner == null) && (explorerAgent.equals(getName()))) {
 			say("I begin map exchange process");
-			exchangePartner = new RelativeCoordinate(friendlyAgents.get(0).getX() - currentPos.getX(), friendlyAgents.get(0).getY() - currentPos.getY());
+			exchangePartner = new RelativeCoordinate(friendlyAgents.get(0).getX(), friendlyAgents.get(0).getY());
+			say("Exchange partner set: " + !(exchangePartner == null));
 			mailbox.broadcastMapRequest(currentStep, getName());
 			exchangeCounter = 1;
 			/*
@@ -1833,6 +1846,7 @@ public class AgentG2 extends Agent {
 				possibleDirs.remove(getOppositeDirection(prefDir));
 			}
 			say("possible Dirs after: " + possibleDirs);
+			say("Exchange partner exists end explorer step: " + !(exchangePartner == null));
 			return moveRandomly(1, possibleDirs); // TODO adjust 1 to current step length
 
 		}
@@ -1957,7 +1971,7 @@ public class AgentG2 extends Agent {
 		} else {
 			preferredDirTimer--;
 		}
-		say("get Preferred Dir: " + preferredDir);
+//		say("get Preferred Dir: " + preferredDir);
 		return preferredDir;
 	}
 
@@ -2106,14 +2120,14 @@ public class AgentG2 extends Agent {
 				|| (currentBlockPos.isOneStepEast() && targetBlockPos.isOneStepSouth())
 				|| (currentBlockPos.isOneStepSouth() && targetBlockPos.isOneStepWest())
 				|| (currentBlockPos.isOneStepWest() && targetBlockPos.isOneStepNorth())) {
-			say("Rotating in clockwise direction to fulfill task...");
+//			say("Rotating in clockwise direction to fulfill task...");
 			return new Action("rotate", new Identifier("cw"));
 		}
 		if ((currentBlockPos.isOneStepNorth() && targetBlockPos.isOneStepWest())
 				|| (currentBlockPos.isOneStepEast() && targetBlockPos.isOneStepNorth())
 				|| (currentBlockPos.isOneStepSouth() && targetBlockPos.isOneStepEast())
 				|| (currentBlockPos.isOneStepWest() && targetBlockPos.isOneStepSouth())) {
-			say("Rotating in counter-clockwise direction to fulfill task...");
+//			say("Rotating in counter-clockwise direction to fulfill task...");
 			return new Action("rotate", new Identifier("ccw"));
 		}
 		if ((currentBlockPos.isOneStepNorth() && targetBlockPos.isOneStepSouth())) {
@@ -2533,7 +2547,7 @@ public class AgentG2 extends Agent {
 		int xDiff = newPosition.getX();
 		int yDiff = newPosition.getY();
 		say("Neue Position: " + xDiff + ", " + yDiff);
-		currentPos = new RelativeCoordinate(currentPos.getX() + xDiff, currentPos.getY() + yDiff);
+		mapManager.setPosition(new RelativeCoordinate(mapManager.getPosition().getX() + xDiff, mapManager.getPosition().getY() + yDiff));
 		this.mapManager = mapManager;
 		mapManager.updateLastPosition(xDiff, yDiff);
 	}
