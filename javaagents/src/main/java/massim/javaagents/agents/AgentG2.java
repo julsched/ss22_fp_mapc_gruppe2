@@ -1434,54 +1434,72 @@ public class AgentG2 extends Agent {
 		}
 		return list;
 	}
+	
+	// todo
+	private Dispenser getNextDispenser(String type) {
+		
+		
+		return null;
+	}
 
+	/**
+	 * editor: michael
+	 * 
+	 * if worker knows of dispensers fitting to the required blocktypes they will
+	 * go to the closest
+	 * 
+	 * @return go to dispenser or explorerstep
+	 */
 	private Action workerActionSearchDispenser() {
-		Set<RelativeCoordinate> dispenserCandidates = new HashSet<>();
+		Dispenser disp = null;
 		
-		
-		// iterate over nextDispenserTypeList (contains...)
-		
-		//todo
-		/*
-		if (this.missingBlockTypesList().contains("b0")) {
-			Set<RelativeCoordinate> dispenserCandidatesTemp = pathCalc.determineDispenserCandidates(task.getRequirements().get(0).getBlockType());
-			dispenserCandidates.addAll(dispenserCandidatesTemp);
+		if (!this.nextDispenserTypeList().isEmpty()) {
+			for (String dispensertype : this.nextDispenserTypeList()) {
+				if (this.missingBlockTypesList().contains(dispensertype)) {
+					disp = getNextDispenser(dispensertype);
+					say("Suitable dispenser(s) identified");
+					break;
+					// eventuell String disp?
+				}
+			}
 		}
-		**/
 		
-		// TODO: Adjust for using the currentTask and passing the required dispenser type into determineDispenserCandidates()
-		for (Task task : tasks) {
-			Set<RelativeCoordinate> dispenserCandidatesTemp = pathCalc.determineDispenserCandidates(task.getRequirements().get(0).getBlockType());
-			dispenserCandidates.addAll(dispenserCandidatesTemp);
+		if (disp == null) {
+			return explorerStep();
 		}
-		//dispenserCandidates = pathCalc.determineDispenserCandidates(currentTask.getRequirements().get(0).getBlockType());
+		
+		return this.goToDispenser(disp);
+	}
 
-		if (!dispenserCandidates.isEmpty()) {
-			say("Suitable dispenser(s) identified");
-			for (RelativeCoordinate relativeCoordinate : dispenserCandidates) {
-				if (relativeCoordinate.isNextToAgent(mapManager.getCurrentPosition())) {
-					String direction = relativeCoordinate.getDirectDirection(mapManager.getCurrentPosition());
-					return requestBlock(direction);
-				}
-				// If agent is on top of dispenser -> move one step to be able to request a
-				// block
-				if (relativeCoordinate.getX() == mapManager.getCurrentPosition().getX() 
-					&& relativeCoordinate.getY() == mapManager.getCurrentPosition().getY()) {
-					return moveRandomly(1); // TODO: check for obstacles
-				}
-			}
-			// Move towards dispenser
-			String dir = pathCalc.calculateShortestPathMap(dispenserCandidates);
-			if (dir == null) {
-				say("No path towards dispenser.");
-				return explorerStep();
-			} else {
-				say("Path identified. Moving towards dispenser...");
-				return move(dir);
-			}
+	/**
+	 * editor: michael
+	 *
+	 * goes to certain dispenser if there is a path
+	 *
+	 * @param disp
+	 * @return move (dir) to next dispenser or explorerstep
+	 */
+	private Action goToDispenser(Dispenser disp) {
+		// agent is next to Dispenser
+		if (disp.getRelativeCoordinate().isNextToAgent(mapManager.getCurrentPosition())) {
+			String direction = disp.getRelativeCoordinate().getDirectDirection(mapManager.getCurrentPosition());
+			return requestBlock(direction);
 		}
-		// Explore to find a dispenser
-		return explorerStep();
+		// If agent is on top of dispenser -> move one step to be able to request a block
+		if (disp.getRelativeCoordinate().getX() == mapManager.getCurrentPosition().getX() 
+				&& disp.getRelativeCoordinate().getY() == mapManager.getCurrentPosition().getY()) {
+			say("I am on a dispenser. Stepping aside.");
+			return moveRandomly(1); // TODO: check for obstacles or blocks
+		}
+		// Move towards dispenser
+		String dir = pathCalc.calculateShortestPathMap(disp.getRelativeCoordinate());
+		if (dir == null) {
+			say("No path towards dispenser.");
+			return explorerStep();
+		} else {
+			say("Path identified. Moving towards dispenser...");
+			return move(dir);
+		}
 	}
 
 	// default (main) worker method

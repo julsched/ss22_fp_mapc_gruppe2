@@ -92,6 +92,100 @@ public class PathCalc {
         }
         return null;
     }
+    
+    /**
+	 * Determines the direction of the closest destination taking into account obstacles/entities/blocks on the way
+	 * 
+	 * @param destinations The possible destinations
+	 * 
+	 * @return The direction the agent should walk towards
+	 */
+    public String calculateShortestPathMap(RelativeCoordinate relativeCoordinate) {
+
+        
+        List<RelativeCoordinate> attachedBlocksRelative = getRelativeCoordinates(attachedBlocks);
+        RelativeCoordinate currentPos = mapManager.getCurrentPosition();
+        HashMap<String, RelativeCoordinate> mapDimensions = mapManager.analyzeMapDimensions();
+        HashMap<RelativeCoordinate, Block> blockLayer = mapManager.getBlockLayer();
+        HashMap<RelativeCoordinate, Obstacle> obstacleLayer = mapManager.getObstacleLayer();
+        HashMap<RelativeCoordinate, Entity> entityLayer = mapManager.getEntityLayer();
+
+        // Position of agent inside the map
+        int xA = currentPos.getX();
+        int yA = currentPos.getY();
+
+        // Set for keeping track of the fields that have been already analyzed
+        Set<RelativeCoordinate> discovered = new HashSet<>();
+        discovered.add(currentPos);
+
+
+        // Start of algorithm
+        Queue<Node> queue = new ArrayDeque<>();
+        queue.add(new Node(xA, yA, null));
+        while (!queue.isEmpty()) {
+            Node node = queue.poll();
+
+            // TODO: take into account that agent can rotate in order to fit on a path
+            // TODO: Enable agent to walk two steps
+
+            for (Direction dir : Direction.values()) {
+                int newX = node.x + dir.getDx();
+                int newY = node.y + dir.getDy();
+                if (newX < 0) {
+                    int x = mapDimensions.get("west").getX();
+                    if (newX < (x - 5)) {
+                        continue;
+                    }
+                } else {
+                    int x = mapDimensions.get("east").getX();
+                    if (newX > (x + 5)) {
+                        continue;
+                    }
+                }
+                if (newY < 0) {
+                    int y = mapDimensions.get("north").getY();
+                    if (newY < (y - 5)) {
+                        continue;
+                    }
+                } else {
+                    int y = mapDimensions.get("south").getY();
+                    if (newY > (y + 5)) {
+                        continue;
+                    }
+                }
+
+                // Check if the cell is occupied
+                boolean occupied = checkIfOccupied(new RelativeCoordinate(newX, newY));
+
+                // Check if attachedBlocks of agent fit into the cell's surrounding cells
+                if (!occupied) {
+                    for (RelativeCoordinate attachedBlock : attachedBlocksRelative) {
+                        RelativeCoordinate absolutePosition = new RelativeCoordinate(newX + attachedBlock.getX(), newY + attachedBlock.getY());
+                        occupied = checkIfOccupied(absolutePosition);
+                        if (occupied) {
+                            break;
+                        }
+                    }
+                }
+                
+                // Is there a path in the direction and has that field not yet been analyzed?
+                if (!occupied && !discovered.contains(new RelativeCoordinate(newX, newY))) {
+                    Direction newDir = node.initialDir == null ? dir : node.initialDir;
+                        int xG = relativeCoordinate.getX();
+                        int yG = relativeCoordinate.getY();
+                        // Destination reached?
+                        if (newX == xG && newY == yG) {
+                            System.out.println("Destination: (" + newX + "|" + newY + ")");
+                            return newDir.toString();
+                        }
+                    // Mark field as 'discovered' and add it to the queue
+                    discovered.add(new RelativeCoordinate(newX, newY));
+                    queue.add(new Node(newX, newY, newDir));
+                }
+            }
+        }
+        return null;
+    }
 
     /**
 	 * Determines the direction of the closest destination taking into account obstacles/entities/blocks on the way
