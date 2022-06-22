@@ -318,7 +318,9 @@ public class AgentG2 extends Agent {
 					String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
 					Block block = new Block(relativeCoordinate, blockType, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, block);
-					blocks.add(new Block(relativeCoordinate, blockType, currentStep)); // Should not have same block object as in map since coordinates differ
+					blocks.add(new Block(relativeCoordinate, blockType, currentStep)); // Should not have same block
+																						// object as in map since
+																						// coordinates differ
 					occupiedFields.add(relativeCoordinate);
 					if (!tempMap.containsKey(relativeCoordinate)) {
 						ArrayList<Cell> cellList = new ArrayList<Cell>();
@@ -550,39 +552,39 @@ public class AgentG2 extends Agent {
 			if (lastAction.equals("detach") && lastActionResult.equals("success")) {
 				String direction = (String) lastActionParams.get(0);
 				Block blockToBeRemoved = null;
-				switch(direction) {
-					case "n" -> {
-						for (Block block : attachedBlocks) {
-							if (block.getRelativeCoordinate().equals(new RelativeCoordinate(0, -1))) {
-								blockToBeRemoved = block;
-								break;
-							}
+				switch (direction) {
+				case "n" -> {
+					for (Block block : attachedBlocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(0, -1))) {
+							blockToBeRemoved = block;
+							break;
 						}
 					}
-					case "e" -> {
-						for (Block block : attachedBlocks) {
-							if (block.getRelativeCoordinate().equals(new RelativeCoordinate(1, 0))) {
-								blockToBeRemoved = block;
-								break;
-							}
+				}
+				case "e" -> {
+					for (Block block : attachedBlocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(1, 0))) {
+							blockToBeRemoved = block;
+							break;
 						}
 					}
-					case "s" -> {
-						for (Block block : attachedBlocks) {
-							if (block.getRelativeCoordinate().equals(new RelativeCoordinate(0, 1))) {
-								blockToBeRemoved = block;
-								break;
-							}
+				}
+				case "s" -> {
+					for (Block block : attachedBlocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(0, 1))) {
+							blockToBeRemoved = block;
+							break;
 						}
 					}
-					case "w" -> {
-						for (Block block : attachedBlocks) {
-							if (block.getRelativeCoordinate().equals(new RelativeCoordinate(-1, 0))) {
-								blockToBeRemoved = block;
-								break;
-							}
+				}
+				case "w" -> {
+					for (Block block : attachedBlocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(-1, 0))) {
+							blockToBeRemoved = block;
+							break;
 						}
 					}
+				}
 				}
 				if (blockToBeRemoved != null) {
 					attachedBlocks.remove(blockToBeRemoved);
@@ -1344,12 +1346,15 @@ public class AgentG2 extends Agent {
 
 	private Action workerActionSearchDispenser() {
 		Set<RelativeCoordinate> dispenserCandidates = new HashSet<>();
-		// TODO: Adjust for using the currentTask and passing the required dispenser type into determineDispenserCandidates()
+		// TODO: Adjust for using the currentTask and passing the required dispenser
+		// type into determineDispenserCandidates()
 		for (Task task : tasks) {
-			Set<RelativeCoordinate> dispenserCandidatesTemp = pathCalc.determineDispenserCandidates(task.getRequirements().get(0).getBlockType());
+			Set<RelativeCoordinate> dispenserCandidatesTemp = pathCalc
+					.determineDispenserCandidates(task.getRequirements().get(0).getBlockType());
 			dispenserCandidates.addAll(dispenserCandidatesTemp);
 		}
-		//dispenserCandidates = pathCalc.determineDispenserCandidates(currentTask.getRequirements().get(0).getBlockType());
+		// dispenserCandidates =
+		// pathCalc.determineDispenserCandidates(currentTask.getRequirements().get(0).getBlockType());
 
 		if (!dispenserCandidates.isEmpty()) {
 			say("Suitable dispenser(s) identified");
@@ -1360,8 +1365,8 @@ public class AgentG2 extends Agent {
 				}
 				// If agent is on top of dispenser -> move one step to be able to request a
 				// block
-				if (relativeCoordinate.getX() == mapManager.getCurrentPosition().getX() 
-					&& relativeCoordinate.getY() == mapManager.getCurrentPosition().getY()) {
+				if (relativeCoordinate.getX() == mapManager.getCurrentPosition().getX()
+						&& relativeCoordinate.getY() == mapManager.getCurrentPosition().getY()) {
 					return moveRandomly(1); // TODO: check for obstacles
 				}
 			}
@@ -1457,7 +1462,6 @@ public class AgentG2 extends Agent {
 		}
 		return false;
 	}
-
 
 	private Action walkToObstacle() {
 		if (dirOfBorders.size() == 0) {
@@ -1618,7 +1622,7 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action explorerStep() {
-	// falls mindestens ein Teammitglied sichtbar, wird dies nach seinem Namen
+		// falls mindestens ein Teammitglied sichtbar, wird dies nach seinem Namen
 		// befragt, um einen map-Austausch einzuleiten
 		// TODO: Bedingung sollte weiter eingeschränkt, weil sonst nur surveyed und
 		// nicht explort wird
@@ -1653,10 +1657,10 @@ public class AgentG2 extends Agent {
 		if (possibleDirs != null && possibleDirs.size() != 0) {
 			if (!prefDir.equals("")) {
 				if (possibleDirs.contains(prefDir)) {
-//					if(!(attachedBlocks.size() == 1)) {
-//						ArrayList<String> attachedBlocksDirs = getAttachedBlocksDirs();
-//						return rotateAccordingToAttachedBlock(prefDir, attachedBlocksDirs);
-//					}
+					if ((attachedBlocks.size() == 1)) {
+						String attachedBlockDir = getBlockDir(attachedBlocks.get(0));
+						return rotateAccordingToAttachedBlock(prefDir, attachedBlockDir);
+					}
 					return move(prefDir);
 				} else {
 //					if (attachedBlocks.size() ==0) {
@@ -1683,17 +1687,55 @@ public class AgentG2 extends Agent {
 		return new Action("skip");
 	}
 
+	private String getBlockDir(Block b) {
+		if ((attachedBlocks.size() == 1)) {
+			if (b.distanceFromAgent() == 1) {
+				say("attachedBlock direction " + b.getDirectDirection());
+				return b.getDirectDirection();
+			}
+		}
+		return "";
+	}
 
-
-//	private ArrayList<String> getAttachedBlocksDirs() {
-//		ArrayList<String> attachedBlocksDirs = new ArrayList<>();
-//		for(Block b : attachedBlocks) {
-//			if(b.distanceFromAgent()==1) {
-//				attachedBlocksDirs.add(b.getDirectDirection());
-//			}
-//		}
-//		return attachedBlocksDirs;
-//	}
+	private Action rotateAccordingToAttachedBlock(String prefDir, String attachedBlockDir) {
+		if (getOppositeDirection(attachedBlockDir) == prefDir) { // no Rotation necessary
+			return move(prefDir);
+		} else if (attachedBlockDir.equals(prefDir)) { // Rotation direction irrelevant
+			return new Action("rotate", new Identifier("cw"));
+		} else {
+			switch (prefDir) {
+			case ("n"): {
+				if (attachedBlockDir.equals("e")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			case ("e"): {
+				if (attachedBlockDir.equals("s")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			case ("s"): {
+				if (attachedBlockDir.equals("w")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			case ("w"): {
+				if (attachedBlockDir.equals("n")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			}
+		}
+		return null;
+	}
 
 	private Action clear(String prefDir) {
 		say("clearing " + prefDir);
