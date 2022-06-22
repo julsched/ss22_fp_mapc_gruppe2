@@ -1279,12 +1279,28 @@ public class AgentG2 extends Agent {
 	/**
 	 * editor: michael
 	 *
-	 * finds best task, to get most points in shortest time
+	 * finds best task, to complete in shortest time
 	 *
 	 * @return
 	 */
 	private Task findFastestTask() {
 		// TODO Auto-generated method stub
+		// distance to dispenser, dispenser -> goalzone, end of task
+				
+		return null;
+	}
+	
+	/**
+	 * editor: michael
+	 *
+	 * finds best task, to get most points in shortest time
+	 *
+	 * @return
+	 */
+	private Task findMostEfficientTask() {
+		// TODO Auto-generated method stub
+		// distance to dispenser, dispenser -> goalzone, end of task -> how often could it be completed -> possible reward
+				
 		return null;
 	}
 
