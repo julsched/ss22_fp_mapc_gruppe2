@@ -46,6 +46,10 @@ public class AgentG2 extends Agent {
 	private List<Block> attachedBlocks = new ArrayList<>();
 
 	private MapManagement mapManager;
+<<<<<<< Updated upstream
+=======
+	private PathCalcSuper pathCalc;
+>>>>>>> Stashed changes
 	private boolean initiateMapExchange = false;
 	private int counterMapExchange = 0;
 	private AgentInformation seenAgent = null;
@@ -96,6 +100,10 @@ public class AgentG2 extends Agent {
 	public AgentG2(String name, MailService mailbox) {
 		super(name, mailbox);
 		this.mapManager = new MapManagement(this.currentStep, this.currentPos);
+<<<<<<< Updated upstream
+=======
+		this.pathCalc = new PathCalc(mapManager, attachedBlocks);//new PathCalc(mapManager, attachedBlocks);
+>>>>>>> Stashed changes
 	}
 
 	@Override
@@ -1039,6 +1047,15 @@ public class AgentG2 extends Agent {
 			return moveRandomly(1);// //TODO wieder Einkommentierne @Carina
 
 		}
+<<<<<<< Updated upstream
+=======
+		if (lastAction.equals("clear") && !lastActionResult.equals("success")) {
+			say("Last attempt to clear failed.");
+			int xLast = Integer.parseInt((String) lastActionParams.get(0));
+			int yLast =Integer.parseInt((String) lastActionParams.get(1));
+			return new Action("clear", new Numeral(xLast), new Numeral(yLast));
+		}
+>>>>>>> Stashed changes
 		// TODO: expand error handling
 		return moveRandomly(currentRole.getSpeedWithoutAttachments());// TODO wieder Einkommentierne @Carina
 
@@ -1069,9 +1086,14 @@ public class AgentG2 extends Agent {
 			if (!goalZoneFieldCandidates.containsKey(new RelativeCoordinate(0, 0))) {
 				// Calculate direction agent should move into in order to get as fast as
 				// possible to the next suitable goal zone field
+<<<<<<< Updated upstream
 				// TODO: check if attached blocks will fit on this path
 				Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields,
 						determineLocations("attachedBlock", null), goalZoneFieldCandidates.keySet());
+=======
+				String dir = pathCalc.calculateShortestPathMap(goalZoneFieldCandidates);
+				say("calculated shortestPath, go "+ dir);
+>>>>>>> Stashed changes
 				if (dir == null) {
 					say("No path towards identified goal zone fields.");
 					return moveRandomly(currentRole.getSpeedWithoutAttachments());
@@ -1473,6 +1495,17 @@ public class AgentG2 extends Agent {
 					say("No path towards goal zone.");
 					return explorerStep();
 				}
+<<<<<<< Updated upstream
+=======
+			}
+			// Move towards dispenser
+			String dir = pathCalc.calculateShortestPathMap(dispenserCandidates);
+			say("calculated shortestPath, go "+ dir);
+			if (dir == null) {
+				say("No path towards dispenser.");
+				return explorerStep();
+			} else {
+>>>>>>> Stashed changes
 				say("Path identified. Moving towards dispenser...");
 				switch (dir) {
 				case NORTH -> {
@@ -1579,9 +1612,16 @@ public class AgentG2 extends Agent {
 
 	private Action walkToObstacle() {
 		if (dirOfBorders.size() == 0) {
+<<<<<<< Updated upstream
 			Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields,
 					determineLocations("attachedBlock", null), new HashSet(obstaclesInSight));
 			return move(dir.toString());
+=======
+			String dir = pathCalc.calculateShortestPathVision(currentRole.getVision(), occupiedFields,
+					new HashSet(obstaclesInSight));
+			say("calculated shortestPath, go "+ dir);
+			return move(dir);
+>>>>>>> Stashed changes
 		} else {
 			if (dirOfFocusBorder.equals("")) {
 				Random rand = new Random();
@@ -1736,6 +1776,7 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action explorerStep() {
+		say("EXplorerStep()");
 		// falls mindestens ein Teammitglied sichtbar, wird dies nach seinem Namen
 		// befragt, um einen map-Austausch einzuleiten
 		// TODO: Bedingung sollte weiter eingeschränkt, weil sonst nur surveyed und
@@ -2207,15 +2248,19 @@ public class AgentG2 extends Agent {
 	}
 
 	/**
-	 * Moves the agent in a given direction
+	 * Moves the agent in a given direction, if that direction is blocked, clear the obstacle.
 	 * 
 	 * @param dir The direction to move
 	 * @return The move action
 	 */
 	private Action move(String dir) {
-		say("moving " + dir);
+		boolean containsDir = mapManager.getObstacleLayer().containsKey(mapManager.getCurrentPosition().getCoordAfterWalkingInDir(dir));
+		if (containsDir && (mapManager.getObstacleLayer().get(dir)!= null)) {
+			return clear(dir);
+		}
 		return new Action("move", new Identifier(dir));
 	}
+
 
 	/**
 	 * Moves the agent randomly in any directions
@@ -2557,6 +2602,12 @@ public class AgentG2 extends Agent {
 		// simulation
 		currentStep = -1;
 		actionID = -1;
+<<<<<<< Updated upstream
+=======
+		currentPos = new RelativeCoordinate(0, 0);
+		mapManager = new MapManagement(this.currentStep, this.currentPos);
+		pathCalc = new PathCalc(mapManager, attachedBlocks);//new PathCalc(mapManager, attachedBlocks);
+>>>>>>> Stashed changes
 		roles.clear();
 		attachedBlocks.clear();
 		simStartPerceptsSaved = false;
