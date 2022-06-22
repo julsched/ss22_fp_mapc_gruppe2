@@ -55,7 +55,7 @@ public class AgentG2 extends Agent {
 	private ArrayList<MapBundle> mapBundleList = new ArrayList<MapBundle>();
 
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
-	private ArrayList<String> knownAgents = new ArrayList<String>();
+	private HashSet<String> knownAgents = new HashSet<String>();
 	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); // see map
 //	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
 	private Orientation orientation = Orientation.NORTH;
@@ -131,94 +131,33 @@ public class AgentG2 extends Agent {
 
 		// Auswertung der abgespeicherten Ergebnisse der lastAction
 		evaluateLastAction();
-		
-		String str = mapManager.setTeamMembers(friendlyAgents);
-		say(str);
-		for (MapBundle mb : mapBundleList) {
-			say("Friend " + mb.getOwner() + ":");
-			for (RelativeCoordinate rc :  mb.getTeamMembers()) {
-				say("Seeing agent at (" + rc.getX() + ", " + rc.getY() + ")");
-			}
-		}
 
-
-		// nach der Evaluation ist die currentPosition korrekt bestimmt und es können
+		// Nach der Evaluation ist die currentPosition korrekt bestimmt und es können
 		// die things der map hinzugefügt werden
 		mapManager.updateMap(tempMap, currentRole.getVision());
-		say("Map updated: Version step " + currentStep);
+		say("Map updated: version step " + currentStep);
 		tempMap = new HashMap<RelativeCoordinate, List<Cell>>();
 
 		// Übergeben der gewünschten Map
-		if (requestForMap) {
-			say("I give you my map in step " + currentStep);
-			if (stepOfRequest == currentStep) {
-				say("My position: (" + mapManager.getPosition().getX() + ", " + mapManager.getPosition().getY() + ")");
-				for (RelativeCoordinate p : mapManager.getTeamMembers()) {
-					say("Pos of friend: (" + p.getX() + ", " + p.getY() + ")");  
-				}
-				mailbox.deliverMap(requestingExplorer, new MapBundle(getName(), currentStep, mapManager.getBlockLayer(),
-						mapManager.getDispenserLayer(), mapManager.getGoalzoneLayer(), 
-						mapManager.getObstacleLayer(), mapManager.getRolezoneLayer(), mapManager.copyTeamMembers(), mapManager.getPosition(), currentStep));
-				stepOfRequest = -3;
-			}
-			if (stepOfRequest == currentStep - 1) {
-				say("My position: (" + mapManager.getLastPosition().getX() + ", " + mapManager.getLastPosition().getY() + ")");
-				for (RelativeCoordinate p : mapManager.getLastTeamMembers()) {
-					say("Pos: (" + p.getX() + ", " + p.getY() + ")");  
-				}
-				mailbox.deliverMap(requestingExplorer, new MapBundle(getName(), currentStep - 1, mapManager.getBlockLayer(),
-						mapManager.getDispenserLayer(), mapManager.getGoalzoneLayer(), 
-						mapManager.getObstacleLayer(), mapManager.getRolezoneLayer(), mapManager.copyLastTeamMembers(), mapManager.getLastPosition(), currentStep - 1));
-				stepOfRequest = -3;
-			}
+		if (requestForMap && !(knownAgents.contains(requestingExplorer))) {
+			answerRequestForMap();
+		} else {
 			requestForMap = false;
+			requestingExplorer = null;
 		}
 
 		// Zusammenführen der Maps und Übergeben der geupdateten Map
 		if (exchangeCounter == 2) {
-			exchangeCounter = 0;
-			if (!(mapBundleList.size() == 0)) {
-				say("I try to merge the maps");
-				ArrayList<MapBundle> candidates = new ArrayList<MapBundle>();
-				int xDistance = exchangePartner.getX();
-				int yDistance = exchangePartner.getY();
-				say("Exchange partner relative coordinates: (" + xDistance + ", " + yDistance + ")");
-				Iterator<MapBundle> it = mapBundleList.iterator();
-				while (it.hasNext()) {
-					MapBundle analyzedMap = it.next();
-					say("Map of agent " + analyzedMap.getOwner());
-					int xPos = analyzedMap.getPosition().getX();
-					int yPos = analyzedMap.getPosition().getY();
-					say("Position of analyzed agent: (" + xPos + ", " + yPos + ")");
-					ArrayList<RelativeCoordinate> seenAgents = analyzedMap.getTeamMembers();
-					Iterator<RelativeCoordinate> itAgents = seenAgents.iterator();
-					while (itAgents.hasNext()) {
-						RelativeCoordinate agentPos = itAgents.next();
-						say("Position of seen agent: (" + agentPos.getX() + ", " + agentPos.getY() + ")");
-						if ((agentPos.getX() == -xDistance) && (agentPos.getY() == -yDistance)) {
-							candidates.add(analyzedMap);
-						}
-					}
-				}
-				say("I found a candidate: " + (candidates.size() == 1));
-				if (candidates.size() == 1) {
-					say("I dont know the candidate: " + (!knownAgents.contains(candidates.get(0).getOwner())));
-				}
-				if (candidates.size() == 1 && !(knownAgents.contains(candidates.get(0).getOwner()))) {
-					String newAgent = mapManager.mergeMaps(candidates.get(0), exchangePartner);
-					say("I send the updated map to my partner");
-					sendMap(newAgent, mapManager, exchangePartner);
-					knownAgents.add(newAgent);
-					counterMapExchange = 0;
-				}
-				exchangePartner = null;
-				mapBundleList = new ArrayList<MapBundle>();
-			}
+			mergeMaps();		
 		}
 		
 		// Fortschritt Map-Austausch verfolgen
 		if (exchangeCounter > 0) {
 			exchangeCounter = exchangeCounter + 1;
+		}
+		
+		if ((currentStep % 15) == 0) {
+			updateMapsOfKnownAgents();
 		}
 
 		if (explorerAgent.equals(getName())) {
@@ -381,12 +320,7 @@ public class AgentG2 extends Agent {
 					occupiedFields.add(relativeCoordinate);
 					occupiedFieldsWithoutBlocks.add(relativeCoordinate);
 					RelativeCoordinate ownPosition = new RelativeCoordinate(0, 0);
-					if (explorerAgent.equals(getName())) {
-						say("I found a friend: " + teamName.equals(team));
-					}
-
 					if (teamName.equals(team) && (!relativeCoordinate.equals(ownPosition))) {
-						say("I add agent at " + relativeCoordinate.getX() + ", " + relativeCoordinate.getY() + "to my friendlist");
 						friendlyAgents.add(relativeCoordinate);
 					}
 					break;
@@ -552,11 +486,7 @@ public class AgentG2 extends Agent {
 				String target = ((Identifier) percept.getParameters().get(0)).getValue();
 				switch (target) {
 				case "agent" -> {
-					String name = ((Identifier) percept.getParameters().get(1)).getValue();
-					String role = ((Identifier) percept.getParameters().get(2)).getValue();
-					int energy = ((Numeral) percept.getParameters().get(3)).getValue().intValue();
-					say("Partner: " + name);
-					mapManager.setExchangePartner(name, role, energy);
+					// TODO
 					break;
 				}
 				case "goal" -> {
@@ -1483,7 +1413,7 @@ public class AgentG2 extends Agent {
 
 	private Action workerActionSearchDispenser() {
 		if (!dispensers.isEmpty()) {
-	//		say("Dispenser(s) identified");
+			say("Dispenser(s) identified");
 			Set<RelativeCoordinate> dispenserLocations = new HashSet<>();
 			for (Dispenser dispenser : dispensers) {
 				// Check whether there is a task for this block type
@@ -1513,25 +1443,25 @@ public class AgentG2 extends Agent {
 				Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields,
 						determineLocations("attachedBlock", null), dispenserLocations);
 				if (dir == null) {
-	//				say("No path towards goal zone.");
+					say("No path towards goal zone.");
 					return explorerStep();
 				}
-	//			say("Path identified. Moving towards dispenser...");
+				say("Path identified. Moving towards dispenser...");
 				switch (dir) {
 				case NORTH -> {
-//					say("NORTH");
+					say("NORTH");
 					return new Action("move", new Identifier("n"));
 				}
 				case EAST -> {
-//					say("EAST");
+					say("EAST");
 					return new Action("move", new Identifier("e"));
 				}
 				case SOUTH -> {
-		//			say("SOUTH");
+					say("SOUTH");
 					return new Action("move", new Identifier("s"));
 				}
 				case WEST -> {
-	//				say("WEST");
+					say("WEST");
 					return new Action("move", new Identifier("w"));
 				}
 				}
@@ -1558,9 +1488,9 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action borderExplorerStep() {
-//		say("I was next to obstacle last step: " + wasNextToObstacleLastStep);
+		say("I was next to obstacle last step: " + wasNextToObstacleLastStep);
 		if (nextToObstacle()) {
-	//		say("IAM NEXTTO BORDER");
+			say("IAM NEXTTO BORDER");
 			wasNextToObstacleLastStep = true;
 			dirToFindBorder = ""; // resets dir to find border
 
@@ -1637,7 +1567,7 @@ public class AgentG2 extends Agent {
 
 	private Action walkAlongsideBorder() {
 		findBorders();
-//		say("Borders: " + dirOfBorders);
+		say("Borders: " + dirOfBorders);
 		if (dirOfBorders.size() == 0) {
 			if (comesFromDeadEnd && !moveDir3StepsAgo.equals("")) {
 				return move(moveDir3StepsAgo);
@@ -1782,41 +1712,16 @@ public class AgentG2 extends Agent {
 	private Action explorerStep() {
 	// falls mindestens in Teammitglied sichtbar, wird dies nach seinem Namen
 		// befragt, um einen map-Austausch einzuleiten
-		// TODO: Bedingung sollte weiter eingeschränkt, weil sonst nur surveyed und
-		// nicht explort wird
-
-		say("Friendly Agents: " + friendlyAgents.size() + " und Counter: " + counterMapExchange);
-		say("Exchange partner exists: " + !(exchangePartner == null));
 
 		if ((friendlyAgents.size() == 1) && (counterMapExchange > 10) && (exchangePartner == null) && (explorerAgent.equals(getName()))) {
-			say("I begin map exchange process");
+			say("I start map exchange process");
 			exchangePartner = new RelativeCoordinate(friendlyAgents.get(0).getX(), friendlyAgents.get(0).getY());
-			say("Exchange partner set: " + !(exchangePartner == null));
 			mailbox.broadcastMapRequest(currentStep, getName());
 			exchangeCounter = 1;
-			/*
-			Iterator<RelativeCoordinate> it = friendlyAgents.iterator();
-			while (it.hasNext()) {
-				RelativeCoordinate relCo = it.next();
-				int x = relCo.getX() - currentPos.getX();
-				int y = relCo.getY() - currentPos.getY();
-				if ((Math.abs(x) + Math.abs(y) > currentRole.getVision() - 1)) {
-					it.remove();
-				}
-			}
-			if (!this.friendlyAgents.isEmpty()) {
-				say("I try to exchange my map");
-				counterMapExchange = 0;
-				mapManager.createExchangePartner(friendlyAgents.get(0));
-				int xValue = friendlyAgents.get(0).getX() - currentPos.getX();
-				int yValue = friendlyAgents.get(0).getY() - currentPos.getY();
-				say("I try to exchange my map with agent at (" + xValue + ", " + yValue + ")");
-				return new Action("survey", new Numeral(xValue),
-						new Numeral(yValue));
-			}
-			*/
+			counterMapExchange = 8;
 		}
 		counterMapExchange = counterMapExchange + 1;
+		
 		ArrayList<String> possibleDirs = getAllPossibleDirs();
 		String prefDir = getPreferredDir();
 		if (possibleDirs != null && possibleDirs.size() != 0) {
@@ -2120,53 +2025,53 @@ public class AgentG2 extends Agent {
 				|| (currentBlockPos.isOneStepEast() && targetBlockPos.isOneStepSouth())
 				|| (currentBlockPos.isOneStepSouth() && targetBlockPos.isOneStepWest())
 				|| (currentBlockPos.isOneStepWest() && targetBlockPos.isOneStepNorth())) {
-//			say("Rotating in clockwise direction to fulfill task...");
+			say("Rotating in clockwise direction to fulfill task...");
 			return new Action("rotate", new Identifier("cw"));
 		}
 		if ((currentBlockPos.isOneStepNorth() && targetBlockPos.isOneStepWest())
 				|| (currentBlockPos.isOneStepEast() && targetBlockPos.isOneStepNorth())
 				|| (currentBlockPos.isOneStepSouth() && targetBlockPos.isOneStepEast())
 				|| (currentBlockPos.isOneStepWest() && targetBlockPos.isOneStepSouth())) {
-//			say("Rotating in counter-clockwise direction to fulfill task...");
+			say("Rotating in counter-clockwise direction to fulfill task...");
 			return new Action("rotate", new Identifier("ccw"));
 		}
 		if ((currentBlockPos.isOneStepNorth() && targetBlockPos.isOneStepSouth())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(1, 0))) {
-//				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("cw"));
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(-1, 0))) {
-//				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("ccw"));
 			}
 		}
 		if ((currentBlockPos.isOneStepEast() && targetBlockPos.isOneStepWest())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(0, 1))) {
-//				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("cw"));
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(0, -1))) {
-//				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("ccw"));
 			}
 		}
 		if ((currentBlockPos.isOneStepSouth() && targetBlockPos.isOneStepNorth())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(-1, 0))) {
-//				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("cw"));
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(1, 0))) {
-//				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("ccw"));
 			}
 		}
 		if ((currentBlockPos.isOneStepWest() && targetBlockPos.isOneStepEast())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(0, -1))) {
-//				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("cw"));
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(0, 1))) {
-//				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
+				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
 				return new Action("rotate", new Identifier("ccw"));
 			}
 		}
@@ -2529,6 +2434,12 @@ public class AgentG2 extends Agent {
 		simStartPerceptsSaved = false;
 	}
 
+	/**
+	 * Enables agent to send his map later to requesting agent
+	 * 
+	 * @param to Requesting agent
+	 * @param step Step of request for map
+	 */
 	public void deliverMap(String to, int step) {
 		say("I will send my map to " + to);
 		requestingExplorer = to;
@@ -2536,6 +2447,11 @@ public class AgentG2 extends Agent {
 		requestForMap = true;
 	}
 
+	/**
+	 * Saves a received map for subsequent use in a list
+	 * 
+	 * @param mapBundle Received map
+	 */
 	public void handleMap(MapBundle mapBundle) {
 		if (exchangeCounter > 0) {
 			say("I add the map to my map list");
@@ -2543,17 +2459,113 @@ public class AgentG2 extends Agent {
 		}		
 	}
 
-	public void receiveMap(MapManagement mapManager, RelativeCoordinate newPosition) {
-		int xDiff = newPosition.getX();
-		int yDiff = newPosition.getY();
-		say("Neue Position: " + xDiff + ", " + yDiff);
-		mapManager.setPosition(new RelativeCoordinate(mapManager.getPosition().getX() + xDiff, mapManager.getPosition().getY() + yDiff));
-		this.mapManager = mapManager;
+	/**
+	 * Replaces own map with received map
+	 * 
+	 * @param mapManagement Received map
+	 * @param change Difference between coordinate system of own map and received map
+	 * @param agents List auf agents with the same coordinate system
+	 */
+	public void receiveMap(MapManagement mapManagement, RelativeCoordinate change, HashSet<String> agents) {
+		int xDiff = change.getX();
+		int yDiff = change.getY();
+		RelativeCoordinate newPosition = new RelativeCoordinate(mapManager.getPosition().getX() + xDiff, mapManager.getPosition().getY() + yDiff);
+		mapManagement.setPosition(newPosition);
+		this.mapManager = mapManagement;
 		mapManager.updateLastPosition(xDiff, yDiff);
+		for (String str : agents) {
+			knownAgents.add(str);
+		}
 	}
 
-	public void sendMap(String addressee, MapManagement mapManager, RelativeCoordinate addresseePosition) {
-		mailbox.sendMap(addressee, mapManager, addresseePosition);
+	/**
+	 * Sends own map to another agent to replace its map
+	 * 
+	 * @param addressee Receiving agent
+	 * @param mapManager Own map
+	 * @param addresseePosition Position of receiving agent in the sender'S coordinate System
+	 * @param knownAgents List of agent with the same coordinate system
+	 */
+	private void sendMap(String addressee, MapManagement mapManager, RelativeCoordinate addresseePosition, HashSet<String> knownAgents) {
+		mailbox.sendMap(addressee, mapManager, addresseePosition, knownAgents);
+	}
+	
+	/**
+	 * Merges two maps using the coordinates of both map owners in their coordinate system
+	 */
+	private void mergeMaps() {
+		exchangeCounter = 0;
+		if (!(mapBundleList.size() == 0)) {
+			say("I try to find the correct map");
+			ArrayList<MapBundle> candidates = new ArrayList<MapBundle>();
+			int xDistance = exchangePartner.getX();
+			int yDistance = exchangePartner.getY();
+			Iterator<MapBundle> it = mapBundleList.iterator();
+			while (it.hasNext()) {
+				MapBundle analyzedMap = it.next();
+				ArrayList<RelativeCoordinate> seenAgents = analyzedMap.getTeamMembers();
+				Iterator<RelativeCoordinate> itAgents = seenAgents.iterator();
+				while (itAgents.hasNext()) {
+					RelativeCoordinate agentPos = itAgents.next();
+					if ((agentPos.getX() == -xDistance) && (agentPos.getY() == -yDistance)) {
+						candidates.add(analyzedMap);
+					}
+				}
+			}
+			say("I found a candidate for map exchange: " + (candidates.size() == 1));
+			if (candidates.size() == 1 && !(knownAgents.contains(candidates.get(0).getOwner()))) {
+				say("Map merging...");
+				String newAgent = mapManager.mergeMaps(candidates.get(0), exchangePartner);
+				say("I send the updated map to my partner " + newAgent);
+				sendMap(newAgent, mapManager, exchangePartner, knownAgents);
+				knownAgents.add(newAgent);
+				counterMapExchange = 0;
+			}
+			exchangePartner = null;
+			mapBundleList = new ArrayList<MapBundle>();
+		}
+	}
+	
+	/**
+	 * Sends the own map to requesting agent. Based on step of request, the agent's in the last or the actual step ist sent.
+	 */
+	private void answerRequestForMap() {
+		say("I give you my map in step " + currentStep);
+		if (stepOfRequest == currentStep) {
+			mailbox.deliverMap(requestingExplorer, new MapBundle(getName(), currentStep, mapManager.getBlockLayer(),
+					mapManager.getDispenserLayer(), mapManager.getGoalzoneLayer(), 
+					mapManager.getObstacleLayer(), mapManager.getRolezoneLayer(), mapManager.copyTeamMembers(), mapManager.getPosition(), currentStep));
+			stepOfRequest = -3;
+		}
+		if (stepOfRequest == currentStep - 1) {
+			mailbox.deliverMap(requestingExplorer, new MapBundle(getName(), currentStep - 1, mapManager.getBlockLayer(),
+					mapManager.getDispenserLayer(), mapManager.getGoalzoneLayer(), 
+					mapManager.getObstacleLayer(), mapManager.getRolezoneLayer(), mapManager.copyLastTeamMembers(), mapManager.getLastPosition(), currentStep - 1));
+			stepOfRequest = -3;
+		}
+		requestForMap = false;
+	}
+	
+	/**
+	 * SEnds own map to all agents with the same coordinate system
+	 */
+	private void updateMapsOfKnownAgents() {
+		for (String name : knownAgents) {
+			mailbox.updateMap(name, mapManager, knownAgents);
+		}
+	}
+	
+	/**
+	 * Merges own map and received map of an agent with the same coordinate system
+	 * 
+	 * @param mapManagement Received map
+	 * @param newAgents List of agents with the same coordinate system
+	 */
+	public void updateMap(MapManagement mapManagement, HashSet<String> newAgents) {
+		for (String str : newAgents) {
+			knownAgents.add(str);
+		}
+		mapManager.updateMap(mapManagement);
 	}
 
 }

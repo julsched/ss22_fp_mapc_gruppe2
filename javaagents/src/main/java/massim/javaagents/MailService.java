@@ -13,10 +13,7 @@ import massim.javaagents.agents.g2utils.Obstacle;
 import massim.javaagents.agents.g2utils.RelativeCoordinate;
 import massim.javaagents.agents.g2utils.Rolezone;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -102,13 +99,23 @@ public class MailService {
     }
     
     // sendet eine geupdatete Map
-    public void sendMap(String to, MapManagement mapManager, RelativeCoordinate toPosition) {
+    public void sendMap(String to, MapManagement mapManager, RelativeCoordinate toPosition, HashSet<String> knownAgents) {
     	Agent recipient = register.get(to);
         if (recipient == null && !(recipient instanceof AgentG2)) {
             logger.warning("Cannot deliver message to " + to + "; unknown target,");
         } else {
         	AgentG2 rec = (AgentG2) recipient;
-        	rec.receiveMap(mapManager, toPosition);
+        	rec.receiveMap(mapManager, toPosition, knownAgents);
+        }
+    }
+    
+    public void updateMap(String to, MapManagement mapManager, HashSet<String> knownAgents) {
+    	Agent recipient = register.get(to);
+        if (recipient == null && !(recipient instanceof AgentG2)) {
+            logger.warning("Cannot deliver message to " + to + "; unknown target,");
+        } else {
+        	AgentG2 rec = (AgentG2) recipient;
+        	rec.updateMap(mapManager, knownAgents);
         }
     }
 }

@@ -14,8 +14,22 @@ public class MapBundle {
 	private HashMap<RelativeCoordinate, Rolezone> rolezoneLayer;
 	private ArrayList<RelativeCoordinate> teamMembers;
 	private RelativeCoordinate currentPos;
-	int currentStep;
+	private int currentStep;
 	
+	/**
+	 * Constructor
+	 * 
+	 * @param owner Owner of map
+	 * @param step
+	 * @param blockLayer
+	 * @param dispenserLayer
+	 * @param goalzoneLayer
+	 * @param obstacleLayer
+	 * @param rolezoneLayer
+	 * @param teamMembers
+	 * @param currentPos
+	 * @param currentStep
+	 */
 	public MapBundle(String owner, int step, HashMap<RelativeCoordinate, Block> blockLayer, HashMap<RelativeCoordinate, Dispenser> dispenserLayer, HashMap<RelativeCoordinate, Goalzone> goalzoneLayer, HashMap<RelativeCoordinate, Obstacle> obstacleLayer, HashMap<RelativeCoordinate, Rolezone> rolezoneLayer, ArrayList<RelativeCoordinate> teamMembers, RelativeCoordinate currentPos, int currentStep) {
 		this.owner = owner;
 		this.step = step;
