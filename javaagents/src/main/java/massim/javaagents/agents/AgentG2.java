@@ -98,6 +98,10 @@ public class AgentG2 extends Agent {
 
 	@Override
 	public void handleMessage(Percept message, String sender) {
+		Percept comparison = new Percept("Revoke friendship");
+		if (message.equals(comparison)) {
+			knownAgents.remove(sender);
+		}
 	}
 
 	@Override
@@ -763,7 +767,7 @@ public class AgentG2 extends Agent {
 		case "skip":
 			break;
 		case "move":
-			if (this.lastActionResult.equals("success")) {
+			if (lastActionResult.equals("success")) {
 				Iterator<Object> it = lastActionParams.iterator();
 				boolean lastPosition = true;
 				while (it.hasNext()) {
@@ -772,10 +776,52 @@ public class AgentG2 extends Agent {
 					mapManager.updatePosition(dir, lastPosition);
 					lastPosition = false;
 				}
-			} else if (this.lastActionResult.equals("partial_success")) {
-				String dir = (String) this.lastActionParams.get(0);
+			// Fehlerbehandlung für "partial_success"
+			} else if (lastActionResult.equals("partial_success")) {
+				// erster Schritt muss gelungen sein
+				String dir = (String) lastActionParams.get(0);
 				mapManager.updatePosition(dir, true);
-				// TODO: Fehlerbehandlung, falls Agent mehr als zwei Schritte laufen kann
+				// bei mehr als zwei Schritten muss überprüft werden, ob weitere Schritte gelungen sind
+				if (lastActionParams.size() > 2) {
+					// Bestimmung, welche Obstacles gesehen
+					ArrayList<RelativeCoordinate> obstacleList = new ArrayList<RelativeCoordinate>();
+					for (RelativeCoordinate rc : tempMap.keySet()) {
+						List<Cell> cellList = tempMap.get(rc);
+						for (Cell cell : cellList) {
+							if (cell instanceof Obstacle) {
+								obstacleList.add(rc);
+							}
+						}
+					}
+					// Abgleich mit der Map für jeden Schritt
+					boolean correctEnvironment = false;
+					Iterator<Object> it = lastActionParams.iterator();
+					while (it.hasNext() && correctEnvironment == false) {
+						correctEnvironment = true;
+						Object o = it.next();
+						if (!(o == lastActionParams.get(0))) {
+							for (RelativeCoordinate rc : obstacleList) {
+								int x = mapManager.getPosition().getX();
+								int y = mapManager.getPosition().getY();
+								if (mapManager.getObstacleLayer().get(new RelativeCoordinate(x + rc.getX(), y + rc.getY())) == null) {
+									correctEnvironment = false;
+									String newDir = (String) o;
+									mapManager.updatePosition(newDir, false);
+								}
+							}	
+						}
+					}
+					// Position konnte nicht wiederhegestellt werden: Karte muss neu konstruiert werden
+					if (correctEnvironment == false) {
+						say("I am lost!");
+						for (String str : knownAgents) {
+							mailbox.sendMessage(new Percept("Revoke friendship"), str, getName());
+						}
+						knownAgents = new HashSet<String>();
+						mapManager = new MapManagement(currentStep);
+					}
+					
+				}
 			} else if (this.lastActionResult.equals("failed_parameter")) {
 				// Fehlerbehandlung
 			} else {
