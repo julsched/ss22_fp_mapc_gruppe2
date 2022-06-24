@@ -1385,6 +1385,11 @@ public class AgentG2 extends Agent {
 			return this.currentTask.getBlockTypeMap();
 		}
 		HashMap<String, Integer> map = new HashMap<String, Integer>();
+		
+		if (currentTask == null) {
+			return map;
+		}
+		
 		map.put("b0", this.getCurrentTask().getBlockTypeMap().get("b0") - this.getAttachedBlockTypeMap().get("b0"));
 		map.put("b1", this.getCurrentTask().getBlockTypeMap().get("b1") - this.getAttachedBlockTypeMap().get("b1"));
 		map.put("b2", this.getCurrentTask().getBlockTypeMap().get("b2") - this.getAttachedBlockTypeMap().get("b2"));
@@ -1432,17 +1437,17 @@ public class AgentG2 extends Agent {
 		List<String> list = new ArrayList<>();
 		
 		for (Map.Entry<String, Integer> set : nextDispenserTypeHashMap.entrySet()) {
-			System.out.println(set.getKey());
+			//System.out.println(set.getKey());
 			if (list.isEmpty()) {
-				System.out.println("list empty");
+				//System.out.println("list empty");
 				list.add(set.getKey());
-				System.out.println("add "+set.getKey()+" to empty list");
+				//System.out.println("add "+set.getKey()+" to empty list");
 			}
 			for (int i = 0; i < list.size(); i++) {
 				if (list.contains(set.getKey())) break;
 				if (nextDispenserTypeHashMap.get(list.get(i)) >= set.getValue()) {
 					list.add(i, set.getKey());
-					System.out.println("add "+set.getKey()+" to "+ i);
+					//System.out.println("add "+set.getKey()+" to "+ i);
 					break;
 				}
 			}
@@ -1469,7 +1474,11 @@ public class AgentG2 extends Agent {
 	private Action workerActionSearchDispenser() {
 		Dispenser disp = null;
 		
-		if (!this.nextDispenserTypeList().isEmpty()) {
+		if (this.getCurrentTask() == null && !this.nextDispenserTypeList().isEmpty()) {
+			disp = getNextDispenser(this.nextDispenserTypeList().get(0));
+			say("Going to next dispenser");
+			
+		} else if (this.getCurrentTask() != null && !this.nextDispenserTypeList().isEmpty()) {
 			for (String dispensertype : this.nextDispenserTypeList()) {
 				if (this.missingBlockTypesList().contains(dispensertype)) {
 					disp = getNextDispenser(dispensertype);
@@ -1479,6 +1488,8 @@ public class AgentG2 extends Agent {
 				}
 			}
 		}
+		
+		System.out.println("Next Dispenser is " + disp);
 		
 		if (disp == null) {
 			return explorerStep();
@@ -1493,9 +1504,10 @@ public class AgentG2 extends Agent {
 	 * goes to certain dispenser if there is a path
 	 *
 	 * @param disp
-	 * @return move (dir) to next dispenser or explorerstep
+	 * @return move(dir) to next dispenser or explorerstep
 	 */
 	private Action goToDispenser(Dispenser disp) {
+		
 		// agent is next to Dispenser
 		if (disp.getRelativeCoordinate().isNextToAgent(mapManager.getCurrentPosition())) {
 			String direction = disp.getRelativeCoordinate().getDirectDirection(mapManager.getCurrentPosition());
@@ -2157,7 +2169,7 @@ public class AgentG2 extends Agent {
 	 * @return A list of the tasks which require the currently attached blocks todo
 	 */
 	private List<Task> determineCorrespondingTasks() {
-		System.out.println("determineCorrespondingTasks:");
+		// System.out.println("determineCorrespondingTasks:");
 		List<Task> correspondingTasks = new ArrayList<>();
 
 		// check first if there are oneBlockTasks to solve
@@ -2172,11 +2184,11 @@ public class AgentG2 extends Agent {
 		// check if any attached block fits to a multiBlockTask
 		// todo
 		for (Task task : tasks) {
-			//System.out.println("Checking Tasks");
+			// System.out.println("Checking Tasks");
 			for (int i = 0; i < task.getRequirements().size(); i++) {
-				//System.out.println("iterating tasks");
+				// System.out.println("iterating tasks");
 				for (int j = 0; j < attachedBlocks.size(); j++) {
-					//System.out.println("iterating attachedblocks");
+					// System.out.println("iterating attachedblocks");
 					if (task.getRequirements().get(i).getBlockType().equals(attachedBlocks.get(j).getType())) {
 						System.out.println("Task added: " + task.getName());
 						correspondingTasks.add(task);
