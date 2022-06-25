@@ -83,6 +83,7 @@ public class AgentG2 extends Agent {
 
 	private HashMap<String, Integer> attachedBlockTypeMap;
 	private Task currentTask;
+	private String[][] assembledBlockMatrix;
 
 	/**
 	 * Constructor.
@@ -1093,11 +1094,12 @@ public class AgentG2 extends Agent {
 		return new Action("detach", new Identifier(attachedBlocks.get(0).getDirectDirection()));
 	}
 
-	private Action workerActionSearchGoalzone(Task taskToFinish) {
+	private Action workerActionSearchGoalzone() {
 		say("Need to look for goal zone");
 		// Identify goal zone field candidates (= goal zone fields which are not
 		// occupied and which have enough space around them to submit a task)
-		Set<RelativeCoordinate> goalZoneFieldCandidates = pathCalc.determineGoalZoneFieldCandidates(taskToFinish);
+		Set<RelativeCoordinate> goalZoneFieldCandidates = pathCalc
+				.determineGoalZoneFieldCandidates(this.getCurrentTask());
 
 		if (!goalZoneFieldCandidates.isEmpty()) {
 			say("Suitable goal zone fields identified");
@@ -1115,18 +1117,40 @@ public class AgentG2 extends Agent {
 				}
 			} else {
 				say("Already on suitable goal zone field");
-				if (!checkIfTaskComplete(taskToFinish)) {
-					// At the moment only for one-block tasks
-					return executeRotation(attachedBlocks.get(0).getRelativeCoordinate(),
-							taskToFinish.getRequirements().get(0).getRelativeCoordinate());
-				}
-				say("Task '" + taskToFinish.getName() + "' is complete");
-				this.setCurrentTask(null);
-				return submit(taskToFinish);
+				return this.workerActionSubmitTask();
 			}
 		}
 		// Explore to find a suitable goal zone field
 		return explorerStep();
+	}
+	
+	private Action workerActionSubmitTask() {
+		if (this.getCurrentTask().isOneBlockTask()) return this.workerActionSubmitOneBlockTask();
+		if (this.getCurrentTask().isMultiBlockTask()) return this.workerActionSubmitMultiBlockTask();
+		say("cannot submit my task!");
+		return null;
+	}
+	
+	// todo - not working yet
+	private Action workerActionSubmitMultiBlockTask() {
+
+		if (!checkIfTaskComplete(this.getCurrentTask())) {
+			//todo
+		}
+		say("Task '" + this.getCurrentTask().getName() + "' is complete");
+		this.setCurrentTask(null);
+		return submit(this.getCurrentTask());
+
+	}
+	
+	private Action workerActionSubmitOneBlockTask() {
+		if (!checkIfTaskComplete(this.getCurrentTask())) {
+			return executeRotation(attachedBlocks.get(0).getRelativeCoordinate(),
+					this.getCurrentTask().getRequirements().get(0).getRelativeCoordinate());
+		}
+		say("Task '" + this.getCurrentTask().getName() + "' is complete");
+		this.setCurrentTask(null);
+		return submit(this.getCurrentTask());
 	}
 
 	/**
@@ -1189,7 +1213,7 @@ public class AgentG2 extends Agent {
 	private Action workerActionHandleMultiBlockTask() {
 		if (gotAllBlocks(currentTask)) {
 			// chooses or searches goalzone
-			return this.workerActionSearchGoalzone(currentTask);
+			return this.workerActionSearchGoalzone();
 		}
 		
 		
@@ -1204,9 +1228,51 @@ public class AgentG2 extends Agent {
 	 * @return
 	 */
 	private Action workerActionHandleOneBlockTask() {
-		return this.workerActionSearchGoalzone(currentTask);
+		return this.workerActionSearchGoalzone();
 	}
 
+	private Action workerActionAssembleBlocks() {
+		
+		
+		return null;
+	}
+	
+	private boolean blocksAssembled() {
+		if (deepEquals(this.getAssembledBlockMatrix(), this.getCurrentTask().getBlockMatrix())) {
+			return true;
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * editor: michael
+	 * 
+	 * overrides deepEquals(Object a, Object b)
+	 *
+	 * @param basematrix
+	 * @param testmatrix
+	 * @return true if matrices are equal
+	 */
+	private static boolean deepEquals(String[][] basematrix, String[][] testmatrix) {
+		if (basematrix.length == testmatrix.length && basematrix[0].length == testmatrix[0].length) return false;
+		
+		for (int i = 0; i < basematrix.length; i++) {
+			if (!(basematrix[i].equals(testmatrix[i]))) return false; 
+		}
+		
+		return true;
+	}
+
+	private String[][] getAssembledBlockMatrix(){
+		return this.assembledBlockMatrix;
+	}
+	
+	private void setAssembledBlockMatrix(String[][] matrix) {
+		this.assembledBlockMatrix = matrix;
+	}
+	
+	
 	/**
 	 * editor: michael
 	 *
@@ -1262,16 +1328,15 @@ public class AgentG2 extends Agent {
 		}
 		// find fastest task
 		Task fastestTask = null;
-		
-		//Task fastestTask = findFastestTask();
-		
+
+		// Task fastestTask = findFastestTask();
+
 		int blocksMissingForTask = 10;
 		for (Task task : tasks) {
 			if (this.numberOfBlocksMissingForTask(task) < blocksMissingForTask) {
 				fastestTask = task;
 				blocksMissingForTask = this.numberOfBlocksMissingForTask(task);
 			}
-
 		}
 		return fastestTask;
 	}
@@ -1359,12 +1424,19 @@ public class AgentG2 extends Agent {
 		int b3attached = this.getAttachedBlockTypeMap().get("b3");
 
 		if ((b0task == b0attached) && (b1task == b1attached) && (b2task == b2attached) && (b3task == b3attached)) {
+			say("Got all blocks for task: "+task.getName());
 			return true;
 		}
 
 		return false;
 	}
 
+	/**
+	 * editor: michael
+	 *
+	 * @param task
+	 * @return
+	 */
 	private int numberOfBlocksMissingForTask(Task task) {
 		int b0task = task.getBlockTypeMap().get("b0");
 		int b1task = task.getBlockTypeMap().get("b1");
@@ -1380,6 +1452,11 @@ public class AgentG2 extends Agent {
 		return result;
 	}
 	
+	/**
+	 * editor: michael
+	 *
+	 * @return
+	 */
 	private HashMap<String, Integer> missingBlocksForTaskHash(){
 		if (this.attachedBlocks.isEmpty()) {
 			return this.currentTask.getBlockTypeMap();
@@ -1398,6 +1475,11 @@ public class AgentG2 extends Agent {
 		return map;
 	}
 	
+	/**
+	 * editor: michael
+	 *
+	 * @return
+	 */
 	private List<String> missingBlockTypesList(){
 		List<String> list = new ArrayList<>();
 		
@@ -1409,10 +1491,20 @@ public class AgentG2 extends Agent {
 		return list;
 	}
 
+	/**
+	 * editor: michael
+	 *
+	 * @return
+	 */
 	private HashMap<String, Integer> getAttachedBlockTypeMap() {
 		return this.attachedBlockTypeMap;
 	}
 	
+	/**
+	 * editor: michael
+	 *
+	 * @return
+	 */
 	private HashMap<String, Integer> nextDispenserTypeHashMap(){
 		// todo get distance from pathcalc
 		int b0distance = 0;
@@ -1429,6 +1521,11 @@ public class AgentG2 extends Agent {
 		return map;
 	}
 	
+	/**
+	 * editor: michael
+	 *
+	 * @return
+	 */
 	private List<String> nextDispenserTypeList(){		
 		return sortHashMapKeysToList(nextDispenserTypeHashMap());
 	}
@@ -1457,8 +1554,15 @@ public class AgentG2 extends Agent {
 	}
 	
 	// todo
+	/**
+	 * editor: michael
+	 * 
+	 * returns Dispenser from certain type
+	 *
+	 * @param type
+	 * @return Dispenser
+	 */
 	private Dispenser getNextDispenser(String type) {
-		
 		
 		return null;
 	}
@@ -1476,8 +1580,7 @@ public class AgentG2 extends Agent {
 		
 		if (this.getCurrentTask() == null && !this.nextDispenserTypeList().isEmpty()) {
 			disp = getNextDispenser(this.nextDispenserTypeList().get(0));
-			say("Going to next dispenser");
-			
+			say("Going to next dispenser");	
 		} else if (this.getCurrentTask() != null && !this.nextDispenserTypeList().isEmpty()) {
 			for (String dispensertype : this.nextDispenserTypeList()) {
 				if (this.missingBlockTypesList().contains(dispensertype)) {
@@ -1494,7 +1597,6 @@ public class AgentG2 extends Agent {
 		if (disp == null) {
 			return explorerStep();
 		}
-		
 		return this.goToDispenser(disp);
 	}
 
