@@ -1230,7 +1230,9 @@ public class AgentG2 extends Agent {
 	private Action workerActionHandleOneBlockTask() {
 		return this.workerActionSearchGoalzone();
 	}
-
+	
+	
+	// todo
 	private Action workerActionAssembleBlocks() {
 		
 		
@@ -1262,6 +1264,36 @@ public class AgentG2 extends Agent {
 		}
 		
 		return true;
+	}
+	
+	/**
+	 * editor: michael
+	 * 
+	 * only works for blocks attached to the south of the agent
+	 *
+	 * @return s matrix of connected blocks
+	 */
+	private String[][] createAssembledBlockMatrix(){
+		String[][] matrix = new String[5][5];
+		
+		if (this.attachedBlocks.isEmpty()) {
+			return matrix;
+		}
+		
+		// should return the matrix of each blockmatrix of each block
+		String[][] help = this.getAttachedBlockSouth().getBlockMatrix();
+		
+		for (int i = 0; i< matrix.length; i++) {
+			for (int j = 0; j< matrix[i].length; j++) {
+				matrix[i][j] = help[i][j];
+			}
+		}
+		return matrix;		
+	}
+
+	private Block getAttachedBlockSouth() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	private String[][] getAssembledBlockMatrix(){
