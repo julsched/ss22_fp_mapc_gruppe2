@@ -29,7 +29,7 @@ public class AgentG2 extends Agent {
 	private List<Object> lastActionParams = new ArrayList<>();
 	private String lastActionResult;
 	private RelativeCoordinate hitFrom;
-	private List<Norm> violations = new ArrayList<>();
+	private List<String> violations = new ArrayList<>();
 
 	private HashMap<RelativeCoordinate, List<Cell>> tempMap = new HashMap<RelativeCoordinate, List<Cell>>();
 
@@ -53,6 +53,8 @@ public class AgentG2 extends Agent {
 	private int stepOfRequest = -3;
 	private int exchangeCounter = 0;
 	private ArrayList<MapBundle> mapBundleList = new ArrayList<MapBundle>();
+	
+	private HashMap<String, Role> rolesOfAgents = new HashMap<String, Role>();
 
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
 	private HashSet<String> knownAgents = new HashSet<String>();
@@ -98,9 +100,15 @@ public class AgentG2 extends Agent {
 
 	@Override
 	public void handleMessage(Percept message, String sender) {
-		Percept comparison = new Percept("Revoke friendship");
-		if (message.equals(comparison)) {
+		if (message.equals(new Percept("Revoke friendship"))) {
 			knownAgents.remove(sender);
+		}
+		if (message.equals(new Percept("worker")) || message.equals(new Percept("constructor")) || message.equals(new Percept("explorer")) || message.equals(new Percept("digger"))) {
+			String str = ((Identifier) message.getParameters().get(0)).getValue();
+			if (rolesOfAgents.containsKey(sender)) {
+				rolesOfAgents.remove(sender);
+			}
+			rolesOfAgents.put(getName(), Role.getRole(roles, str));
 		}
 	}
 
@@ -209,6 +217,7 @@ public class AgentG2 extends Agent {
 		roleZoneFields.clear();
 		tasks.clear();
 		norms.clear();
+		violations.clear();
 		hitFrom = null;
 		obstaclesInSight.clear();
 		occupiedFieldsWithoutBlocks.clear();
@@ -277,7 +286,8 @@ public class AgentG2 extends Agent {
 				break;
 			}
 			case "violations" -> {
-				// TODO
+				String violation = ((Identifier) percept.getParameters().get(0)).getValue();
+				violations.add(violation);
 				break;
 			}
 			case "thing" -> {
@@ -419,7 +429,7 @@ public class AgentG2 extends Agent {
 				for (int i = 0; i < ((ParameterList) paramRequirements).size(); i++) {
 					params.add(((ParameterList) paramRequirements).get(i));
 				}
-				List<NormRequirement> requirements = new ArrayList<>();
+				NormRequirement requirement = null;
 				for (Parameter param : params) {
 					Parameter paramType = ((Function) param).getParameters().get(0);
 					Parameter paramName = ((Function) param).getParameters().get(1);
@@ -431,10 +441,9 @@ public class AgentG2 extends Agent {
 					int quantity = ((Numeral) paramQuantity).getValue().intValue();
 					String details = ((Identifier) paramDetails).getValue();
 
-					NormRequirement requirement = new NormRequirement(type, name, quantity, details);
-					requirements.add(requirement);
+					requirement = new NormRequirement(type, name, quantity, details);
 				}
-				Norm norm = new Norm(normName, firstStep, lastStep, requirements, punishment);
+				Norm norm = new Norm(normName, firstStep, lastStep, requirement, punishment);
 				norms.add(norm);
 				break;
 			}
@@ -478,6 +487,11 @@ public class AgentG2 extends Agent {
 				if (percept.getParameters().size() == 1) {
 					String roleName = ((Identifier) percept.getParameters().get(0)).getValue();
 					if (currentRole == null || !currentRole.getName().equals(roleName)) {
+						mailbox.broadcast(new Percept(roleName), getName());
+						if (rolesOfAgents.containsKey(getName())) {
+							rolesOfAgents.remove(getName());
+						}
+						rolesOfAgents.put(getName(), Role.getRole(roles, roleName));
 						currentRole = Role.getRole(roles, roleName);
 					}
 					if (currentRole != null) {
@@ -2613,5 +2627,22 @@ public class AgentG2 extends Agent {
 		}
 		mapManager.updateMap(mapManagement);
 	}
+	
+	private double analyzeNorms() {
+		double lifespan = 1000;
+		for (Norm norm : norms) {
+			NormRequirement requirements = norm.getRequirements();
+			if (requirements.getName().equals("Carry")) {
+				if (!(attachedBlocks.size() < requirements.getQuantity())) {
+					lifespan = Math.floor(lifespan/norm.getPunishment());
+				}
+			} else if (requirements.getName().equals("Adopt")) {
+				
+			}
+		}
+		return lifespan;
+	}
+	
+	
 
 }

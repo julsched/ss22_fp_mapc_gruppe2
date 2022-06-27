@@ -15,4 +15,12 @@ public class NormRequirement {
         this.quantity = quantity;
         this.details = details;
     }
+    
+    public String getName() {
+    	return name;
+    }
+    
+    public int getQuantity() {
+    	return quantity;
+    }
 }
