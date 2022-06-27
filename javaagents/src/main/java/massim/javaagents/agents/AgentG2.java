@@ -1090,7 +1090,6 @@ public class AgentG2 extends Agent {
 	private Action workerActionDetach() {
 		say("Block attached, but no corresponding task(s).");
 		say("Detaching from block...");
-		this.setCurrentTask(null);
 		return new Action("detach", new Identifier(attachedBlocks.get(0).getDirectDirection()));
 	}
 
@@ -1138,7 +1137,6 @@ public class AgentG2 extends Agent {
 			//todo
 		}
 		say("Task '" + this.getCurrentTask().getName() + "' is complete");
-		this.setCurrentTask(null);
 		return submit(this.getCurrentTask());
 
 	}
@@ -1149,7 +1147,6 @@ public class AgentG2 extends Agent {
 					this.getCurrentTask().getRequirements().get(0).getRelativeCoordinate());
 		}
 		say("Task '" + this.getCurrentTask().getName() + "' is complete");
-		this.setCurrentTask(null);
 		return submit(this.getCurrentTask());
 	}
 
@@ -1539,10 +1536,18 @@ public class AgentG2 extends Agent {
 	 */
 	private HashMap<String, Integer> nextDispenserTypeHashMap(){
 		// todo get distance from pathcalc
-		int b0distance = 0;
-		int b1distance = 0;
-		int b2distance = 0;
-		int b3distance = 0;
+		int b0distance = this.pathCalc.calcStepsToNextDispenser("b0");
+		int b1distance = this.pathCalc.calcStepsToNextDispenser("b1");
+		int b2distance = this.pathCalc.calcStepsToNextDispenser("b2");
+		int b3distance = this.pathCalc.calcStepsToNextDispenser("b3");
+		
+		//  not found / not in config -> -1 => +9999 steps
+		
+		int maxValue = 9999;
+		
+		if (b1distance == -1) b1distance = maxValue;
+		if (b2distance == -1) b2distance = maxValue;
+		if (b3distance == -1) b3distance = maxValue;
 		
 		HashMap<String, Integer> map = new HashMap<String, Integer>();
 		
@@ -1550,6 +1555,7 @@ public class AgentG2 extends Agent {
 		map.put("b1", b1distance);
 		map.put("b2", b2distance);
 		map.put("b3", b3distance);
+		
 		return map;
 	}
 	
@@ -1585,7 +1591,6 @@ public class AgentG2 extends Agent {
 		return list;
 	}
 	
-	// todo
 	/**
 	 * editor: michael
 	 * 
@@ -1594,11 +1599,31 @@ public class AgentG2 extends Agent {
 	 * @param type
 	 * @return Dispenser
 	 */
-	private Dispenser getNextDispenser(String type) {
-		
-		return null;
-	}
+	private Dispenser getNextDispenserFromType(String dispenserType) {
+        List<Dispenser> dispenserCandidates = new ArrayList<>();
+		HashMap<RelativeCoordinate, Dispenser> dispenserLayer = mapManager.getDispenserLayer();
+		for (Map.Entry<RelativeCoordinate, Dispenser> entry : dispenserLayer.entrySet()) {
+			if (entry.getValue() != null) {
+                if (entry.getValue().getType().equals(dispenserType)) {
+                    dispenserCandidates.add(entry.getValue());
+                }
+			}
+		}
 
+		for (Dispenser disp : dispenserCandidates) {
+			if (disp.isCloserThan(dispenserCandidates.get(0))) dispenserCandidates.set(0, disp);
+		}
+		
+		if (dispenserCandidates.isEmpty()) {
+			say("could not find a dispenser with type: "+ dispenserType);
+			return null;
+		}
+		
+		Dispenser dispenser = dispenserCandidates.get(0);
+		
+		return dispenser;
+	}
+	
 	/**
 	 * editor: michael
 	 * 
@@ -1610,13 +1635,20 @@ public class AgentG2 extends Agent {
 	private Action workerActionSearchDispenser() {
 		Dispenser disp = null;
 		
+		System.out.println("workerActionSearchDispenser");
+		System.out.println(this.nextDispenserTypeList());
+		
+		// no current task
 		if (this.getCurrentTask() == null && !this.nextDispenserTypeList().isEmpty()) {
-			disp = getNextDispenser(this.nextDispenserTypeList().get(0));
+			System.out.println("no current task");
+			disp = getNextDispenserFromType(this.nextDispenserTypeList().get(0));
 			say("Going to next dispenser");	
-		} else if (this.getCurrentTask() != null && !this.nextDispenserTypeList().isEmpty()) {
+		} 
+		else if (this.getCurrentTask() != null && !this.nextDispenserTypeList().isEmpty()) {
+			System.out.println("with current task");
 			for (String dispensertype : this.nextDispenserTypeList()) {
 				if (this.missingBlockTypesList().contains(dispensertype)) {
-					disp = getNextDispenser(dispensertype);
+					disp = getNextDispenserFromType(dispensertype);
 					say("Suitable dispenser(s) identified");
 					break;
 					// eventuell String disp?
@@ -1624,11 +1656,12 @@ public class AgentG2 extends Agent {
 			}
 		}
 		
-		System.out.println("Next Dispenser is " + disp);
+		System.out.println(disp);
+
+		if (disp == null) return explorerStep();
 		
-		if (disp == null) {
-			return explorerStep();
-		}
+		System.out.println("Next Dispenser is " + disp.getType());
+		
 		return this.goToDispenser(disp);
 	}
 

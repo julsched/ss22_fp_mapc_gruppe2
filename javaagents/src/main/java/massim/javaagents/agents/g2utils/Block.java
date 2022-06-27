@@ -6,6 +6,11 @@ public class Block extends Cell {
 
     private final String type;
     private String[][] blockMatrix;
+    private Block blockNorth = null;
+    private Block blockEast = null;
+    private Block blockSouth = null;
+    private Block blockWest = null;
+    
 
 
     public static Block getClosestBlock(List<Block> blocks) {
@@ -43,7 +48,7 @@ public class Block extends Cell {
 		String[][] matrix = new String[5][5];
 		
 		if (!this.isConnected()) {
-			matrix[2][0] = this.getType();
+			matrix[2][2] = this.getType();
 			return matrix;
 		}
 		
@@ -61,38 +66,70 @@ public class Block extends Cell {
 		this.blockMatrix = matrix;
 	}
 	
-	public boolean isConnected() {
-		if (this.isConnectedWithN() == null || this.isConnectedWithE() == null 
-				|| this.isConnectedWithS() == null || this.isConnectedWithW() == null) {
-			return true;
-		}
-		return false;
-	}
-	
-	
-	// todo
 	
 	/**
 	 * editor: michael
 	 *
 	 * @return block that is connected with the block in North direction
 	 */
-	public Block isConnectedWithN() {
-		return null;
+	public Block getBlockNorth() {
+		return this.blockNorth;
 	}
 	
-	public Block isConnectedWithE() {
-		return null;
+	public void setBlockNorth(Block block) {
+		this.blockNorth = block;
 	}
 	
-	public Block isConnectedWithS() {
-		return null;
+	public Block getBlockEast() {
+		return this.blockEast;
 	}
 	
-	public Block isConnectedWithW() {
-		return null;
+	public void setBlockEast(Block block) {
+		this.blockEast = block;
 	}
 	
+	public Block getBlockSouth() {
+		return this.blockSouth;
+	}
 	
+	public void setBlockSouth(Block block) {
+		this.blockSouth = block;
+	}
+	
+	public Block getBlockWest() {
+		return this.blockWest;
+	}
+	
+	public void setBlockWest(Block block) {
+		this.blockWest = block;
+	}
+	
+	public boolean isConnected() {
+		if (this.getBlockNorth() == null || this.getBlockEast() == null 
+				|| this.getBlockSouth() == null || this.getBlockWest() == null) {
+			return true;
+		}
+		return false;
+	}
+	
+	public boolean isConnectedN() {
+		if (this.getBlockNorth() != null) return true;
+		return false;
+	}
+	
+	public boolean isConnectedE() {
+		if (this.getBlockEast() != null) return true;
+		return false;
+	}
+	
+	public boolean isConnectedS() {
+		if (this.getBlockSouth() != null) return true;
+		return false;
+	}
+	
+	public boolean isConnectedW() {
+		if (this.getBlockWest() != null) return true;
+		return false;
+	}
 	
 }
