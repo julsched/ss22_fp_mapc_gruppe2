@@ -33,7 +33,7 @@ public class AgentG2 extends Agent {
 
 	private HashMap<RelativeCoordinate, List<Cell>> tempMap = new HashMap<RelativeCoordinate, List<Cell>>();
 
-	private List<Percept> attachedThingsPercepts = new ArrayList<>();
+	private List<RelativeCoordinate> attachedThings = new ArrayList<>();
 	private List<Block> blocks = new ArrayList<>();
 	private List<RelativeCoordinate> occupiedFields = new ArrayList<>();
 	private List<Task> tasks = new ArrayList<>();
@@ -217,7 +217,7 @@ public class AgentG2 extends Agent {
 
 		// Delete previous step percepts
 		lastActionParams.clear();
-		attachedThingsPercepts.clear();
+		attachedThings.clear();
 		blocks.clear();
 		friendlyAgents.clear();
 		occupiedFields.clear();
@@ -447,7 +447,11 @@ public class AgentG2 extends Agent {
 				break;
 			}
 			case "attached" -> {
-				attachedThingsPercepts.add(percept);
+				int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+				int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+
+				RelativeCoordinate attachedThing = new RelativeCoordinate(x, y);
+				attachedThings.add(attachedThing);
 				break;
 			}
 			case "goalZone" -> {
@@ -1382,6 +1386,42 @@ public class AgentG2 extends Agent {
 		}
 		// Explore to find a dispenser
 		return explorerStep();
+	}
+
+	/**
+	 * Provides direction to the next reachable loose block of the required type (in agent's vision range), if available
+	 * 
+	 * @param requiredType The required block type
+	 * 
+	 * @return Direction towards loose block if identified, otherwise null
+	 */
+	private Action checkForLooseBlocks(String requiredType) {
+		Set<RelativeCoordinate> looseBlocks = new HashSet<>();
+		for (Block block : blocks) {
+			if (block.getType().equals(requiredType)) {
+				RelativeCoordinate coordinate = block.getRelativeCoordinate();
+				if (!attachedThings.contains(coordinate)) {
+					if (coordinate.isNextToAgent()) {
+						String direction = coordinate.getDirectDirection();
+						say("Loose block identified. Attaching...");
+						return new Action("attach", new Identifier(direction));
+					} else {
+						RelativeCoordinate currentPosition = mapManager.getCurrentPosition();
+						RelativeCoordinate absoluteCoordinate = new RelativeCoordinate(currentPosition.getX() + coordinate.getX(),
+							currentPosition.getY() + coordinate.getY());
+						looseBlocks.add(absoluteCoordinate);
+					}
+				}
+			}
+		}
+		String dir = pathCalc.calculateShortestPathMap(looseBlocks);
+		if (dir != null) {
+			say("Loose block identified. Moving towards block...");
+			return move(dir);
+		} else {
+			say("No reachable loose block identified.");
+			return null;
+		}
 	}
 
 	// default (main) worker method
