@@ -146,4 +146,18 @@ public class Task {
 		if (this.requirements.size() > 1) return true;
 		return false;		
 	}
+	
+	/**
+	 * temporary solution
+	 * 
+	 * editor: michael
+	 *
+	 * determine if task needs more than a single block
+	 *
+	 * @return
+	 */
+	public boolean isTwoBlockTask() {
+		if (this.requirements.size() == 2) return true;
+		return false;		
+	}
 }
