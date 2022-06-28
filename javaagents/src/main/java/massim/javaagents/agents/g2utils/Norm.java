@@ -18,6 +18,14 @@ public class Norm {
         this.punishment = punishment;
     }
     
+    public int getFirstStep() {
+    	return firstStep;
+    }
+    
+    public int getLastStep() {
+    	return lastStep;
+    }
+    
     public NormRequirement getRequirements() {
     	return requirements;
     }

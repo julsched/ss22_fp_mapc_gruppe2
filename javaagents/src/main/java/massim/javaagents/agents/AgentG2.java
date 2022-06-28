@@ -143,6 +143,7 @@ public class AgentG2 extends Agent {
 
 		// Auswertung der abgespeicherten Ergebnisse der lastAction
 		evaluateLastAction();
+		// double lifespan = analyzeNorms();
 
 		// Nach der Evaluation ist die currentPosition korrekt bestimmt und es können
 		// die things der map hinzugefügt werden
@@ -2628,18 +2629,41 @@ public class AgentG2 extends Agent {
 		mapManager.updateMap(mapManagement);
 	}
 	
+	/**
+	 * Analyzes, how long agent can violate norms without getting inactivated
+	 * 
+	 * @return Number of steps, until agent's energy sinks below 1
+	 */
 	private double analyzeNorms() {
-		double lifespan = 1000;
-		for (Norm norm : norms) {
-			NormRequirement requirements = norm.getRequirements();
-			if (requirements.getName().equals("Carry")) {
-				if (!(attachedBlocks.size() < requirements.getQuantity())) {
-					lifespan = Math.floor(lifespan/norm.getPunishment());
+		double energy = energyLevel;
+		int lifespan = 0;
+		say("Normanalyse startet");
+		
+		for (int i = currentStep; i < simSteps + 1; i++) {
+			lifespan = lifespan + 1;
+			for (Norm norm : norms) {
+				NormRequirement requirements = norm.getRequirements();
+				if (requirements.getName().equals("Carry")) {
+					if (!(i < norm.getFirstStep()) && attachedBlocks.size() > requirements.getQuantity()) {
+						energy = energy - norm.getPunishment();
+					}
+				} else if (requirements.getName().equals("Adopt")) {
+					int number = 0;
+					for (String str : rolesOfAgents.keySet()) {
+						if (requirements.getName().equals(rolesOfAgents.get(str).getName())) {
+							number = number + 1;
+						}
+					}
+					if (!(i < norm.getFirstStep()) && currentRole.getName().equals(requirements.getName()) && number > requirements.getQuantity()) {
+						energy = energy - norm.getPunishment();
+					}
 				}
-			} else if (requirements.getName().equals("Adopt")) {
-				
+				if (energy < 1) {
+					return lifespan;
+				}
 			}
 		}
+
 		return lifespan;
 	}
 	
