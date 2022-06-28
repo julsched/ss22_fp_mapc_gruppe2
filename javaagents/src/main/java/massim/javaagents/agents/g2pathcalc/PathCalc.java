@@ -109,7 +109,7 @@ public class PathCalc {
 
 
         List<RelativeCoordinate> attachedBlocksRelative = getRelativeCoordinates(attachedBlocks);
-        RelativeCoordinate currentPos = mapManager.getCurrentPosition();
+        RelativeCoordinate currentPos = mapManager.getPosition();
         HashMap<String, RelativeCoordinate> mapDimensions = mapManager.analyzeMapDimensions();
         HashMap<RelativeCoordinate, Block> blockLayer = mapManager.getBlockLayer();
         HashMap<RelativeCoordinate, Obstacle> obstacleLayer = mapManager.getObstacleLayer();

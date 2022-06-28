@@ -1719,13 +1719,13 @@ public class AgentG2 extends Agent {
 	private Action goToDispenser(Dispenser disp) {
 
 		// agent is next to Dispenser
-		if (disp.getRelativeCoordinate().isNextToAgent(mapManager.getCurrentPosition())) {
-			String direction = disp.getRelativeCoordinate().getDirectDirection(mapManager.getCurrentPosition());
+		if (disp.getRelativeCoordinate().isNextToAgent(mapManager.getPosition())) {
+			String direction = disp.getRelativeCoordinate().getDirectDirection(mapManager.getPosition());
 			return requestBlock(direction);
 		}
 		// If agent is on top of dispenser -> move one step to be able to request a block
-		if (disp.getRelativeCoordinate().getX() == mapManager.getCurrentPosition().getX() 
-				&& disp.getRelativeCoordinate().getY() == mapManager.getCurrentPosition().getY()) {
+		if (disp.getRelativeCoordinate().getX() == mapManager.getPosition().getX() 
+				&& disp.getRelativeCoordinate().getY() == mapManager.getPosition().getY()) {
 			say("I am on a dispenser. Stepping aside.");
 			return moveRandomly(1); // TODO: check for obstacles or blocks
 		}
