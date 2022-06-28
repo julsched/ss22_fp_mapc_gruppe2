@@ -10,6 +10,7 @@ public class MapManagement {
 	private HashMap<RelativeCoordinate, Obstacle> obstacleLayer;
 	private HashMap<RelativeCoordinate, Rolezone> rolezoneLayer;
 	private HashMap<RelativeCoordinate, ClearMarker> clearLayer;
+	private HashMap<RelativeCoordinate, Entity> entityLayer;
 	private HashMap<RelativeCoordinate, Cell> knownArea;
 	private RelativeCoordinate currentPosition;
 	private int currentStep;
@@ -30,10 +31,15 @@ public class MapManagement {
 		this.obstacleLayer = new HashMap<RelativeCoordinate, Obstacle>();
 		this.rolezoneLayer = new HashMap<RelativeCoordinate, Rolezone>();
 		this.clearLayer = new HashMap<RelativeCoordinate, ClearMarker>();
+		this.entityLayer = new HashMap<RelativeCoordinate, Entity>();
 		this.knownArea = new HashMap<RelativeCoordinate, Cell>();
 		this.currentPosition = new RelativeCoordinate(0, 0);
 		this.currentStep = currentStep;
 		this.lastPosition = new RelativeCoordinate(0, 0);
+	}
+
+	public void setCurrentStep(int currentStep) {
+		this.currentStep = currentStep;
 	}
 	
 	/**
@@ -63,7 +69,7 @@ public class MapManagement {
 				lastPosition = new RelativeCoordinate(currentPosition.getX(), currentPosition.getY());
 			}
 			currentPosition = new RelativeCoordinate(currentPosition.getX() - 1, currentPosition.getY());
-		}	
+		}		
 	}
 	
 	/**
@@ -85,10 +91,11 @@ public class MapManagement {
 					Iterator<Cell> it = tempMap.get(tempPos).iterator();
 					while (it.hasNext()) {
 						Cell cell = it.next();
-						String type = cell.getClass().toString();
+						String type = cell.getClass().getSimpleName();
 						switch (type) {
 						case ("Dispenser"):
 							Dispenser disp = (Dispenser) cell;
+							disp.setRelativeCoordinate(absolutePos);
 							dispenserLayer.put(absolutePos, disp);
 							obstacleLayer.put(absolutePos, null);
 							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
@@ -100,9 +107,13 @@ public class MapManagement {
 							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								rolezoneLayer.put(absolutePos, null);
 							}
+							if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								entityLayer.put(absolutePos, null);
+							}
 							break;
 						case ("Rolezone"):
 							Rolezone rz = (Rolezone) cell;
+							rz.setRelativeCoordinate(absolutePos);
 							rolezoneLayer.put(absolutePos, rz);
 							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								obstacleLayer.put(absolutePos, null);
@@ -116,9 +127,13 @@ public class MapManagement {
 							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								dispenserLayer.put(absolutePos, null);
 							}
+							if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								entityLayer.put(absolutePos, null);
+							}
 							break;
 						case ("Obstacle"):
 							Obstacle obs = (Obstacle) cell;
+							obs.setRelativeCoordinate(absolutePos);
 							obstacleLayer.put(absolutePos, obs);
 							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								rolezoneLayer.put(absolutePos, null);
@@ -129,10 +144,12 @@ public class MapManagement {
 							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								goalzoneLayer.put(absolutePos, null);
 							}
+							entityLayer.put(absolutePos, null);
 							dispenserLayer.put(absolutePos, null);
 							break;
 						case ("Block"):
 							Block block = (Block) cell;
+							block.setRelativeCoordinate(absolutePos);
 							blockLayer.put(absolutePos, block);
 							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								rolezoneLayer.put(absolutePos, null);
@@ -143,10 +160,12 @@ public class MapManagement {
 							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								goalzoneLayer.put(absolutePos, null);
 							}
+							entityLayer.put(absolutePos, null);
 							obstacleLayer.put(absolutePos, null);
 							break;
 						case ("Goalzone"):
 							Goalzone gz = (Goalzone) cell;
+							gz.setRelativeCoordinate(absolutePos);
 							goalzoneLayer.put(absolutePos, gz);
 							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								obstacleLayer.put(absolutePos, null);
@@ -160,6 +179,25 @@ public class MapManagement {
 							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								dispenserLayer.put(absolutePos, null);
 							}
+							if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								entityLayer.put(absolutePos, null);
+							}
+							break;
+						case ("Entity"):
+							Entity entity = (Entity) cell;
+							entity.setRelativeCoordinate(absolutePos);
+							entityLayer.put(absolutePos, entity);
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								dispenserLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							blockLayer.put(absolutePos, null);
+							obstacleLayer.put(absolutePos, null);
 							break;
 						case ("ClearMarker"):
 							ClearMarker cm = (ClearMarker) cell;
@@ -177,6 +215,7 @@ public class MapManagement {
 					blockLayer.put(absolutePos, null);
 					obstacleLayer.put(absolutePos, null);
 					clearLayer.put(absolutePos, null);
+					entityLayer.put(absolutePos, null);
 					knownArea.put(absolutePos, null);
 				}
 			}
@@ -187,10 +226,11 @@ public class MapManagement {
 					Iterator<Cell> it = tempMap.get(tempPos).iterator();
 					while (it.hasNext()) {
 						Cell cell = it.next();
-						String type = cell.getClass().toString();
+						String type = cell.getClass().getSimpleName();
 						switch (type) {
 						case ("Dispenser"):
 							Dispenser disp = (Dispenser) cell;
+							disp.setRelativeCoordinate(absolutePos);
 							dispenserLayer.put(absolutePos, disp);
 							obstacleLayer.put(absolutePos, null);
 							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
@@ -202,9 +242,13 @@ public class MapManagement {
 							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								rolezoneLayer.put(absolutePos, null);
 							}
+							if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								entityLayer.put(absolutePos, null);
+							}
 							break;
 						case ("Rolezone"):
 							Rolezone rz = (Rolezone) cell;
+							rz.setRelativeCoordinate(absolutePos);
 							rolezoneLayer.put(absolutePos, rz);
 							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								obstacleLayer.put(absolutePos, null);
@@ -218,9 +262,13 @@ public class MapManagement {
 							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								dispenserLayer.put(absolutePos, null);
 							}
+							if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								entityLayer.put(absolutePos, null);
+							}
 							break;
 						case ("Obstacle"):
 							Obstacle obs = (Obstacle) cell;
+							obs.setRelativeCoordinate(absolutePos);
 							obstacleLayer.put(absolutePos, obs);
 							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								rolezoneLayer.put(absolutePos, null);
@@ -231,10 +279,12 @@ public class MapManagement {
 							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								goalzoneLayer.put(absolutePos, null);
 							}
+							entityLayer.put(absolutePos, null);
 							dispenserLayer.put(absolutePos, null);
 							break;
 						case ("Block"):
 							Block block = (Block) cell;
+							block.setRelativeCoordinate(absolutePos);
 							blockLayer.put(absolutePos, block);
 							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								rolezoneLayer.put(absolutePos, null);
@@ -245,10 +295,12 @@ public class MapManagement {
 							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								goalzoneLayer.put(absolutePos, null);
 							}
+							entityLayer.put(absolutePos, null);
 							obstacleLayer.put(absolutePos, null);
 							break;
 						case ("Goalzone"):
 							Goalzone gz = (Goalzone) cell;
+							gz.setRelativeCoordinate(absolutePos);
 							goalzoneLayer.put(absolutePos, gz);
 							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								obstacleLayer.put(absolutePos, null);
@@ -262,6 +314,25 @@ public class MapManagement {
 							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								dispenserLayer.put(absolutePos, null);
 							}
+							if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								entityLayer.put(absolutePos, null);
+							}
+							break;
+						case ("Entity"):
+							Entity entity = (Entity) cell;
+							entity.setRelativeCoordinate(absolutePos);
+							entityLayer.put(absolutePos, entity);
+							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								rolezoneLayer.put(absolutePos, null);
+							}
+							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								dispenserLayer.put(absolutePos, null);
+							}
+							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								goalzoneLayer.put(absolutePos, null);
+							}
+							blockLayer.put(absolutePos, null);
+							obstacleLayer.put(absolutePos, null);
 							break;
 						case ("ClearMarker"):
 							ClearMarker cm = (ClearMarker) cell;
@@ -279,11 +350,29 @@ public class MapManagement {
 					blockLayer.put(absolutePos, null);
 					obstacleLayer.put(absolutePos, null);
 					clearLayer.put(absolutePos, null);
+					entityLayer.put(absolutePos, null);
 					knownArea.put(absolutePos, null);
 				}
 			}
 		}
-		
+
+		// For testing
+		/*System.out.println("Current Position:");
+		System.out.println(currentPosition);
+		System.out.println("Goal Zone Layer:");
+		System.out.println(goalzoneLayer);
+		System.out.println("Role Zone Layer:");
+		System.out.println(rolezoneLayer);
+		System.out.println("Dispenser Layer:");
+		System.out.println(dispenserLayer);
+		System.out.println("Block Layer:");
+		System.out.println(blockLayer);
+		System.out.println("Obstacle Layer:");
+		System.out.println(obstacleLayer);
+		System.out.println("Entity Layer:");
+		System.out.println(entityLayer);
+		System.out.println("Known Area:");
+		System.out.println(knownArea);*/
 	}
 	
 	/**
@@ -439,6 +528,10 @@ public class MapManagement {
 	public HashMap<RelativeCoordinate, Obstacle> getObstacleLayer() {
 		return obstacleLayer;
 	}
+
+	public HashMap<RelativeCoordinate, Entity> getEntityLayer() {
+		return entityLayer;
+	}
 	
 	/**
 	 * Getter for position in actual step
@@ -549,5 +642,35 @@ public class MapManagement {
 	public void updateLastPosition(int x, int y) {
 		lastPosition = new RelativeCoordinate(lastPosition.getX() + x, lastPosition.getY() + y);
 	}
-	
+
+	public HashMap<String, RelativeCoordinate> analyzeMapDimensions() {
+		// Most northern cell that has been analyzed
+		RelativeCoordinate north = new RelativeCoordinate(0, 0);
+		// Most eastern cell that has been analyzed
+		RelativeCoordinate east = new RelativeCoordinate(0, 0);
+		// Most southern cell that has been analyzed
+		RelativeCoordinate south = new RelativeCoordinate(0, 0);
+		// Most western cell that has been analyzed
+		RelativeCoordinate west = new RelativeCoordinate(0, 0);
+		for (RelativeCoordinate relativeCoordinate : knownArea.keySet()) {
+			if (relativeCoordinate.getX() > east.getX()) {
+				east = relativeCoordinate;
+			}
+			if (relativeCoordinate.getX() < west.getX()) {
+				west = relativeCoordinate;
+			}
+			if (relativeCoordinate.getY() > south.getY()) {
+				south = relativeCoordinate;
+			}
+			if (relativeCoordinate.getY() < north.getY()) {
+				north = relativeCoordinate;
+			}
+		}
+		HashMap<String, RelativeCoordinate> map = new HashMap<>();
+		map.put("north", north);
+		map.put("east", east);
+		map.put("south", south);
+		map.put("west", west);
+		return map;
+	}
 }

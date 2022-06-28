@@ -33,19 +33,16 @@ public class AgentG2 extends Agent {
 
 	private HashMap<RelativeCoordinate, List<Cell>> tempMap = new HashMap<RelativeCoordinate, List<Cell>>();
 
-	private List<Percept> attachedThingsPercepts = new ArrayList<>();
-	private List<Dispenser> dispensers = new ArrayList<>();
+	private List<RelativeCoordinate> attachedThings = new ArrayList<>();
 	private List<Block> blocks = new ArrayList<>();
-	private List<Entity> entities = new ArrayList<>();
 	private List<RelativeCoordinate> occupiedFields = new ArrayList<>();
-	private List<RelativeCoordinate> goalZoneFields = new ArrayList<>();
-	private List<RelativeCoordinate> roleZoneFields = new ArrayList<>();
 	private List<Task> tasks = new ArrayList<>();
 	private List<Norm> norms = new ArrayList<>();
 	// Blocks that might(!) be directly attached to the agent (right next to agent)
 	private List<Block> attachedBlocks = new ArrayList<>();
 
 	private MapManagement mapManager;
+	private PathCalc pathCalc;
 	private int counterMapExchange = 0;
 	private RelativeCoordinate exchangePartner; // speichert relative Koordinate Austauschpartners für die Map
 	private boolean requestForMap = false;
@@ -90,6 +87,7 @@ public class AgentG2 extends Agent {
 	public AgentG2(String name, MailService mailbox) {
 		super(name, mailbox);
 		this.mapManager = new MapManagement(currentStep);
+		this.pathCalc = new PathCalc(mapManager, attachedBlocks);
 	}
 
 	@Override
@@ -183,30 +181,24 @@ public class AgentG2 extends Agent {
 		for (Percept percept : percepts) {
 			if (percept.getName().equals("step")) {
 				currentStep = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
-				if (explorerAgent.equals(getName())) { // TODO wieder ohne if @Carina
-					say("------------------ Current step: " + currentStep + " ------------------");
-				}
+				mapManager.setCurrentStep(currentStep);
+				say("------------------ Current step: " + currentStep + " ------------------");
 				return;
 			}
 		}
 	}
 
 	private void saveStepPercepts(List<Percept> percepts) {
-
 		if (percepts == null) { // Error handling if no percepts are available
 			return;
 		}
 
 		// Delete previous step percepts
 		lastActionParams.clear();
-		attachedThingsPercepts.clear();
-		dispensers.clear();
+		attachedThings.clear();
 		blocks.clear();
-		entities.clear();
 		friendlyAgents.clear();
 		occupiedFields.clear();
-		goalZoneFields.clear();
-		roleZoneFields.clear();
 		tasks.clear();
 		norms.clear();
 		hitFrom = null;
@@ -290,7 +282,6 @@ public class AgentG2 extends Agent {
 					String type = ((Identifier) percept.getParameters().get(3)).getValue();
 					Dispenser dispenser = new Dispenser(relativeCoordinate, type, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, dispenser);
-					dispensers.add(dispenser);
 					if (!tempMap.containsKey(relativeCoordinate)) {
 						ArrayList<Cell> cellList = new ArrayList<Cell>();
 						cellList.add(dispenser);
@@ -305,7 +296,9 @@ public class AgentG2 extends Agent {
 					String blockType = ((Identifier) percept.getParameters().get(3)).getValue();
 					Block block = new Block(relativeCoordinate, blockType, currentStep);
 //					map.putThisStep(currentAbsolutePos, relativeCoordinate, block);
-					blocks.add(block);
+					blocks.add(new Block(relativeCoordinate, blockType, currentStep)); // Should not have same block
+																						// object as in map since
+																						// coordinates differ
 					occupiedFields.add(relativeCoordinate);
 					if (!tempMap.containsKey(relativeCoordinate)) {
 						ArrayList<Cell> cellList = new ArrayList<Cell>();
@@ -319,8 +312,18 @@ public class AgentG2 extends Agent {
 				}
 				if (thingType.equals("entity")) {
 					String team = ((Identifier) percept.getParameters().get(3)).getValue();
-					Entity entity = new Entity(relativeCoordinate, team);
-					entities.add(entity);
+					Entity entity = new Entity(relativeCoordinate, team, currentStep);
+					// Only add entity to map if it's not the agent itself
+					if (!(x == 0 && y == 0)) {
+						if (!tempMap.containsKey(relativeCoordinate)) {
+							ArrayList<Cell> cellList = new ArrayList<Cell>();
+							cellList.add(entity);
+							tempMap.put(relativeCoordinate, cellList);
+						} else {
+							List<Cell> cellList = tempMap.get(relativeCoordinate);
+							cellList.add(entity);
+						}
+					}
 					occupiedFields.add(relativeCoordinate);
 					occupiedFieldsWithoutBlocks.add(relativeCoordinate);
 					RelativeCoordinate ownPosition = new RelativeCoordinate(0, 0);
@@ -384,11 +387,9 @@ public class AgentG2 extends Agent {
 				for (int i = 0; i < ((ParameterList) paramRequirements).size(); i++) {
 					params.add(((ParameterList) paramRequirements).get(i));
 				}
-				// Remove this if-statement, once agent can handle tasks with more than one
-				// block
+				// Remove if-statement once agent can handle multi-block tasks
 				if (params.size() > 1) {
-					// say("Task " + name + " has more than one block. Ignore."); //TODO wieder
-					// Einkommentierne @Carina
+					say("Task " + name + " has more than one block. Ignore.");
 					break;
 				}
 				List<TaskRequirement> requirements = new ArrayList<>();
@@ -439,7 +440,11 @@ public class AgentG2 extends Agent {
 				break;
 			}
 			case "attached" -> {
-				attachedThingsPercepts.add(percept);
+				int x = ((Numeral) percept.getParameters().get(0)).getValue().intValue();
+				int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
+
+				RelativeCoordinate attachedThing = new RelativeCoordinate(x, y);
+				attachedThings.add(attachedThing);
 				break;
 			}
 			case "goalZone" -> {
@@ -447,7 +452,6 @@ public class AgentG2 extends Agent {
 				int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
 
 				RelativeCoordinate goalZoneField = new RelativeCoordinate(x, y);
-				goalZoneFields.add(goalZoneField);
 				if (!tempMap.containsKey(goalZoneField)) {
 					ArrayList<Cell> cellList = new ArrayList<Cell>();
 					cellList.add(new Goalzone(goalZoneField, currentStep));
@@ -463,14 +467,13 @@ public class AgentG2 extends Agent {
 				int y = ((Numeral) percept.getParameters().get(1)).getValue().intValue();
 
 				RelativeCoordinate roleZoneField = new RelativeCoordinate(x, y);
-				roleZoneFields.add(roleZoneField);
 				if (!tempMap.containsKey(roleZoneField)) {
 					ArrayList<Cell> cellList = new ArrayList<Cell>();
 					cellList.add(new Rolezone(roleZoneField, currentStep));
 					tempMap.put(roleZoneField, cellList);
 				} else {
 					List<Cell> cellList = tempMap.get(roleZoneField);
-					cellList.add(new Goalzone(roleZoneField, currentStep));
+					cellList.add(new Rolezone(roleZoneField, currentStep));
 				}
 				break;
 			}
@@ -481,7 +484,7 @@ public class AgentG2 extends Agent {
 						currentRole = Role.getRole(roles, roleName);
 					}
 					if (currentRole != null) {
-//						say("My current role: " + currentRole.getName()); //TODO wieder Einkommentierne @Carina
+						say("My current role: " + currentRole.getName());
 					}
 				}
 				break;
@@ -538,6 +541,47 @@ public class AgentG2 extends Agent {
 		}
 
 		if (!attachedBlocks.isEmpty()) {
+			if (lastAction.equals("detach") && lastActionResult.equals("success")) {
+				String direction = (String) lastActionParams.get(0);
+				Block blockToBeRemoved = null;
+				switch (direction) {
+				case "n" -> {
+					for (Block block : attachedBlocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(0, -1))) {
+							blockToBeRemoved = block;
+							break;
+						}
+					}
+				}
+				case "e" -> {
+					for (Block block : attachedBlocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(1, 0))) {
+							blockToBeRemoved = block;
+							break;
+						}
+					}
+				}
+				case "s" -> {
+					for (Block block : attachedBlocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(0, 1))) {
+							blockToBeRemoved = block;
+							break;
+						}
+					}
+				}
+				case "w" -> {
+					for (Block block : attachedBlocks) {
+						if (block.getRelativeCoordinate().equals(new RelativeCoordinate(-1, 0))) {
+							blockToBeRemoved = block;
+							break;
+						}
+					}
+				}
+				}
+				if (blockToBeRemoved != null) {
+					attachedBlocks.remove(blockToBeRemoved);
+				}
+			}
 			if (lastAction.equals("rotate") && lastActionResult.equals("success")) {
 				// Works only if exactly one block is attached to agent
 				String direction = (String) lastActionParams.get(0);
@@ -647,7 +691,7 @@ public class AgentG2 extends Agent {
 
 		say("Attached blocks: ");
 		for (Block block : attachedBlocks) {
-//			say("(" + block.getRelativeCoordinate().getX() + "|" + block.getRelativeCoordinate().getY() + ")"); //TODO wieder Einkommentierne @Carina
+			say("(" + block.getRelativeCoordinate().getX() + "|" + block.getRelativeCoordinate().getY() + ")");
 		}
 	}
 
@@ -875,20 +919,20 @@ public class AgentG2 extends Agent {
 				RelativeCoordinate pos;
 				switch (direction) {
 				case "n":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() + 1);
-					this.attachedBlocks.remove(pos);
+					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() - 1);
+					//this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks contains relative coordinates
 					break;
 				case "s":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() - 1);
-					this.attachedBlocks.remove(pos);
+					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() + 1);
+					//this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks contains relative coordinates
 					break;
 				case "e":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX() + 1, mapManager.getPosition().getY());
-					this.attachedBlocks.remove(pos);
+					//this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks contains relative coordinates
 					break;
 				case "w":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX() - 1, mapManager.getPosition().getY());
-					this.attachedBlocks.remove(pos);
+					//this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks contains relative coordinates
 					break;
 				default:
 					break;
@@ -1021,47 +1065,43 @@ public class AgentG2 extends Agent {
 		if (lastAction.equals("move") && !lastActionResult.equals("success") && lastActionParams.size() == 1) {
 			// Get direction
 			String direction = (String) lastActionParams.get(0);
-//			say("I got stuck when trying to walk '" + direction + "'"); //TODO wieder Einkommentierne @Carina
+			say("I got stuck when trying to walk '" + direction + "'");
 
 			RelativeCoordinate desiredField = RelativeCoordinate.getRelativeCoordinate(direction);
 			for (RelativeCoordinate relativeCoordinate : occupiedFields) {
 				if (relativeCoordinate.equals(desiredField)) {
-//					say("Reason: field towards direction '" + direction + "' is already occupied"); //TODO wieder Einkommentierne @Carina
+					say("Reason: field towards direction '" + direction + "' is already occupied");
 					// This will ensure that agent will try all possible directions if one step
 					// after another fails due to occupied fields
 					switch (direction) {
 					case "n":
-//						say("Moving one step east..."); //TODO wieder Einkommentierne @Carina
-						return new Action("move", new Identifier("e"));
-
+						return move("e");
 					case "e":
-//						say("Moving one step south...");//TODO wieder Einkommentierne @Carina
-						return new Action("move", new Identifier("s"));
-
+						return move("s");
 					case "s":
-//						say("Moving one step west...");//TODO wieder Einkommentierne @Carina
-						return new Action("move", new Identifier("w"));
-
+						return move("w");
 					case "w":
-//						say("Moving one step north...");//TODO wieder Einkommentierne @Carina
-						return new Action("move", new Identifier("n"));
+						return move("n");
 					}
 				}
 			}
 		}
 		if (lastAction.equals("attach") && !lastActionResult.equals("success")) {
 			String direction = (String) lastActionParams.get(0);
-//			say("Last attempt to attach failed. Trying to attach...");//TODO wieder Einkommentierne @Carina
+			say("Last attempt to attach failed. Trying to attach...");
 			return new Action("attach", new Identifier(direction));
 		}
 		if (lastAction.equals("rotate") && !lastActionResult.equals("success")) {
-//			say("Rotation was not succesfull.");//TODO wieder Einkommentierne @Carina
-			return moveRandomly(1);// //TODO wieder Einkommentierne @Carina
+			say("Rotation was not succesful.");
+			return moveRandomly(1);
 
 		}
+		if (lastAction.equals("clear") && !lastActionResult.equals("success")) {
+			say("Last attempt to clear failed.");
+			return new Action("skip"); // TODO: improve
+		}
 		// TODO: expand error handling
-		return moveRandomly(currentRole.getSpeedWithoutAttachments());// TODO wieder Einkommentierne @Carina
-
+		return moveRandomly(currentRole.getSpeedWithoutAttachments());
 	}
 
 	private Action workerActionAttach() {
@@ -1081,163 +1121,36 @@ public class AgentG2 extends Agent {
 		say("Need to look for goal zone");
 		// Identify goal zone field candidates (= goal zone fields which are not
 		// occupied and which have enough space around them to submit a task)
-		HashMap<RelativeCoordinate, List<Task>> goalZoneFieldCandidates = determineGoalZoneFieldCandidates();
+		Set<RelativeCoordinate> goalZoneFieldCandidates = pathCalc.determineGoalZoneFieldCandidates(taskToFinish);
 
 		if (!goalZoneFieldCandidates.isEmpty()) {
 			say("Suitable goal zone fields identified");
 			// Check if agent already on a suitable goal zone field
-			if (!goalZoneFieldCandidates.containsKey(new RelativeCoordinate(0, 0))) {
+			if (!goalZoneFieldCandidates.contains(mapManager.getPosition())) {
 				// Calculate direction agent should move into in order to get as fast as
 				// possible to the next suitable goal zone field
-				// TODO: check if attached blocks will fit on this path
-				Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields,
-						determineLocations("attachedBlock", null), goalZoneFieldCandidates.keySet());
+				String dir = pathCalc.calculateShortestPathMap(goalZoneFieldCandidates);
 				if (dir == null) {
 					say("No path towards identified goal zone fields.");
-					return moveRandomly(currentRole.getSpeedWithoutAttachments());
-				}
-				say("Path identified. Moving towards next suitable goal zone field...");
-				switch (dir) {
-				case NORTH -> {
-					say("NORTH");
-					return new Action("move", new Identifier("n"));
-				}
-				case EAST -> {
-					say("EAST");
-					return new Action("move", new Identifier("e"));
-				}
-				case SOUTH -> {
-					say("SOUTH");
-					return new Action("move", new Identifier("s"));
-				}
-				case WEST -> {
-					say("WEST");
-					return new Action("move", new Identifier("w"));
-				}
+					return explorerStep();
+				} else {
+					say("Path identified. Moving towards next suitable goal zone field...");
+					return move(dir);
 				}
 			} else {
 				say("Already on suitable goal zone field");
 				if (!checkIfTaskComplete(taskToFinish)) {
-					// TODO: select the task which requires the least amount of rotations
-					Task selectedTask = goalZoneFieldCandidates.get(new RelativeCoordinate(0, 0)).get(0);
+					// At the moment only for one-block tasks
 					return executeRotation(attachedBlocks.get(0).getRelativeCoordinate(),
-							selectedTask.getRequirements().get(0).getRelativeCoordinate());
+							taskToFinish.getRequirements().get(0).getRelativeCoordinate());
 				}
 				say("Task '" + taskToFinish.getName() + "' is complete");
-				if (taskSubmissionPossible(taskToFinish)) {
-					String taskName = taskToFinish.getName();
-					say("Submitting task '" + taskName + "'...");
-					this.setCurrentTask(null);
-					return new Action("submit", new Identifier(taskName));
-				}
+				this.setCurrentTask(null);
+				return submit(taskToFinish);
 			}
 		}
-		// Move randomly to find a suitable goal zone field
+		// Explore to find a suitable goal zone field
 		return explorerStep();
-	}
-
-	/**
-	 * Determines which goal zone cells the agent can walk towards for submitting a
-	 * task, taking into account surrounding obstacles and the list of corresponding
-	 * tasks provided
-	 * 
-	 * @param
-	 * 
-	 * @return A map of relative coordinates of goal zone cells the agent can walk
-	 *         to to submit a task and the tasks that can be submitted in this cell
-	 */
-	// Works for one-block tasks only
-	private HashMap<RelativeCoordinate, List<Task>> determineGoalZoneFieldCandidates() {
-		// First check which goal zone fields are free (meaning no obstacle/block/entity
-		// on them)
-		RelativeCoordinate agentPosition = new RelativeCoordinate(0, 0);
-		List<RelativeCoordinate> attachedBlockLocations = determineLocations("attachedBlock", null);
-		List<RelativeCoordinate> goalZoneFieldsFree = new ArrayList<>();
-		for (RelativeCoordinate goalZoneField : goalZoneFields) {
-			if (goalZoneField.equals(agentPosition) || attachedBlockLocations.contains(goalZoneField)
-					|| !occupiedFields.contains(goalZoneField)) {
-				goalZoneFieldsFree.add(goalZoneField);
-			}
-		}
-
-		// Then check which ones of the free goal zone fields have enough space around
-		// them to submit a task
-		HashMap<RelativeCoordinate, List<Task>> goalZoneFieldCandidates = new HashMap<>();
-		for (RelativeCoordinate goalZoneField : goalZoneFieldsFree) {
-			List<Task> tasks = new ArrayList<>();
-			RelativeCoordinate requirement = this.currentTask.getRequirements().get(0).getRelativeCoordinate();
-			RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getX(),
-					goalZoneField.getY() + requirement.getY());
-			if (goalZoneFieldsFree.contains(fieldToBeChecked)) {
-				tasks.add(this.currentTask);
-			}
-			if (!tasks.isEmpty()) {
-				goalZoneFieldCandidates.put(goalZoneField, tasks);
-			}
-		}
-		return goalZoneFieldCandidates;
-	}
-
-	// worker searches or chooses Goalzone
-	private Action workerActionSearchGoalzone(List<Task> correspondingTasks) {
-		say("Need to look for goal zone");
-		// Identify goal zone field candidates (= goal zone fields which are not
-		// occupied and which have enough space around them to submit a task)
-		HashMap<RelativeCoordinate, List<Task>> goalZoneFieldCandidates = determineGoalZoneFieldCandidates(
-				correspondingTasks);
-
-		if (!goalZoneFieldCandidates.isEmpty()) {
-			say("Suitable goal zone fields identified");
-			// Check if agent already on a suitable goal zone field
-			if (!goalZoneFieldCandidates.containsKey(new RelativeCoordinate(0, 0))) {
-				// Calculate direction agent should move into in order to get as fast as
-				// possible to the next suitable goal zone field
-				// TODO: check if attached blocks will fit on this path
-				Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields,
-						determineLocations("attachedBlock", null), goalZoneFieldCandidates.keySet());
-				if (dir == null) {
-					say("No path towards identified goal zone fields.");
-					return moveRandomly(currentRole.getSpeedWithoutAttachments());
-				}
-				say("Path identified. Moving towards next suitable goal zone field...");
-				switch (dir) {
-				case NORTH -> {
-					say("NORTH");
-					return new Action("move", new Identifier("n"));
-				}
-				case EAST -> {
-					say("EAST");
-					return new Action("move", new Identifier("e"));
-				}
-				case SOUTH -> {
-					say("SOUTH");
-					return new Action("move", new Identifier("s"));
-				}
-				case WEST -> {
-					say("WEST");
-					return new Action("move", new Identifier("w"));
-				}
-				}
-			} else {
-				say("Already on suitable goal zone field");
-				Task completedTask = checkIfAnyTaskComplete(correspondingTasks);
-				if (completedTask == null) {
-					// TODO: select the task which requires the least amount of rotations
-					Task selectedTask = goalZoneFieldCandidates.get(new RelativeCoordinate(0, 0)).get(0);
-					return executeRotation(attachedBlocks.get(0).getRelativeCoordinate(),
-							selectedTask.getRequirements().get(0).getRelativeCoordinate());
-				}
-				say("Task '" + completedTask.getName() + "' is complete");
-				if (taskSubmissionPossible(completedTask)) {
-					String taskName = completedTask.getName();
-					say("Submitting task '" + taskName + "'...");
-					this.setCurrentTask(null);
-					return new Action("submit", new Identifier(taskName));
-				}
-			}
-		}
-		// Move randomly to find a suitable goal zone field
-		return moveRandomly(currentRole.getSpeedWithoutAttachments());
 	}
 
 	/**
@@ -1458,63 +1371,79 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action workerActionSearchDispenser() {
-		if (!dispensers.isEmpty()) {
-			say("Dispenser(s) identified");
-			Set<RelativeCoordinate> dispenserLocations = new HashSet<>();
-			for (Dispenser dispenser : dispensers) {
-				// Check whether there is a task for this block type
-				if (checkForCorrespondingTask(dispenser.getType())) {
-					dispenserLocations.add(dispenser.getRelativeCoordinate());
+		Set<RelativeCoordinate> dispenserCandidates = new HashSet<>();
+		// TODO: Adjust for using the currentTask and passing the required dispenser
+		// type into determineDispenserCandidates()
+		for (Task task : tasks) {
+			Set<RelativeCoordinate> dispenserCandidatesTemp = pathCalc
+					.determineDispenserCandidates(task.getRequirements().get(0).getBlockType());
+			dispenserCandidates.addAll(dispenserCandidatesTemp);
+		}
+		// dispenserCandidates =
+		// pathCalc.determineDispenserCandidates(currentTask.getRequirements().get(0).getBlockType());
+
+		if (!dispenserCandidates.isEmpty()) {
+			say("Suitable dispenser(s) identified");
+			for (RelativeCoordinate relativeCoordinate : dispenserCandidates) {
+				if (relativeCoordinate.isNextToAgent(mapManager.getPosition())) {
+					String direction = relativeCoordinate.getDirectDirection(mapManager.getPosition());
+					return requestBlock(direction);
+				}
+				// If agent is on top of dispenser -> move one step to be able to request a
+				// block
+				if (relativeCoordinate.getX() == mapManager.getPosition().getX()
+						&& relativeCoordinate.getY() == mapManager.getPosition().getY()) {
+					return moveRandomly(1); // TODO: check for obstacles
 				}
 			}
-			if (dispenserLocations.isEmpty()) {
-//				say("No corresponding tasks for identified dispenser(s)."); //TODO wieder Einkommentierne @Carina
-				// Keep moving randomly to find a different dispenser
-//				return moveRandomly(currentRole.getSpeedWithoutAttachments()); //TODO wieder Einkommentierne @Carina
+			// Move towards dispenser
+			String dir = pathCalc.calculateShortestPathMap(dispenserCandidates);
+			if (dir == null) {
+				say("No path towards dispenser.");
 				return explorerStep();
-
 			} else {
-				for (RelativeCoordinate relativeCoordinate : dispenserLocations) {
-					if (relativeCoordinate.isNextToAgent()) {
-						String direction = relativeCoordinate.getDirectDirection();
-						return requestBlock(direction);
-					}
-					// If agent is on top of dispenser -> move one step to be able to request a
-					// block
-					if (relativeCoordinate.getX() == 0 && relativeCoordinate.getY() == 0) {
-						return moveRandomly(1);
-					}
-				}
-				// Move towards dispenser
-				Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields,
-						determineLocations("attachedBlock", null), dispenserLocations);
-				if (dir == null) {
-					say("No path towards goal zone.");
-					return explorerStep();
-				}
 				say("Path identified. Moving towards dispenser...");
-				switch (dir) {
-				case NORTH -> {
-					say("NORTH");
-					return new Action("move", new Identifier("n"));
-				}
-				case EAST -> {
-					say("EAST");
-					return new Action("move", new Identifier("e"));
-				}
-				case SOUTH -> {
-					say("SOUTH");
-					return new Action("move", new Identifier("s"));
-				}
-				case WEST -> {
-					say("WEST");
-					return new Action("move", new Identifier("w"));
-				}
+				return move(dir);
+			}
+		}
+		// Explore to find a dispenser
+		return explorerStep();
+	}
+
+	/**
+	 * Provides direction to the next reachable loose block of the required type (in agent's vision range), if available
+	 * 
+	 * @param requiredType The required block type
+	 * 
+	 * @return Direction towards loose block if identified, otherwise null
+	 */
+	private Action checkForLooseBlocks(String requiredType) {
+		Set<RelativeCoordinate> looseBlocks = new HashSet<>();
+		for (Block block : blocks) {
+			if (block.getType().equals(requiredType)) {
+				RelativeCoordinate coordinate = block.getRelativeCoordinate();
+				if (!attachedThings.contains(coordinate)) {
+					if (coordinate.isNextToAgent()) {
+						String direction = coordinate.getDirectDirection();
+						say("Loose block identified. Attaching...");
+						return new Action("attach", new Identifier(direction));
+					} else {
+						RelativeCoordinate currentPosition = mapManager.getPosition();
+						RelativeCoordinate absoluteCoordinate = new RelativeCoordinate(currentPosition.getX() + coordinate.getX(),
+							currentPosition.getY() + coordinate.getY());
+						looseBlocks.add(absoluteCoordinate);
+					}
 				}
 			}
 		}
-		// Move randomly to find a dispenser
-		return explorerStep();
+		String dir = pathCalc.calculateShortestPathMap(looseBlocks);
+		if (dir != null) {
+			say("Loose block identified. Moving towards block...");
+			return move(dir);
+		} else {
+			say("No reachable loose block identified.");
+			return null;
+		}
 	}
 
 	// default (main) worker method
@@ -1596,12 +1525,11 @@ public class AgentG2 extends Agent {
 		return false;
 	}
 
-
 	private Action walkToObstacle() {
 		if (dirOfBorders.size() == 0) {
-			Direction dir = PathCalc.calculateShortestPath(currentRole.getVision(), occupiedFields,
-					determineLocations("attachedBlock", null), new HashSet(obstaclesInSight));
-			return move(dir.toString());
+			String dir = pathCalc.calculateShortestPathVision(currentRole.getVision(), occupiedFields,
+					new HashSet(obstaclesInSight));
+			return move(dir);
 		} else {
 			if (dirOfFocusBorder.equals("")) {
 				Random rand = new Random();
@@ -1773,10 +1701,10 @@ public class AgentG2 extends Agent {
 		if (possibleDirs != null && possibleDirs.size() != 0) {
 			if (!prefDir.equals("")) {
 				if (possibleDirs.contains(prefDir)) {
-//					if(!(attachedBlocks.size() == 1)) {
-//						ArrayList<String> attachedBlocksDirs = getAttachedBlocksDirs();
-//						return rotateAccordingToAttachedBlock(prefDir, attachedBlocksDirs);
-//					}
+					if ((attachedBlocks.size() == 1)) {
+						String attachedBlockDir = getBlockDir(attachedBlocks.get(0));
+						return rotateAccordingToAttachedBlock(prefDir, attachedBlockDir);
+					}
 					return move(prefDir);
 				} else {
 //					if (attachedBlocks.size() ==0) {
@@ -1804,17 +1732,55 @@ public class AgentG2 extends Agent {
 		return new Action("skip");
 	}
 
+	private String getBlockDir(Block b) {
+		if ((attachedBlocks.size() == 1)) {
+			if (b.distanceFromAgent() == 1) {
+				say("attachedBlock direction " + b.getDirectDirection());
+				return b.getDirectDirection();
+			}
+		}
+		return "";
+	}
 
-
-//	private ArrayList<String> getAttachedBlocksDirs() {
-//		ArrayList<String> attachedBlocksDirs = new ArrayList<>();
-//		for(Block b : attachedBlocks) {
-//			if(b.distanceFromAgent()==1) {
-//				attachedBlocksDirs.add(b.getDirectDirection());
-//			}
-//		}
-//		return attachedBlocksDirs;
-//	}
+	private Action rotateAccordingToAttachedBlock(String prefDir, String attachedBlockDir) {
+		if (getOppositeDirection(attachedBlockDir) == prefDir) { // no Rotation necessary
+			return move(prefDir);
+		} else if (attachedBlockDir.equals(prefDir)) { // Rotation direction irrelevant
+			return new Action("rotate", new Identifier("cw"));
+		} else {
+			switch (prefDir) {
+			case ("n"): {
+				if (attachedBlockDir.equals("e")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			case ("e"): {
+				if (attachedBlockDir.equals("s")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			case ("s"): {
+				if (attachedBlockDir.equals("w")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			case ("w"): {
+				if (attachedBlockDir.equals("n")) {
+					return new Action("rotate", new Identifier("cw"));
+				} else {
+					return new Action("rotate", new Identifier("ccw"));
+				}
+			}
+			}
+		}
+		return null;
+	}
 
 	private Action clear(String prefDir) {
 		say("clearing " + prefDir);
@@ -1933,122 +1899,13 @@ public class AgentG2 extends Agent {
 	}
 
 	/**
-	 * Checks in clockwise-sequence if there is a dispenser of the required block
-	 * type directly next to the agent
-	 * 
-	 * @param blockType block type of dispenser agent is looking for
-	 * @return direction of the dispenser or "x" if no dispenser of the required
-	 *         block type next to the agent
-	 */
-	private String checkIfDispenserNext(String blockType) {
-		if (!dispensers.isEmpty()) {
-			for (Dispenser dispenser : dispensers) {
-				String type = dispenser.getType();
-				if (type.equals(blockType)) {
-					RelativeCoordinate relativeCoordinate = dispenser.getRelativeCoordinate();
-
-					if (relativeCoordinate.isOneStepNorth()) {
-						return "n";
-					}
-					if (relativeCoordinate.isOneStepEast()) {
-						return "e";
-					}
-					if (relativeCoordinate.isOneStepSouth()) {
-						return "s";
-					}
-					if (relativeCoordinate.isOneStepWest()) {
-						return "w";
-					}
-				}
-			}
-		}
-		return "x";
-	}
-
-	/**
-	 * Determines which goal zone cells the agent can walk towards for submitting a
-	 * task, taking into account surrounding obstacles and the list of corresponding
-	 * tasks provided
-	 * 
-	 * @param correspondingTasks A list of tasks which can be fulfilled considerung
-	 *                           the agent's currently attached block
-	 * @return A map of relative coordinates of goal zone cells the agent can walk
-	 *         to to submit a task and the tasks that can be submitted in this cell
-	 */
-	// Works for one-block tasks only
-	private HashMap<RelativeCoordinate, List<Task>> determineGoalZoneFieldCandidates(List<Task> correspondingTasks) {
-		// First check which goal zone fields are free (meaning no obstacle/block/entity
-		// on them)
-		RelativeCoordinate agentPosition = new RelativeCoordinate(0, 0);
-		List<RelativeCoordinate> attachedBlockLocations = determineLocations("attachedBlock", null);
-		List<RelativeCoordinate> goalZoneFieldsFree = new ArrayList<>();
-		for (RelativeCoordinate goalZoneField : goalZoneFields) {
-			if (goalZoneField.equals(agentPosition) || attachedBlockLocations.contains(goalZoneField)
-					|| !occupiedFields.contains(goalZoneField)) {
-				goalZoneFieldsFree.add(goalZoneField);
-			}
-		}
-
-		// Then check which ones of the free goal zone fields have enough space around
-		// them to submit a task
-		HashMap<RelativeCoordinate, List<Task>> goalZoneFieldCandidates = new HashMap<>();
-		for (RelativeCoordinate goalZoneField : goalZoneFieldsFree) {
-			List<Task> tasks = new ArrayList<>();
-			for (Task task : correspondingTasks) {
-				RelativeCoordinate requirement = task.getRequirements().get(0).getRelativeCoordinate();
-				RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getX(),
-						goalZoneField.getY() + requirement.getY());
-				if (goalZoneFieldsFree.contains(fieldToBeChecked)) {
-					tasks.add(task);
-				}
-			}
-			if (!tasks.isEmpty()) {
-				goalZoneFieldCandidates.put(goalZoneField, tasks);
-			}
-		}
-		return goalZoneFieldCandidates;
-	}
-
-	/**
-	 * Gets a list of relative coordinates of free goal zones which are directly
-	 * next to the agent
-	 * 
-	 * @return A list of relative coordinates of adjacent free goal zone cells
-	 */
-	private List<RelativeCoordinate> getAdjacentGoalZoneFields(List<RelativeCoordinate> goalZoneFieldsFree) {
-		List<RelativeCoordinate> adjacentGoalZoneFields = new ArrayList<>();
-		for (RelativeCoordinate relativeCoordinate : goalZoneFieldsFree) {
-			if (relativeCoordinate.distanceFromAgent() == 1) {
-				adjacentGoalZoneFields.add(relativeCoordinate);
-			}
-		}
-		return adjacentGoalZoneFields;
-	}
-
-	/**
-	 * Checks whether agent is positioned on a goal zone (does not check for
-	 * attached blocks)
-	 * 
-	 * @return True if agent is positioned on a goal zone, otherwise false
-	 */
-	private boolean agentInGoalZone() {
-		RelativeCoordinate agentPosition = new RelativeCoordinate(0, 0);
-		for (RelativeCoordinate goalZoneField : goalZoneFields) {
-			if (goalZoneField.equals(agentPosition)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
 	 * Makes the agent request a block from a dispenser
 	 * 
 	 * @param direction Direction of the dispenser
 	 * @return The request action
 	 */
 	private Action requestBlock(String direction) {
-//		say("Requesting block...");//TODO wieder Einkommentierne @Carina
+		say("Requesting block...");
 		return new Action("request", new Identifier(direction));
 	}
 
@@ -2066,59 +1923,48 @@ public class AgentG2 extends Agent {
 		if (currentBlockPos.equals(targetBlockPos)) {
 			return new Action("skip");
 		}
-
 		if ((currentBlockPos.isOneStepNorth() && targetBlockPos.isOneStepEast())
 				|| (currentBlockPos.isOneStepEast() && targetBlockPos.isOneStepSouth())
 				|| (currentBlockPos.isOneStepSouth() && targetBlockPos.isOneStepWest())
 				|| (currentBlockPos.isOneStepWest() && targetBlockPos.isOneStepNorth())) {
-			say("Rotating in clockwise direction to fulfill task...");
-			return new Action("rotate", new Identifier("cw"));
+			return rotate("cw");
 		}
 		if ((currentBlockPos.isOneStepNorth() && targetBlockPos.isOneStepWest())
 				|| (currentBlockPos.isOneStepEast() && targetBlockPos.isOneStepNorth())
 				|| (currentBlockPos.isOneStepSouth() && targetBlockPos.isOneStepEast())
 				|| (currentBlockPos.isOneStepWest() && targetBlockPos.isOneStepSouth())) {
-			say("Rotating in counter-clockwise direction to fulfill task...");
-			return new Action("rotate", new Identifier("ccw"));
+			return rotate("ccw");
 		}
 		if ((currentBlockPos.isOneStepNorth() && targetBlockPos.isOneStepSouth())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(1, 0))) {
-				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
-				return new Action("rotate", new Identifier("cw"));
+				return rotate("cw");
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(-1, 0))) {
-				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
-				return new Action("rotate", new Identifier("ccw"));
+				return rotate("ccw");
 			}
 		}
 		if ((currentBlockPos.isOneStepEast() && targetBlockPos.isOneStepWest())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(0, 1))) {
-				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
-				return new Action("rotate", new Identifier("cw"));
+				return rotate("cw");
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(0, -1))) {
-				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
-				return new Action("rotate", new Identifier("ccw"));
+				return rotate("ccw");
 			}
 		}
 		if ((currentBlockPos.isOneStepSouth() && targetBlockPos.isOneStepNorth())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(-1, 0))) {
-				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
-				return new Action("rotate", new Identifier("cw"));
+				return rotate("cw");
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(1, 0))) {
-				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
-				return new Action("rotate", new Identifier("ccw"));
+				return rotate("ccw");
 			}
 		}
 		if ((currentBlockPos.isOneStepWest() && targetBlockPos.isOneStepEast())) {
 			if (!occupiedFields.contains(new RelativeCoordinate(0, -1))) {
-				say("Rotating in clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
-				return new Action("rotate", new Identifier("cw"));
+				return rotate("cw");
 			}
 			if (!occupiedFields.contains(new RelativeCoordinate(0, 1))) {
-				say("Rotating in counter-clockwise direction to fulfill task...");//TODO wieder Einkommentierne @Carina
-				return new Action("rotate", new Identifier("ccw"));
+				return rotate("ccw");
 			}
 		}
 		return new Action("skip");
@@ -2167,9 +2013,8 @@ public class AgentG2 extends Agent {
 		switch (stepNum) {
 		case 1 -> {
 			String direction = randomDirections.get(0);
-//			say("Moving one step randomly..."); //TODO wieder Einkommentierne @Carina
-//			say("Moving "+ direction);
-			return new Action("move", new Identifier(direction));
+			say("Moving one step randomly...");
+			return move(direction);
 		}
 		case 2 -> {
 			String direction1 = randomDirections.get(0);
@@ -2188,19 +2033,25 @@ public class AgentG2 extends Agent {
 	}
 
 	/**
-	 * Checks from a list of tasks whether any task is complete (required blocks
-	 * attached and all blocks on correct position)
+	 * Submits the given task
 	 * 
-	 * @param tasks The list of tasks to be checked against
-	 * @return The task which is complete, otherwise null
+	 * @param task The task to be submitted
+	 * @return The submit action
 	 */
-	private Task checkIfAnyTaskComplete(List<Task> tasks) {
-		for (Task task : tasks) {
-			if (checkIfTaskComplete(task)) {
-				return task;
-			}
-		}
-		return null;
+	private Action submit(Task task) {
+		say("Submitting task '" + task.getName() + "'...");
+		return new Action("submit", new Identifier(task.getName()));
+	}
+
+	/**
+	 * Rotates agent in given direction
+	 * 
+	 * @param dir The direction of rotation
+	 * @return The rotate action
+	 */
+	private Action rotate(String dir) {
+		say("Rotating in " + dir + " direction...");
+		return new Action("rotate", new Identifier(dir));
 	}
 
 	/**
@@ -2248,129 +2099,6 @@ public class AgentG2 extends Agent {
 	}
 
 	/**
-	 * Checks whether the task can be submitted (checks if all requirements of the
-	 * task are fulfilled and whether agent and attached blocks are positioned on
-	 * goal zone fields)
-	 * 
-	 * @param task The task to be checked against
-	 * @return True if task can be submitted, otherwise false
-	 */
-	private boolean taskSubmissionPossible(Task task) {
-		if (!checkIfTaskComplete(task)) {
-			return false;
-		}
-		List<TaskRequirement> requirements = task.getRequirements();
-		for (TaskRequirement requirement : requirements) {
-			RelativeCoordinate relativeCoordinateR = requirement.getRelativeCoordinate();
-
-			boolean inGoalZone = false;
-			for (RelativeCoordinate goalZoneField : goalZoneFields) {
-				if (relativeCoordinateR.equals(goalZoneField)) {
-					inGoalZone = true;
-					break;
-				}
-			}
-			if (!inGoalZone) {
-				return false;
-			}
-		}
-		for (RelativeCoordinate goalZoneField : goalZoneFields) {
-			RelativeCoordinate agentPosition = new RelativeCoordinate(0, 0);
-			if (goalZoneField.equals(agentPosition)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Determines the closest cell of the required type
-	 * 
-	 * @param type           The cell type, e.g. dispenser
-	 * @param additionalInfo Additional info regarding the required cell, e.g. for
-	 *                       dispenser the block type. If null, type is ignored
-	 * @return The closest cell which is of the required type and which fulfills the
-	 *         additional info requirements (if not null)
-	 */
-	private Cell determineClosest(String type, String additionalInfo) {
-		switch (type) {
-		case "dispenser" -> {
-			if (dispensers.isEmpty()) {
-				return null;
-			}
-			if (additionalInfo != null) {
-				// Look for dispensers of the required type
-				List<Dispenser> dispenserCandidates = new ArrayList<>();
-				for (Dispenser dispenser : dispensers) {
-					if (dispenser.getType().equals(additionalInfo)) {
-						dispenserCandidates.add(dispenser);
-					}
-				}
-				// Select closest dispenser (ignoring obstacles)
-				if (dispenserCandidates.isEmpty()) {
-					return null;
-				} else {
-					Dispenser closestDispenser = Dispenser.getClosestDispenser(dispenserCandidates);
-					return closestDispenser;
-				}
-			} else {
-				// Select closest dispenser
-				Dispenser closestDispenser = Dispenser.getClosestDispenser(dispensers);
-				return closestDispenser;
-			}
-		}
-		}
-		return null;
-	}
-
-	/**
-	 * Determines a list of coordinates where the required thing can be found
-	 * 
-	 * @param type           The cell type of the required thing, e.g. dispenser
-	 * @param additionalInfo Additional info regarding the required thing, e.g. for
-	 *                       dispenser the block type. If null, type is ignored
-	 * @return A list of coordinates where instances of the required thing can be
-	 *         found
-	 */
-	private List<RelativeCoordinate> determineLocations(String type, String additionalInfo) {
-		List<RelativeCoordinate> locations = new ArrayList<>();
-
-		switch (type) {
-		case "dispenser" -> {
-			if (dispensers.isEmpty()) {
-				break;
-			}
-			if (additionalInfo != null) {
-				// Look for dispensers of the required type
-				for (Dispenser dispenser : dispensers) {
-					if (dispenser.getType().equals(additionalInfo)) {
-						locations.add(dispenser.getRelativeCoordinate());
-					}
-				}
-			} else {
-				for (Dispenser dispenser : dispensers) {
-					locations.add(dispenser.getRelativeCoordinate());
-				}
-			}
-		}
-		case "attachedBlock" -> {
-			if (attachedBlocks.isEmpty()) {
-				break;
-			}
-			if (additionalInfo != null) {
-				// TODO
-				break;
-			} else {
-				for (Block block : attachedBlocks) {
-					locations.add(block.getRelativeCoordinate());
-				}
-			}
-		}
-		}
-		return locations;
-	}
-
-	/**
 	 * Analyzes the currently attached blocks and determines tasks which require
 	 * these blocks
 	 * 
@@ -2401,24 +2129,6 @@ public class AgentG2 extends Agent {
 			}
 		}
 		return correspondingTasks;
-	}
-
-	/**
-	 * Checks if there is task which requires the specific block type
-	 * 
-	 * @param blockType The block type which is analyzed
-	 * @return True if there is a task that requires the block type, otherwise false
-	 */
-	private boolean checkForCorrespondingTask(String blockType) {
-		// At the moment this method only checks if there is a task for the given block
-		// type. And it only works for one-block-tasks.
-		// TODO: also keep in mind the deadline and rewards of tasks
-		for (Task task : tasks) {
-			if (task.getRequirements().get(0).getBlockType().equals(blockType)) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	/**
@@ -2475,6 +2185,8 @@ public class AgentG2 extends Agent {
 		// simulation
 		currentStep = -1;
 		actionID = -1;
+		mapManager = new MapManagement(this.currentStep);
+		pathCalc = new PathCalc(mapManager, attachedBlocks);
 		roles.clear();
 		attachedBlocks.clear();
 		simStartPerceptsSaved = false;
@@ -2613,5 +2325,4 @@ public class AgentG2 extends Agent {
 		}
 		mapManager.updateMap(mapManagement);
 	}
-
 }

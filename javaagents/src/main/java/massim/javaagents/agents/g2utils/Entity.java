@@ -2,18 +2,13 @@ package massim.javaagents.agents.g2utils;
 
 import java.util.*;
 
-public class Entity {
+public class Entity extends Cell {
 
-    private final RelativeCoordinate relativeCoordinate;
     private final String teamName;
 
-    public Entity(RelativeCoordinate relativeCoordinate, String teamName) {
-        this.relativeCoordinate = relativeCoordinate;
+    public Entity(RelativeCoordinate relativeCoordinate, String teamName, int lastSeen) {
+        super(relativeCoordinate, lastSeen);
         this.teamName = teamName;
-    }
-
-    public RelativeCoordinate getRelativeCoordinate() {
-        return this.relativeCoordinate;
     }
 
     public String getTeamName() {

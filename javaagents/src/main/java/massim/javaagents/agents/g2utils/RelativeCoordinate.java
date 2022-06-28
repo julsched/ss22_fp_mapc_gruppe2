@@ -8,13 +8,17 @@ public class RelativeCoordinate {
     private final int y;
 
     public static RelativeCoordinate getClosestCoordinate(List<RelativeCoordinate> relativeCoordinates) {
+        return RelativeCoordinate.getClosestCoordinate(relativeCoordinates, new RelativeCoordinate(0, 0));
+    }
+
+    public static RelativeCoordinate getClosestCoordinate(List<RelativeCoordinate> relativeCoordinates, RelativeCoordinate agentPos) {
         RelativeCoordinate shortestCoordinate = null;
         for (RelativeCoordinate relativeCoordinate : relativeCoordinates) {
             if (shortestCoordinate == null) {
                 shortestCoordinate = relativeCoordinate;
                 continue;
             }
-            if (relativeCoordinate.isCloserThan(shortestCoordinate)) {
+            if (relativeCoordinate.isCloserThan(shortestCoordinate, agentPos)) {
                 shortestCoordinate = relativeCoordinate;
             }
         }
@@ -74,7 +78,11 @@ public class RelativeCoordinate {
     }
 
     public boolean isOneStepNorth() {
-        if (this.x == 0 && this.y == -1) {
+        return isOneStepNorth(new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isOneStepNorth(RelativeCoordinate pos) {
+        if (this.x == pos.getX() && this.y == pos.getY() - 1) {
             return true;
         } else {
             return false;
@@ -82,7 +90,11 @@ public class RelativeCoordinate {
     }
 
     public boolean isOneStepEast() {
-        if (this.x == 1 && this.y == 0) {
+        return isOneStepEast(new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isOneStepEast(RelativeCoordinate pos) {
+        if (this.x == pos.getX() + 1 && this.y == pos.getY()) {
             return true;
         } else {
             return false;
@@ -90,7 +102,11 @@ public class RelativeCoordinate {
     }
 
     public boolean isOneStepSouth() {
-        if (this.x == 0 && this.y == 1) {
+        return isOneStepSouth(new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isOneStepSouth(RelativeCoordinate pos) {
+        if (this.x == pos.getX() && this.y == pos.getY() + 1) {
             return true;
         } else {
             return false;
@@ -98,7 +114,11 @@ public class RelativeCoordinate {
     }
 
     public boolean isOneStepWest() {
-        if (this.x == -1 && this.y == 0) {
+        return isOneStepWest(new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isOneStepWest(RelativeCoordinate pos) {
+        if (this.x == pos.getX() - 1 && this.y == pos.getY()) {
             return true;
         } else {
             return false;
@@ -106,7 +126,11 @@ public class RelativeCoordinate {
     }
 
     public boolean isNextToAgent() {
-        if (isOneStepNorth() || isOneStepEast() || isOneStepSouth() || isOneStepWest()) {
+        return isNextToAgent(new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isNextToAgent(RelativeCoordinate agentPos) {
+        if (isOneStepNorth(agentPos) || isOneStepEast(agentPos) || isOneStepSouth(agentPos) || isOneStepWest(agentPos)) {
             return true;        
         } else {
             return false;
@@ -115,11 +139,20 @@ public class RelativeCoordinate {
 
     // Manhattan distance
     public int distanceFromAgent() {
-        return Math.abs(this.x) + Math.abs(this.y);
+        return distanceFromAgent(new RelativeCoordinate(0, 0));
+    }
+
+    // Manhattan distance
+    public int distanceFromAgent(RelativeCoordinate agentPos) {
+        return Math.abs(this.x - agentPos.getX()) + Math.abs(this.y - agentPos.getY());
     }
 
     public boolean isCloserThan(RelativeCoordinate relativeCoordinate) {
-        if (this.distanceFromAgent() < relativeCoordinate.distanceFromAgent()) {
+        return isCloserThan(relativeCoordinate, new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isCloserThan(RelativeCoordinate relativeCoordinate, RelativeCoordinate agentPos) {
+        if (this.distanceFromAgent(agentPos) < relativeCoordinate.distanceFromAgent(agentPos)) {
             return true;
         } else {
             return false;
@@ -127,7 +160,11 @@ public class RelativeCoordinate {
     }
 
     public boolean isStraightNorth() {
-        if (this.x == 0 && this.y < 0) {
+        return isStraightNorth(new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isStraightNorth(RelativeCoordinate pos) {
+        if (this.x == pos.getX() && this.y < pos.getY()) {
             return true;
         } else {
             return false;
@@ -135,7 +172,11 @@ public class RelativeCoordinate {
     }
 
     public boolean isStraightEast() {
-        if (this.x > 0 && this.y == 0) {
+        return isStraightEast(new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isStraightEast(RelativeCoordinate pos) {
+        if (this.x > pos.getX() && this.y == pos.getY()) {
             return true;
         } else {
             return false;
@@ -143,7 +184,11 @@ public class RelativeCoordinate {
     }
 
     public boolean isStraightSouth() {
-        if (this.x == 0 && this.y > 0) {
+        return isStraightSouth(new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isStraightSouth(RelativeCoordinate pos) {
+        if (this.x == pos.getX() && this.y > pos.getY()) {
             return true;
         } else {
             return false;
@@ -151,7 +196,11 @@ public class RelativeCoordinate {
     }
 
     public boolean isStraightWest() {
-        if (this.x < 0 && this.y == 0) {
+        return isStraightWest(new RelativeCoordinate(0, 0));
+    }
+
+    public boolean isStraightWest(RelativeCoordinate pos) {
+        if (this.x < pos.getX() && this.y == pos.getY()) {
             return true;
         } else {
             return false;
@@ -159,16 +208,20 @@ public class RelativeCoordinate {
     }
 
     public String getDirectDirection() {
-        if (this.isStraightNorth()) {
+        return getDirectDirection(new RelativeCoordinate(0, 0));
+    }
+
+    public String getDirectDirection(RelativeCoordinate pos) {
+        if (this.isStraightNorth(pos)) {
             return "n";
         }
-        if (this.isStraightEast()) {
+        if (this.isStraightEast(pos)) {
             return "e";
         }
-        if (this.isStraightSouth()) {
+        if (this.isStraightSouth(pos)) {
             return "s";
         }
-        if (this.isStraightWest()) {
+        if (this.isStraightWest(pos)) {
             return "w";
         }
         return "x";
