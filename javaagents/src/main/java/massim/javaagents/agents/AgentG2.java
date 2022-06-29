@@ -1172,13 +1172,18 @@ public class AgentG2 extends Agent {
 
 	// todo - not working yet
 	private Action workerActionSubmitMultiBlockTask() {
-
+		
 		if (!checkIfTaskComplete(this.getCurrentTask())) {
-			//todo
+			return executeRotation(attachedBlocks.get(0).getRelativeCoordinate(),
+					this.getCurrentTask().getRequirements().get(0).getRelativeCoordinate());
 		}
-		say("Task '" + this.getCurrentTask().getName() + "' is complete");
+		
+		if (this.blocksAssembled()) {
+					say("Task '" + this.getCurrentTask().getName() + "' is complete");
 		return submit(this.getCurrentTask());
-
+		}
+		
+		return this.workerActionAssembleBlocks();
 	}
 
 	private Action workerActionSubmitOneBlockTask() {
