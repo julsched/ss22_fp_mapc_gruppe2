@@ -91,120 +91,122 @@ public class MapManagement {
 					Iterator<Cell> it = tempMap.get(tempPos).iterator();
 					while (it.hasNext()) {
 						Cell cell = it.next();
-						String type = cell.getClass().getSimpleName();
-						switch (type) {
-						case ("Dispenser"):
-							Dispenser disp = (Dispenser) cell;
-							disp.setRelativeCoordinate(absolutePos);
-							dispenserLayer.put(absolutePos, disp);
-							obstacleLayer.put(absolutePos, null);
-							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								blockLayer.put(absolutePos, null);
-							}
-							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								goalzoneLayer.put(absolutePos, null);
-							}
-							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								rolezoneLayer.put(absolutePos, null);
-							}
-							if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								entityLayer.put(absolutePos, null);
-							}
-							break;
-						case ("Rolezone"):
-							Rolezone rz = (Rolezone) cell;
-							rz.setRelativeCoordinate(absolutePos);
-							rolezoneLayer.put(absolutePos, rz);
-							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
+						if (!(cell == null)) {
+							String type = cell.getClass().getSimpleName();
+							switch (type) {
+							case ("Dispenser"):
+								Dispenser disp = (Dispenser) cell;
+								disp.setRelativeCoordinate(absolutePos);
+								dispenserLayer.put(absolutePos, disp);
 								obstacleLayer.put(absolutePos, null);
-							}
-							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								blockLayer.put(absolutePos, null);
-							}
-							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								goalzoneLayer.put(absolutePos, null);
-							}
-							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								dispenserLayer.put(absolutePos, null);
-							}
-							if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									blockLayer.put(absolutePos, null);
+								}
+								if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									goalzoneLayer.put(absolutePos, null);
+								}
+								if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									rolezoneLayer.put(absolutePos, null);
+								}
+								if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									entityLayer.put(absolutePos, null);
+								}
+								break;
+							case ("Rolezone"):
+								Rolezone rz = (Rolezone) cell;
+								rz.setRelativeCoordinate(absolutePos);
+								rolezoneLayer.put(absolutePos, rz);
+								if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									obstacleLayer.put(absolutePos, null);
+								}
+								if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									blockLayer.put(absolutePos, null);
+								}
+								if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									goalzoneLayer.put(absolutePos, null);
+								}
+								if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									dispenserLayer.put(absolutePos, null);
+								}
+								if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									entityLayer.put(absolutePos, null);
+								}
+								break;
+							case ("Obstacle"):
+								Obstacle obs = (Obstacle) cell;
+								obs.setRelativeCoordinate(absolutePos);
+								obstacleLayer.put(absolutePos, obs);
+								if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									rolezoneLayer.put(absolutePos, null);
+								}
+								if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									blockLayer.put(absolutePos, null);
+								}
+								if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									goalzoneLayer.put(absolutePos, null);
+								}
 								entityLayer.put(absolutePos, null);
-							}
-							break;
-						case ("Obstacle"):
-							Obstacle obs = (Obstacle) cell;
-							obs.setRelativeCoordinate(absolutePos);
-							obstacleLayer.put(absolutePos, obs);
-							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								rolezoneLayer.put(absolutePos, null);
-							}
-							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								blockLayer.put(absolutePos, null);
-							}
-							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								goalzoneLayer.put(absolutePos, null);
-							}
-							entityLayer.put(absolutePos, null);
-							dispenserLayer.put(absolutePos, null);
-							break;
-						case ("Block"):
-							Block block = (Block) cell;
-							block.setRelativeCoordinate(absolutePos);
-							blockLayer.put(absolutePos, block);
-							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								rolezoneLayer.put(absolutePos, null);
-							}
-							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
 								dispenserLayer.put(absolutePos, null);
-							}
-							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								goalzoneLayer.put(absolutePos, null);
-							}
-							entityLayer.put(absolutePos, null);
-							obstacleLayer.put(absolutePos, null);
-							break;
-						case ("Goalzone"):
-							Goalzone gz = (Goalzone) cell;
-							gz.setRelativeCoordinate(absolutePos);
-							goalzoneLayer.put(absolutePos, gz);
-							if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								break;
+							case ("Block"):
+								Block block = (Block) cell;
+								block.setRelativeCoordinate(absolutePos);
+								blockLayer.put(absolutePos, block);
+								if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									rolezoneLayer.put(absolutePos, null);
+								}
+								if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									dispenserLayer.put(absolutePos, null);
+								}
+								if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									goalzoneLayer.put(absolutePos, null);
+								}
+								entityLayer.put(absolutePos, null);
 								obstacleLayer.put(absolutePos, null);
-							}
-							if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+								break;
+							case ("Goalzone"):
+								Goalzone gz = (Goalzone) cell;
+								gz.setRelativeCoordinate(absolutePos);
+								goalzoneLayer.put(absolutePos, gz);
+								if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									obstacleLayer.put(absolutePos, null);
+								}
+								if ((!blockLayer.containsKey(absolutePos)) || (!(blockLayer.get(absolutePos) == null) && blockLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									blockLayer.put(absolutePos, null);
+								}
+								if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									rolezoneLayer.put(absolutePos, null);
+								}
+								if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									dispenserLayer.put(absolutePos, null);
+								}
+								if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									entityLayer.put(absolutePos, null);
+								}
+								break;
+							case ("Entity"):
+								Entity entity = (Entity) cell;
+								entity.setRelativeCoordinate(absolutePos);
+								entityLayer.put(absolutePos, entity);
+								if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									rolezoneLayer.put(absolutePos, null);
+								}
+								if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									dispenserLayer.put(absolutePos, null);
+								}
+								if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
+									goalzoneLayer.put(absolutePos, null);
+								}
 								blockLayer.put(absolutePos, null);
+								obstacleLayer.put(absolutePos, null);
+								break;
+							case ("ClearMarker"):
+								ClearMarker cm = (ClearMarker) cell;
+								clearLayer.put(absolutePos, cm);
+								break;
+							default:
+								break;
 							}
-							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								rolezoneLayer.put(absolutePos, null);
-							}
-							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								dispenserLayer.put(absolutePos, null);
-							}
-							if ((!entityLayer.containsKey(absolutePos)) || (!(entityLayer.get(absolutePos) == null) && entityLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								entityLayer.put(absolutePos, null);
-							}
-							break;
-						case ("Entity"):
-							Entity entity = (Entity) cell;
-							entity.setRelativeCoordinate(absolutePos);
-							entityLayer.put(absolutePos, entity);
-							if ((!rolezoneLayer.containsKey(absolutePos)) || (!(rolezoneLayer.get(absolutePos) == null) && rolezoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								rolezoneLayer.put(absolutePos, null);
-							}
-							if ((!dispenserLayer.containsKey(absolutePos)) || (!(dispenserLayer.get(absolutePos) == null) && dispenserLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								dispenserLayer.put(absolutePos, null);
-							}
-							if ((!goalzoneLayer.containsKey(absolutePos)) || (!(goalzoneLayer.get(absolutePos) == null) && goalzoneLayer.get(absolutePos).getLastSeen() < currentStep)) {
-								goalzoneLayer.put(absolutePos, null);
-							}
-							blockLayer.put(absolutePos, null);
-							obstacleLayer.put(absolutePos, null);
-							break;
-						case ("ClearMarker"):
-							ClearMarker cm = (ClearMarker) cell;
-							clearLayer.put(absolutePos, cm);
-							break;
-						default:
-							break;
 						}
 						knownArea.put(absolutePos, null);
 					}
