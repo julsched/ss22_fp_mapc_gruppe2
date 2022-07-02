@@ -792,7 +792,7 @@ public class AgentG2 extends Agent {
 						int speed = ((Numeral) param).getValue().intValue();
 						speeds.add(speed);
 					}
-					Role role = new Role(roleName, roleVision, actions, speeds, clearChance, clearMaxDist);
+					Role role = new Role(roleName, roleVision, actions, speeds, clearChance, clearMaxDist, attachedBlocks);
 					say("Saving information for role '" + roleName + "'...");
 					roles.add(role);
 				}
@@ -1119,7 +1119,7 @@ public class AgentG2 extends Agent {
 			return new Action("skip"); // TODO: improve
 		}
 		// TODO: expand error handling
-		return moveRandomly(currentRole.getSpeedWithoutAttachments());
+		return moveRandomly(currentRole.getCurrentSpeed());
 	}
 
 	private Action workerActionAttach() {

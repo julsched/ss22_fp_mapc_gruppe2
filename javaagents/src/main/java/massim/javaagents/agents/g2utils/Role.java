@@ -10,6 +10,7 @@ public class Role {
 	private final List<Integer> speeds;
 	private final double clearChance;
 	private final int clearMaxDist;
+	private final List<Block> attachedBlocks;
 
 	public static Role getRole(List<Role> roles, String roleName) {
 		for (Role role : roles) {
@@ -21,13 +22,14 @@ public class Role {
 	}
 
 	public Role(String name, int vision, List<String> actions, List<Integer> speeds, double clearChance,
-			int clearMaxDist) {
+			int clearMaxDist, List<Block> attachedBlocks) {
 		this.name = name;
 		this.vision = vision;
 		this.actions = actions;
 		this.speeds = speeds;
 		this.clearChance = clearChance;
 		this.clearMaxDist = clearMaxDist;
+		this.attachedBlocks = attachedBlocks; // TODO expand for attached entities/obstacles
 	}
 
 	public String getName() {
@@ -46,9 +48,17 @@ public class Role {
 		return this.speeds;
 	}
 
-	public Integer getSpeedWithoutAttachments() {
-        return this.speeds.get(0);
-    }
+	public Integer getCurrentSpeed() {
+		if (speeds.size() == 0) {
+			return null;
+		}
+		int numOfAttachedThings = attachedBlocks.size();
+		if (speeds.size() > numOfAttachedThings) {
+			return speeds.get(numOfAttachedThings);
+		} else {
+			return speeds.get(speeds.size() - 1);
+		}
+	}
 
 	public double getClearChance() {
 		return this.clearChance;
