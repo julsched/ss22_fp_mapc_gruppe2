@@ -80,6 +80,9 @@ public class AgentG2 extends Agent {
 	private HashMap<String, Integer> attachedBlockTypeMap;
 	private Task currentTask;
 	private String[][] assembledBlockMatrix;
+	private boolean mastermode = false;
+	private boolean slavemode = false;
+	
 
 	/**
 	 * Constructor.
@@ -1275,9 +1278,108 @@ public class AgentG2 extends Agent {
 	
 	// todo
 	private Action workerActionAssembleBlocks() {
-
-
+		// is in goalzone with all blocks needed for task
+		
+		// checks if other agent is in goalzone waiting for assemble
+		if (this.masterIsWaiting()) {
+			this.setSlavemode(true);
+		}
+		
+		// if both agents are in master mode -> lower named agent goes to slave mode
+		
+		// goes to master mode and sends broadcast message -> master mode waiting for blocktype being connected at relCoord to Block with relCoord
+		if (this.isInMastermode()) {
+			this.sendMasterMessage(this.getCurrentTask().getNextBlockType(), this.getCurrentTask().getNextBlockCoordinate());
+			// todo slave has to convert the block coordinate to fit his relative coordinates
+		}
+		
+		// slave gets block from master if he doesn t carry it already
+		
+		// connects block with other agent -> slave detaches -> master submits
+		
+		// check if more tasks can be submitted
+		if (!this.masterslaveMoreTasksPossible()) {
+			// todo broadcast to master or slave
+			this.resetMasterSlaveMode();
+			this.workerAbortTask();
+		}
+		
 		return null;
+	}
+	
+	private void sendMasterMessage(String blocktype, RelativeCoordinate relCoord) {
+		say("requesting blocktype " + blocktype + " at Coordinates: "+ relCoord);
+		
+		// TODO send message to agent
+		
+	}
+
+	/**
+	 * editor: michael
+	 * 
+	 * if agent is not in master or slave mode and receives the master is waiting message
+	 *
+	 * @return true if a master is waiting to assemble and sends message close to agent
+	 */
+	private boolean masterIsWaiting() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	/**
+	 * editor: michael
+	 *
+	 * @return true if master and slave have enough blocks to submit more tasks in the goalzone
+	 */
+	private boolean masterslaveMoreTasksPossible() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+
+	/**
+	 * editor: michael
+	 *
+	 * todo
+	 * connects the block at the desired place
+	 *
+	 * @return
+	 */
+	private Action workerActionConnectBlocks() {
+		
+		
+		return null;
+	}
+	
+	private boolean getMastermode() {
+		return this.mastermode;
+	}
+	
+	private void setMastermode(boolean bool) {
+		this.mastermode = bool;
+	}
+	
+	private boolean getSlavemode() {
+		return this.slavemode;
+	}
+	
+	private void setSlavemode(boolean bool) {
+		this.slavemode = bool;
+	}
+	
+	private void resetMasterSlaveMode() {
+		if (this.isInMastermode()) say("I am no Master anymore!");
+		if (this.isInSlavemode()) say("I survived slavery!");
+		this.setMastermode(false);
+		this.setSlavemode(false);
+	}
+	
+	private boolean isInMastermode() {
+		return this.getMastermode();
+	}
+	
+	private boolean isInSlavemode() {
+		return this.getSlavemode();
 	}
 
 	private boolean blocksAssembled() {
@@ -1320,6 +1422,10 @@ public class AgentG2 extends Agent {
 		if (this.attachedBlocks.isEmpty()) {
 			return matrix;
 		}
+		
+		if (this.getAttachedBlockSouth() == null ) {
+			return matrix;
+		}
 
 		// should return the matrix of each blockmatrix of each block
 		String[][] help = this.getAttachedBlockSouth().getBlockMatrix();
@@ -1333,7 +1439,11 @@ public class AgentG2 extends Agent {
 	}
 
 	private Block getAttachedBlockSouth() {
-		// TODO Auto-generated method stub
+		
+		for (Block block : this.attachedBlocks) {
+			if (block.isAttachedSouth()) return block;
+		}
+		
 		return null;
 	}
 

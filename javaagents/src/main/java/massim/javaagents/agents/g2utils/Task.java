@@ -160,4 +160,14 @@ public class Task {
 		if (this.requirements.size() == 2) return true;
 		return false;		
 	}
+
+	public String getNextBlockType() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public RelativeCoordinate getNextBlockCoordinate() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

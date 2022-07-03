@@ -130,4 +130,11 @@ public class Block extends Cell {
 		if (this.getBlockWest() != null) return true;
 		return false;
 	}
+
+	public boolean isAttachedSouth() {
+		if (this.getRelativeCoordinate().getX() == 0 && this.getRelativeCoordinate().getY() == -1) {
+			return true;
+		}
+		return false;
+	}
 }
