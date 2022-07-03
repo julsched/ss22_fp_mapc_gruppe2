@@ -6,7 +6,12 @@ public class RelativeCoordinate {
 
     private final int x;
     private final int y;
-
+    
+    public RelativeCoordinate(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+    
     public static RelativeCoordinate getClosestCoordinate(List<RelativeCoordinate> relativeCoordinates) {
         return RelativeCoordinate.getClosestCoordinate(relativeCoordinates, new RelativeCoordinate(0, 0));
     }
@@ -41,11 +46,6 @@ public class RelativeCoordinate {
             }
         }
         return null;
-    }
-
-    public RelativeCoordinate(int x, int y) {
-        this.x = x;
-        this.y = y;
     }
 
     public int getX() {

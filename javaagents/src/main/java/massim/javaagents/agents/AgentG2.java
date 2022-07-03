@@ -82,6 +82,7 @@ public class AgentG2 extends Agent {
 	private String[][] assembledBlockMatrix;
 	private boolean mastermode = false;
 	private boolean slavemode = false;
+	private RelativeCoordinate lastBlockCoordinate;
 	
 
 	/**
@@ -1309,8 +1310,7 @@ public class AgentG2 extends Agent {
 		// is in master mode and sends broadcast message -> master mode waiting for
 		// blocktype being connected at relCoord to Block with relCoord
 		if (this.isInMastermode()) {
-			this.sendMasterMessage(this.getCurrentTask().getNextBlockType(),
-					this.getCurrentTask().getNextBlockCoordinate());
+			this.sendMasterMessage(this.getNextBlockType(),this.getNextBlockCoordinate());
 			// todo slave has to convert the block coordinate to fit his relative
 			// coordinates
 		}
@@ -1324,6 +1324,55 @@ public class AgentG2 extends Agent {
 	}
 	
 	
+	private RelativeCoordinate getLastBlockCoordinate() {
+		return this.lastBlockCoordinate;
+	}
+	
+	private void setLastBlockCoordinate(RelativeCoordinate coord) {
+		this.lastBlockCoordinate = coord;
+	}
+	
+	// for assembling the blocks
+	// the first block should be attached to the agent
+	// currently only working for 2-block tasks
+	private RelativeCoordinate getNextBlockCoordinate() {
+		int lastX = 2;
+		int lastY = 0;
+		
+		if (this.assembledBlockMatrix[lastX][lastY] != null) {
+			if (this.getCurrentTask().isTwoBlockTask()) {
+				return this.getCurrentTask().getNextBlockCoordinateTwoBlockTask();	
+			}
+		}
+
+		/*
+		int lastX = this.getLastBlockCoordinate().getX();
+		int lastY = this.getLastBlockCoordinate().getY();
+		
+		if (this.assembledBlockMatrix[lastX][lastY] != null) {
+			return this.getCurrentTask().getNextBlockCoordinate(this.getLastBlockCoordinate());
+		}
+		**/
+		
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	// for assembling the blocks
+	// the first block should be attached to the agent
+	private String getNextBlockType() {
+		int lastX = 2;
+		int lastY = 0;
+		
+		if (this.assembledBlockMatrix[lastX][lastY] != null) {
+			if (this.getCurrentTask().isTwoBlockTask()) {
+				return this.getCurrentTask().getNextBlockTypeTwoBlockTask();	
+			}
+		}
+		
+		return null;
+	}
+
 	/**
 	 * editor: michael
 	 *
@@ -1381,7 +1430,13 @@ public class AgentG2 extends Agent {
 	}
 
 	private Action workerActionConnectBlocksAsMaster() {
-		// TODO Auto-generated method stub
+		
+		// if (connected in this step) ....
+			// update assembled blocktype map
+			this.setAssembledBlockMatrixValue(this.getNextBlockCoordinate().getX(),this.getNextBlockCoordinate().getY(), this.getNextBlockType());
+			// set lastConnectedBlockCoordinate
+			this.setLastBlockCoordinate(this.getNextBlockCoordinate());
+		
 		return null;
 	}
 
@@ -1499,6 +1554,10 @@ public class AgentG2 extends Agent {
 
 	private void setAssembledBlockMatrix(String[][] matrix) {
 		this.assembledBlockMatrix = matrix;
+	}
+	
+	private void setAssembledBlockMatrixValue(int x, int y, String type) {
+		this.assembledBlockMatrix[x][y] = type;
 	}
 
 

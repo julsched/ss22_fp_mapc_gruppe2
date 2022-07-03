@@ -59,7 +59,7 @@ public class Task {
 	/**
 	 * editor: michael
 	 *
-	 * creates BlockMatrix, sets blockName in place of array
+	 * creates BlockMatrix, sets blocktype in place of array
 	 * only works if blocks are arranged under agent 
 	 *
 	 * @return
@@ -160,14 +160,52 @@ public class Task {
 		if (this.requirements.size() == 2) return true;
 		return false;		
 	}
-
+	
+	
+	/*
+	// for assembling the blocks
+	// the first block should be attached to the agent
 	public String getNextBlockType() {
+		int startX = 2;
+		int startY = 0;
+		
+		if (this.blockMatrix[startX+1][startY] != null) {
+			return 
+		}
+		
+		
+		
 		// TODO Auto-generated method stub
 		return null;
 	}
+	**/
+	
+	public RelativeCoordinate getNextBlockCoordinateTwoBlockTask() {
+		for (TaskRequirement requirement : this.getRequirements()) {
+			if (requirement.getRelativeCoordinate().getX() != -2 && requirement.getRelativeCoordinate().getY() != 0) {
+				return requirement.getRelativeCoordinate();
+			}
+		}
 
-	public RelativeCoordinate getNextBlockCoordinate() {
+		return null;
+	}
+	
+	public RelativeCoordinate getNextBlockCoordinate(RelativeCoordinate relCoord) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+	
+	public String getNextBlockTypeTwoBlockTask() {
+		for (TaskRequirement requirement : this.getRequirements()) {
+			if (requirement.getRelativeCoordinate().getX() != -2 && requirement.getRelativeCoordinate().getY() != 0) {
+				return requirement.getBlockType();
+			}
+		}
+		return null;
+	}
+
+	public boolean searchNextBlockCoordinate() {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }
