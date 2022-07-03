@@ -198,6 +198,11 @@ public class AgentG2 extends Agent {
 		}
 	}
 
+	private void setCurrentRole(Role role) {
+		currentRole = role;
+		pathCalc.setCurrentRole(role);
+	}
+
 	private void saveStepPercepts(List<Percept> percepts) {
 		if (percepts == null) { // Error handling if no percepts are available
 			return;
@@ -499,7 +504,7 @@ public class AgentG2 extends Agent {
 							rolesOfAgents.remove(getName());
 						}
 						rolesOfAgents.put(getName(), Role.getRole(roles, roleName));
-						currentRole = Role.getRole(roles, roleName);
+						setCurrentRole(Role.getRole(roles, roleName));
 					}
 					if (currentRole != null) {
 						say("My current role: " + currentRole.getName());
@@ -1119,7 +1124,7 @@ public class AgentG2 extends Agent {
 			return new Action("skip"); // TODO: improve
 		}
 		// TODO: expand error handling
-		return moveRandomly(currentRole.getCurrentSpeed());
+		return moveRandomly(1);
 	}
 
 	private Action workerActionAttach() {
@@ -1146,13 +1151,13 @@ public class AgentG2 extends Agent {
 			if (!goalZoneFieldCandidates.contains(mapManager.getPosition())) {
 				// Calculate direction agent should move into in order to get as fast as
 				// possible to the next suitable goal zone field
-				String dir = pathCalc.calculateShortestPathMap(goalZoneFieldCandidates);
-				if (dir == null) {
+				Action action = pathCalc.calculateShortestPathMap(goalZoneFieldCandidates);
+				if (action == null) {
 					say("No path towards identified goal zone fields.");
 					return explorerStep();
 				} else {
 					say("Path identified. Moving towards next suitable goal zone field...");
-					return move(dir);
+					return action;
 				}
 			} else {
 				say("Already on suitable goal zone field");
@@ -1730,25 +1735,25 @@ public class AgentG2 extends Agent {
 			return moveRandomly(1); // TODO: check for obstacles or blocks
 		}
 		// Move towards dispenser
-		String dir = pathCalc.calculateShortestPathMap(disp.getRelativeCoordinate());
-		if (dir == null) {
+		Action action = pathCalc.calculateShortestPathMap(disp);
+		if (action == null) {
 			say("No path towards dispenser.");
 			return explorerStep();
 		} else {
 			say("Path identified. Moving towards dispenser...");
-			return move(dir);
+			return action;
 		}
 	}
 
 	/**
-	 * Provides direction to the next reachable loose block of the required type (in agent's vision range), if available
+	 * Provides action to get to the next reachable loose block of the required type (in agent's vision range), if available
 	 * 
 	 * @param requiredType The required block type
 	 * 
-	 * @return Direction towards loose block if identified, otherwise null
+	 * @return Move action if path identified, otherwise null
 	 */
 	private Action checkForLooseBlocks(String requiredType) {
-		Set<RelativeCoordinate> looseBlocks = new HashSet<>();
+		Set<RelativeCoordinate> destinations = new HashSet<>();
 		for (Block block : blocks) {
 			if (block.getType().equals(requiredType)) {
 				RelativeCoordinate coordinate = block.getRelativeCoordinate();
@@ -1758,22 +1763,31 @@ public class AgentG2 extends Agent {
 						say("Loose block identified. Attaching...");
 						return new Action("attach", new Identifier(direction));
 					} else {
+						// Suitable loose block identified, add its surrounding cells as destinations
 						RelativeCoordinate currentPosition = mapManager.getPosition();
 						RelativeCoordinate absoluteCoordinate = new RelativeCoordinate(currentPosition.getX() + coordinate.getX(),
 							currentPosition.getY() + coordinate.getY());
-						looseBlocks.add(absoluteCoordinate);
+						RelativeCoordinate north = new RelativeCoordinate(absoluteCoordinate.getX(), absoluteCoordinate.getY() - 1);
+						RelativeCoordinate east = new RelativeCoordinate(absoluteCoordinate.getX() + 1, absoluteCoordinate.getY());
+						RelativeCoordinate south = new RelativeCoordinate(absoluteCoordinate.getX(), absoluteCoordinate.getY() + 1);
+						RelativeCoordinate west = new RelativeCoordinate(absoluteCoordinate.getX() - 1, absoluteCoordinate.getY());
+						if (!pathCalc.checkIfOccupied(north)) {
+							destinations.add(north);
+						}
+						if (!pathCalc.checkIfOccupied(east)) {
+							destinations.add(east);
+						}
+						if (!pathCalc.checkIfOccupied(south)) {
+							destinations.add(south);
+						}
+						if (!pathCalc.checkIfOccupied(west)) {
+							destinations.add(west);
+						}
 					}
 				}
 			}
 		}
-		String dir = pathCalc.calculateShortestPathMap(looseBlocks);
-		if (dir != null) {
-			say("Loose block identified. Moving towards block...");
-			return move(dir);
-		} else {
-			say("No reachable loose block identified.");
-			return null;
-		}
+		return pathCalc.calculateShortestPathMap(destinations);
 	}
 
 	// default (main) worker method
@@ -1857,9 +1871,13 @@ public class AgentG2 extends Agent {
 
 	private Action walkToObstacle() {
 		if (dirOfBorders.size() == 0) {
-			String dir = pathCalc.calculateShortestPathVision(currentRole.getVision(), occupiedFields,
+			Action action = pathCalc.calculateShortestPathVision(currentRole.getVision(), occupiedFields,
 					new HashSet(obstaclesInSight));
-			return move(dir);
+			if (action != null) {
+				return action;
+			} else {
+				return new Action("skip");
+			}
 		} else {
 			if (dirOfFocusBorder.equals("")) {
 				Random rand = new Random();
