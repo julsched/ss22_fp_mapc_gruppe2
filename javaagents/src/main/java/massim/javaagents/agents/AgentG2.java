@@ -1175,17 +1175,17 @@ public class AgentG2 extends Agent {
 
 	// todo - not working yet
 	private Action workerActionSubmitMultiBlockTask() {
-		
+
 		if (!checkIfTaskComplete(this.getCurrentTask())) {
 			return executeRotation(attachedBlocks.get(0).getRelativeCoordinate(),
 					this.getCurrentTask().getRequirements().get(0).getRelativeCoordinate());
 		}
-		
+
 		if (this.blocksAssembled()) {
-					say("Task '" + this.getCurrentTask().getName() + "' is complete");
-		return submit(this.getCurrentTask());
+			say("Task '" + this.getCurrentTask().getName() + "' is complete");
+			return submit(this.getCurrentTask());
 		}
-		
+
 		return this.workerActionAssembleBlocks();
 	}
 
@@ -1278,37 +1278,66 @@ public class AgentG2 extends Agent {
 	
 	// todo
 	private Action workerActionAssembleBlocks() {
-		// is in goalzone with all blocks needed for task
-		
+		// worker is in goalzone with all blocks needed for task
+
+		// is already in master or slave relationship
+		if (this.isInMastermode() || this.isInSlavemode()) {
+			// check if more tasks can be submitted
+			if (!this.masterslaveMoreTasksPossible()) {
+				// todo broadcast to master or slave
+				this.resetMasterSlaveMode();
+				this.workerAbortTask();
+				this.workerStep();
+			}
+		}
+
 		// checks if other agent is in goalzone waiting for assemble
+		// determines who should be master with higherRank()
 		if (this.masterIsWaiting()) {
-			this.setSlavemode(true);
+			if (this.isInMastermode()) {
+				if (this.higherRank()) {
+					say("Staying in Mastermode");
+				} else {
+					this.setSlavemode(true);
+					this.setMastermode(false);
+				}
+			}
+		} else {
+			this.setMastermode(true);
 		}
-		
-		// if both agents are in master mode -> lower named agent goes to slave mode
-		
-		// goes to master mode and sends broadcast message -> master mode waiting for blocktype being connected at relCoord to Block with relCoord
+
+		// is in master mode and sends broadcast message -> master mode waiting for
+		// blocktype being connected at relCoord to Block with relCoord
 		if (this.isInMastermode()) {
-			this.sendMasterMessage(this.getCurrentTask().getNextBlockType(), this.getCurrentTask().getNextBlockCoordinate());
-			// todo slave has to convert the block coordinate to fit his relative coordinates
+			this.sendMasterMessage(this.getCurrentTask().getNextBlockType(),
+					this.getCurrentTask().getNextBlockCoordinate());
+			// todo slave has to convert the block coordinate to fit his relative
+			// coordinates
 		}
-		
-		// slave gets block from master if he doesn t carry it already
-		
+
+		// slave gets block from master if he doesn't carry it already
+
 		// connects block with other agent -> slave detaches -> master submits
-		
-		// check if more tasks can be submitted
-		if (!this.masterslaveMoreTasksPossible()) {
-			// todo broadcast to master or slave
-			this.resetMasterSlaveMode();
-			this.workerAbortTask();
-		}
-		
-		return null;
+
+		// maybe there is a better Action than skip
+		return new Action("skip");
 	}
 	
+	
+	/**
+	 * editor: michael
+	 *
+	 * should return true if the agent name is higher than from 
+	 *
+	 * @return
+	 */
+	private boolean higherRank() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 	private void sendMasterMessage(String blocktype, RelativeCoordinate relCoord) {
-		say("requesting blocktype " + blocktype + " at Coordinates: "+ relCoord);
+		say("I am in Mastermode! Requesting blocktype " + blocktype + " at Coordinates: "+ relCoord);
 		
 		// TODO send message to agent
 		
@@ -1340,17 +1369,29 @@ public class AgentG2 extends Agent {
 	/**
 	 * editor: michael
 	 *
-	 * todo
-	 * connects the block at the desired place
+	 * todo connects the block at the desired place
 	 *
 	 * @return
 	 */
 	private Action workerActionConnectBlocks() {
-		
-		
+		if (this.isInSlavemode()) {
+			return workerActionConnectBlocksAsSlave();
+		}
+		return workerActionConnectBlocksAsMaster();
+	}
+
+	private Action workerActionConnectBlocksAsMaster() {
+		// TODO Auto-generated method stub
 		return null;
 	}
-	
+
+	private Action workerActionConnectBlocksAsSlave() {
+		// TODO Auto-generated method stub
+		
+		// places certain block depending on received message
+		return null;
+	}
+
 	private boolean getMastermode() {
 		return this.mastermode;
 	}
@@ -1382,6 +1423,11 @@ public class AgentG2 extends Agent {
 		return this.getSlavemode();
 	}
 
+	/**
+	 * editor: michael
+	 *
+	 * @return true if the blocks are assembled correctly for the task
+	 */
 	private boolean blocksAssembled() {
 		if (deepEquals(this.getAssembledBlockMatrix(), this.getCurrentTask().getBlockMatrix())) {
 			return true;
