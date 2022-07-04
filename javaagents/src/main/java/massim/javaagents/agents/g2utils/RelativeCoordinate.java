@@ -2,6 +2,8 @@ package massim.javaagents.agents.g2utils;
 
 import java.util.*;
 
+import massim.javaagents.agents.g2pathcalc.Direction;
+
 public class RelativeCoordinate {
 
     private final int x;
@@ -241,4 +243,16 @@ public class RelativeCoordinate {
 		
 	}
     
+    public RelativeCoordinate getCoordAfterWalkingInDir(String dir) {
+		int xCur = getX();
+		int yCur = getY();
+		Direction direction = Direction.getDirectionFromString(dir);
+		if (direction != null) {
+			int x = direction.getDx();
+			int y = direction.getDy();
+			return new RelativeCoordinate(xCur + x, yCur + y);
+		}else {
+			return null;
+		}
+	}
 }

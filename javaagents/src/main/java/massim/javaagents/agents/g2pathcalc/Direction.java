@@ -29,4 +29,43 @@ public enum Direction {
     public String toString() {
         return abbreviation;
     }
+    
+    public static Direction getDirectionFromString(String dir) {
+		switch (dir) {
+		case ("n"): {
+			return NORTH;
+		}
+		case ("e"): {
+			return EAST;
+		}
+		case ("s"): {
+			return SOUTH;
+		}
+		case ("w"): {
+			return WEST;
+		}
+		default: {
+			return null;
+		}
+		}
+
+	}
+
+	public static Direction getDirectionFromInts(int x, int y) {
+
+		if (x == 0 && y == -1) {
+			return NORTH;
+		}
+		if (x == 1 && y == 0) {
+			return EAST;
+		}
+		if (x == 0 && y == 1) {
+			return SOUTH;
+		}
+		if (x == -1 && y == 0) {
+			return WEST;
+		} else {
+			return null;
+		}
+	}
 }
