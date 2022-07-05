@@ -403,13 +403,13 @@ public class AgentG2 extends Agent {
 				for (int i = 0; i < ((ParameterList) paramRequirements).size(); i++) {
 					params.add(((ParameterList) paramRequirements).get(i));
 				}
-				/*
+				
 				// Remove if-statement once agent can handle multi-block tasks
 				if (params.size() > 1) {
 					say("Task " + name + " has more than one block. Ignore.");
 					break;
 				}
-				**/
+				
 				
 				List<TaskRequirement> requirements = new ArrayList<>();
 				for (Parameter param : params) {
