@@ -19,6 +19,14 @@ public class MapManagement {
 	private RelativeCoordinate lastPosition;
 	private ArrayList<RelativeCoordinate> lastTeamMembers = new ArrayList<>();
 	
+	private boolean containsRolezone = false;
+	private boolean containsGoalzone = false;
+	private boolean containsDispenser = false;
+	// Rolezone cells - no null values
+	private Set<RelativeCoordinate> onlyRoleZoneCoords;
+	
+
+
 	/**
 	 * Constructor
 	 * 
@@ -36,6 +44,7 @@ public class MapManagement {
 		this.currentPosition = new RelativeCoordinate(0, 0);
 		this.currentStep = currentStep;
 		this.lastPosition = new RelativeCoordinate(0, 0);
+		this.onlyRoleZoneCoords = new HashSet<>();
 	}
 
 	public void setCurrentStep(int currentStep) {
@@ -95,6 +104,7 @@ public class MapManagement {
 							String type = cell.getClass().getSimpleName();
 							switch (type) {
 							case ("Dispenser"):
+								containsDispenser = true;
 								Dispenser disp = (Dispenser) cell;
 								disp.setRelativeCoordinate(absolutePos);
 								dispenserLayer.put(absolutePos, disp);
@@ -113,9 +123,11 @@ public class MapManagement {
 								}
 								break;
 							case ("Rolezone"):
+								containsRolezone = true;
 								Rolezone rz = (Rolezone) cell;
 								rz.setRelativeCoordinate(absolutePos);
 								rolezoneLayer.put(absolutePos, rz);
+								onlyRoleZoneCoords.add(absolutePos);
 								if ((!obstacleLayer.containsKey(absolutePos)) || (!(obstacleLayer.get(absolutePos) == null) && obstacleLayer.get(absolutePos).getLastSeen() < currentStep)) {
 									obstacleLayer.put(absolutePos, null);
 								}
@@ -165,6 +177,7 @@ public class MapManagement {
 								obstacleLayer.put(absolutePos, null);
 								break;
 							case ("Goalzone"):
+								containsGoalzone = true;
 								Goalzone gz = (Goalzone) cell;
 								gz.setRelativeCoordinate(absolutePos);
 								goalzoneLayer.put(absolutePos, gz);
@@ -675,4 +688,22 @@ public class MapManagement {
 		map.put("west", west);
 		return map;
 	}
+	
+	public boolean containsRolezone() {
+		return containsRolezone;
+	}
+	
+	public boolean containsGoalzone() {
+		return containsGoalzone;
+	}
+	
+	public boolean containsDispenser() {
+		return containsDispenser;
+	}
+	
+
+	public Set<RelativeCoordinate> getOnlyRoleZoneCoords() {
+		return onlyRoleZoneCoords;
+	}
+	
 }

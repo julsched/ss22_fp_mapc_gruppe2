@@ -1,6 +1,6 @@
 cd C:\Users\carin\Documents\FaPra\ss22_fp_mapc_gruppe2\server\target
 Write-Host "Starting Server"
-Start-Process -FilePath java -ArgumentList '-jar server-2022-1.1-jar-with-dependencies.jar -conf ../conf0/SampleConfig.json --monitor'
+Start-Process -FilePath java -ArgumentList '-jar server-2020-2.0-jar-with-dependencies.jar -conf ../conf/Turnier3Config.json --monitor'
 
 Start-Sleep -s 2
 

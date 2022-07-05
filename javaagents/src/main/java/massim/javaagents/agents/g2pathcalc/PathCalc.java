@@ -477,6 +477,51 @@ public class PathCalc {
 		return goalZoneFieldCandidates;
 	}
 
+    /**
+	 * Determines non-occupied role zone cells which have enough space around them to fit on 
+	 * 
+	 * 
+	 * @return The absolute coordinates of the identified role zone cells
+	 */
+	public Set<RelativeCoordinate> determineRoleZoneFieldCandidates() {
+		// First check which role zone cells are free (no obstacle/block/entity)
+		Set<RelativeCoordinate> roleZoneFieldCandidates = new HashSet<>();
+		HashMap<RelativeCoordinate, Rolezone> rolezoneLayer = mapManager.getRolezoneLayer();
+		for (Map.Entry<RelativeCoordinate, Rolezone> entry : rolezoneLayer.entrySet()) {
+			if (entry.getValue() != null) {
+//				boolean occupied = checkIfOccupied(entry.getKey());
+//				if (!occupied) {
+					roleZoneFieldCandidates.add(entry.getKey());
+//				}
+			}
+		}
+		
+//		Set<RelativeCoordinate> roleZoneFieldCandidates = new HashSet<>();
+//		for (RelativeCoordinate goalZoneField : goalZoneFieldsFree) {
+//			// TODO: Adjust for multi-block tasks
+//            boolean enoughSpace = true;
+//            for (TaskRequirement requirement : currentTask.getRequirements()) {
+//                RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getRelativeCoordinate().getX(),
+//					goalZoneField.getY() + requirement.getRelativeCoordinate().getY());
+//                if (checkIfOccupied(fieldToBeChecked)) { // if (!goalZoneFieldsFree.contains(fieldToBeChecked)) {}
+//                    enoughSpace = false;
+//                    break;
+//                }
+//            }
+//            if (enoughSpace) {
+//                goalZoneFieldCandidates.add(goalZoneField);
+//            }
+//			RelativeCoordinate requirement = currentTask.getRequirements().get(0).getRelativeCoordinate();
+//			RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getX(),
+//					goalZoneField.getY() + requirement.getY());
+//			if (!checkIfOccupied(fieldToBeChecked)) { // if (goalZoneFieldsFree.contains(fieldToBeChecked)) {}
+//				goalZoneFieldCandidates.add(goalZoneField);
+//			}
+//		}
+		return roleZoneFieldCandidates;
+//		return mapManager.getOnlyRoleZoneCoords();
+	}
+	
 	/**
 	 * Determines dispensers of the required type
 	 * 
