@@ -61,7 +61,6 @@ public class AgentG2 extends Agent {
 
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
 	private HashSet<String> knownAgents = new HashSet<String>();
-//	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); // see map
 //	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
 	private Orientation orientation = Orientation.NORTH;
 	private HashMap<RelativeCoordinate, Cell> attachedBlocksWithPositions = new HashMap<>();
@@ -949,45 +948,27 @@ public class AgentG2 extends Agent {
 			switch (lastActionResult) {
 			case "success":
 				String direction = (String) this.lastActionParams.get(0);
-				RelativeCoordinate pos;
-				switch (direction) {
-				case "n":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() - 1);
-					//this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks contains relative coordinates
-					break;
-				case "s":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() + 1);
-					//this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks contains relative coordinates
-					break;
-				case "e":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX() + 1, mapManager.getPosition().getY());
-					//this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks contains relative coordinates
-					break;
-				case "w":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX() - 1, mapManager.getPosition().getY());
-					//this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks contains relative coordinates
-					break;
-				default:
-					break;
+				ArrayList<RelativeCoordinate> toRemove = attachements.removeConnections(direction);
+				for (RelativeCoordinate relCo : toRemove) {
+					Cell cell = mapManager.getCell(relCo);
+					attachedBlocks.remove(cell);
+				}
+				canRotate = true;
+				for (Cell cell : attachedBlocks) {
+					if (cell.getClass().toString().equals("Entity") || cell.getClass().toString().equals("Obstacle")) {
+						canRotate = false;
+					}
 				}
 				break;
 			case "rotate":
 				switch (lastActionResult) {
 				case "success":
-					String rot = (String) this.lastActionParams.get(0);
-					HashMap<RelativeCoordinate, Cell> temp = new HashMap<RelativeCoordinate, Cell>();
+					String rot = (String) lastActionParams.get(0);
+					attachements.rotate(rot);
 					if (rot.equals("cw")) {
 						Orientation.changeOrientation(orientation, true);
-						for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
-							Cell cell = this.attachedBlocksWithPositions.get(key);
-							temp.put(new RelativeCoordinate(key.getY(), -key.getX()), cell);
-						}
 					} else {
 						Orientation.changeOrientation(orientation, false);
-						for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
-							Cell cell = this.attachedBlocksWithPositions.get(key);
-							temp.put(new RelativeCoordinate(-key.getY(), key.getX()), cell);
-						}
 					}
 				case "failed_parameter":
 					// Fehlerbehandlung
@@ -1002,6 +983,11 @@ public class AgentG2 extends Agent {
 			case "connect":
 				switch (lastActionResult) {
 				case "success":
+					String partner = (String) lastActionParams.get(0);
+					int x = Integer.parseInt((String) lastActionParams.get(1));
+					int y = Integer.parseInt((String) lastActionParams.get(1));
+					RelativeCoordinate relCo = new RelativeCoordinate(x, y);
+					attachements.findBranch(relCo);
 					// Behandlung
 					break;
 				case "failed_parameter":
@@ -2708,4 +2694,5 @@ public class AgentG2 extends Agent {
 
 		return lifespan;
 	}
+
 }
