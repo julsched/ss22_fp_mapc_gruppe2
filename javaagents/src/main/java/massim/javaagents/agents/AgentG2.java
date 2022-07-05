@@ -40,6 +40,12 @@ public class AgentG2 extends Agent {
 	private List<Norm> norms = new ArrayList<>();
 	// Blocks that might(!) be directly attached to the agent (right next to agent)
 	private List<Block> attachedBlocks = new ArrayList<>();
+	
+	// Beginn: Attachement-Analyse
+	private Attachements attachements;
+	private boolean canRotate = true;
+	
+	// Ende: Attachement-Analyse
 
 	private MapManagement mapManager;
 	private PathCalc pathCalc;
@@ -55,7 +61,7 @@ public class AgentG2 extends Agent {
 
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
 	private HashSet<String> knownAgents = new HashSet<String>();
-	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); // see map
+//	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); // see map
 //	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
 	private Orientation orientation = Orientation.NORTH;
 	private HashMap<RelativeCoordinate, Cell> attachedBlocksWithPositions = new HashMap<>();
@@ -91,6 +97,7 @@ public class AgentG2 extends Agent {
 		super(name, mailbox);
 		this.mapManager = new MapManagement(currentStep);
 		this.pathCalc = new PathCalc(mapManager, attachedBlocks);
+		this.attachements = new Attachements();
 	}
 
 	@Override
@@ -893,31 +900,39 @@ public class AgentG2 extends Agent {
 		case "attach":
 			switch (lastActionResult) {
 			case "success":
-				String direction = (String) this.lastActionParams.get(0);
+				String direction = (String) lastActionParams.get(0);
 				RelativeCoordinate pos;
-				Cell cell;
+				RelativeCoordinate relCo = null;
+				Cell cell = null;
 				switch (direction) {
 				case "n":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() + 1);
-					cell = this.map.get(pos);
-					this.attachedBlocksWithPositions.put(pos, cell);
+					cell = mapManager.getCell(pos);
+					relCo = new RelativeCoordinate(0, -1);	
 					break;
 				case "s":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() - 1);
-					cell = this.map.get(pos);
-					this.attachedBlocksWithPositions.put(pos, cell);
+					cell = mapManager.getCell(pos);
+					relCo = new RelativeCoordinate(0, 1);
 					break;
 				case "e":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX() + 1, mapManager.getPosition().getY());
-					cell = this.map.get(pos);
-					this.attachedBlocksWithPositions.put(pos, cell);
+					cell = mapManager.getCell(pos);
+					relCo = new RelativeCoordinate(1, 0);
 					break;
 				case "w":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX() - 1, mapManager.getPosition().getY());
-					cell = this.map.get(pos);
-					this.attachedBlocksWithPositions.put(pos, cell);
+					cell = mapManager.getCell(pos);
+					relCo = new RelativeCoordinate(-1, 0);
 					break;
 				}
+				attachedBlocksWithPositions.put(relCo, cell);
+				if (cell.getClass().equals("Entity") || cell.getClass().equals("Obstacle")) {
+					canRotate = false;
+				} else {
+					this.attachedBlocks.add((Block) cell);
+				}
+				attachements.addThing(direction, relCo);
 			case "failed_parameter":
 				break;
 			case "failed_target":

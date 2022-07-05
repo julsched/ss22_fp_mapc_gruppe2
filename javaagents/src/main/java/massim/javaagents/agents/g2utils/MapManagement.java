@@ -675,4 +675,18 @@ public class MapManagement {
 		map.put("west", west);
 		return map;
 	}
+	
+	public Cell getCell(RelativeCoordinate coordinate) {
+		Cell result = null;
+		if (blockLayer.containsKey(coordinate)) {
+			result = blockLayer.get(coordinate);
+		}
+		if (obstacleLayer.containsKey(coordinate)) {
+			result = obstacleLayer.get(coordinate);
+		}
+		if (teamMembers.contains(coordinate)) {
+			result = new Entity(coordinate, "", currentStep);
+		}
+		return result;
+	}
 }
