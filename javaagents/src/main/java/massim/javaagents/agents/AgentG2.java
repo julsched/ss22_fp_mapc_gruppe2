@@ -2739,6 +2739,7 @@ public class AgentG2 extends Agent {
 		// simulation
 		currentStep = -1;
 		actionID = -1;
+		phase = 0;
 		mapManager = new MapManagement(this.currentStep);
 		pathCalc = new PathCalc(mapManager, attachedBlocks);
 		roles.clear();
