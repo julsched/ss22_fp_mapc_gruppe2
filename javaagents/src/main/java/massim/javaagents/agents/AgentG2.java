@@ -44,6 +44,7 @@ public class AgentG2 extends Agent {
 	// Beginn: Attachement-Analyse
 	private Attachements attachements;
 	private boolean canRotate = true;
+	RelativeCoordinate connectionPosition;
 	
 	// Ende: Attachement-Analyse
 
@@ -986,8 +987,10 @@ public class AgentG2 extends Agent {
 					String partner = (String) lastActionParams.get(0);
 					int x = Integer.parseInt((String) lastActionParams.get(1));
 					int y = Integer.parseInt((String) lastActionParams.get(1));
-					RelativeCoordinate relCo = new RelativeCoordinate(x, y);
-					attachements.findBranch(relCo);
+					RelativeCoordinate connectionPosition = new RelativeCoordinate(x, y);
+					String branch = attachements.findBranch(connectionPosition);
+					mailbox.sendAttachedThings(partner, attachements, mapManager.getPosition(), connectionPosition, branch);
+					
 					// Behandlung
 					break;
 				case "failed_parameter":
@@ -2694,5 +2697,22 @@ public class AgentG2 extends Agent {
 
 		return lifespan;
 	}
+	
+	public void processAttachements(Attachements attachements, RelativeCoordinate positionPartner, RelativeCoordinate connPosition, String branch) {
+		int xDiff = mapManager.getPosition().getX() - positionPartner.getX();
+		int yDiff = mapManager.getPosition().getY() - positionPartner.getY();
+		Connection myConnection = this.attachements.findConnection(connectionPosition);
+		Connection myPartnersConnection = attachements.findConnection(connPosition);
+		attachements.addBranch(myConnection, myPartnersConnection, xDiff, yDiff);
+		switch (branch) {
+		case "n":
+			
+			
+		}
+		
+		
+		connectionPosition = null;
+	}
+	
 
 }

@@ -3,6 +3,7 @@ package massim.javaagents;
 import eis.iilang.Percept;
 import massim.javaagents.agents.Agent;
 import massim.javaagents.agents.AgentG2;
+import massim.javaagents.agents.g2utils.Attachements;
 import massim.javaagents.agents.g2utils.Block;
 import massim.javaagents.agents.g2utils.Cell;
 import massim.javaagents.agents.g2utils.Dispenser;
@@ -116,6 +117,16 @@ public class MailService {
         } else {
         	AgentG2 rec = (AgentG2) recipient;
         	rec.updateMap(mapManager, knownAgents);
+        }
+    }
+    
+    public void sendAttachedThings(String to, Attachements attachements, RelativeCoordinate positionPartner, RelativeCoordinate connPosition, String branch) {
+    	Agent recipient = register.get(to);
+        if (recipient == null && !(recipient instanceof AgentG2)) {
+            logger.warning("Cannot deliver message to " + to + "; unknown target,");
+        } else {
+        	AgentG2 rec = (AgentG2) recipient;
+        	rec.processAttachements(attachements, positionPartner, connPosition, branch);
         }
     }
 }

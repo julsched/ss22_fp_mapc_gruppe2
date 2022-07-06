@@ -20,19 +20,19 @@ public class Attachements {
 		attachedThings.add(relCo);
 		switch (direction) {
 		case ("n"):
-			north = new Connection(relCo);
+			north = new Connection(relCo, null);
 			northCoordinates.add(new RelativeCoordinate(0, -1));
 			break;
 		case ("e"):
-			east = new Connection(relCo);
+			east = new Connection(relCo, null);
 			eastCoordinates.add(new RelativeCoordinate(1, 0));
 			break;
 		case ("s"):
-			south = new Connection(relCo);
+			south = new Connection(relCo,null);
 			southCoordinates.add(new RelativeCoordinate(0, 1));
 			break;
 		case ("w"):
-			west = new Connection(relCo);
+			west = new Connection(relCo, null);
 			westCoordinates.add(new RelativeCoordinate(1, 0));
 			break;
 		default:
@@ -111,7 +111,32 @@ public class Attachements {
 		if (eastCoordinates.contains(relCo)) {
 			return "e";
 		}
+		if (westCoordinates.contains(relCo)) {
+			return "w";
+		}
 		return result;
+	}
+	
+	public Connection findConnection(RelativeCoordinate relCo) {
+		Connection result = null;
+		result = north.findConnection(relCo);
+		if (!(result ==  null)) {
+			return result;
+		}
+		result = south.findConnection(relCo);
+		if (!(result ==  null)) {
+			return result;
+		}
+		result = east.findConnection(relCo);
+		if (!(result ==  null)) {
+			return result;
+		}
+		result = west.findConnection(relCo);
+		return result;	
+	}
+	
+	public void addBranch(Connection myConnection, Connection myPartnersConnection, int xDiff, int yDiff) {
+		
 	}
 
 }
