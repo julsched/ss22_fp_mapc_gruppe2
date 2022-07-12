@@ -1018,8 +1018,21 @@ public class AgentG2 extends Agent {
 				case "success":
 					int xCellA = (int) lastActionParams.get(0);
 					int yCellA = (int) lastActionParams.get(1);
+					RelativeCoordinate cellA = new RelativeCoordinate(xCellA, yCellA);
+					Connection lastCell = attachements.findConnection(cellA);
+					
 					int xCellB = (int) lastActionParams.get(2);
 					int yCellB = (int) lastActionParams.get(3);
+					RelativeCoordinate CellB = new RelativeCoordinate(xCellB, yCellB);
+					Connection disconnectedCell = attachements.findConnection(CellB);
+					attachements.removeConnections(disconnectedCell);
+					if (lastCell.getConn1().equals(disconnectedCell)) {
+						lastCell.setConn1(null);
+					} else if (lastCell.getConn2().equals(disconnectedCell)) {
+						lastCell.setConn2(null);
+					} else {
+						lastCell.setConn3(null);
+					}
 					// Bestimmung, ob Blöcke aus der attached-Liste entfernt werden müssen
 					break;
 				case "failed_parameter":
@@ -2707,27 +2720,27 @@ public class AgentG2 extends Agent {
 		int yDiff = mapManager.getPosition().getY() - positionPartner.getY();
 		Connection myConnection = attachements.findConnection(connectionPosition);
 		Connection myPartnersConnection = newAttachements.findConnection(connPosition);
-		Connection agent = attachements.addReverseBranch(myConnection, myPartnersConnection, xDiff, yDiff);
+		Connection agent = attachements.addReverseBranch(myConnection, myPartnersConnection, xDiff, yDiff, branch);
 		switch (branch) {
 		case "n":
-			attachements.addBranch(agent, newAttachements.getEast(), xDiff, yDiff);
-			attachements.addBranch(agent, newAttachements.getSouth(), xDiff, yDiff);
-			attachements.addBranch(agent, newAttachements.getWest(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getEast(), xDiff, yDiff, "e");
+			attachements.addBranch(agent, newAttachements.getSouth(), xDiff, yDiff, "s");
+			attachements.addBranch(agent, newAttachements.getWest(), xDiff, yDiff, "w");
 			break;
 		case "e":
-			attachements.addBranch(agent, newAttachements.getNorth(), xDiff, yDiff);
-			attachements.addBranch(agent, newAttachements.getSouth(), xDiff, yDiff);
-			attachements.addBranch(agent, newAttachements.getWest(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getNorth(), xDiff, yDiff, "n");
+			attachements.addBranch(agent, newAttachements.getSouth(), xDiff, yDiff, "s");
+			attachements.addBranch(agent, newAttachements.getWest(), xDiff, yDiff, "w");
 			break;
 		case "s":
-			attachements.addBranch(agent, newAttachements.getEast(), xDiff, yDiff);
-			attachements.addBranch(agent, newAttachements.getNorth(), xDiff, yDiff);
-			attachements.addBranch(agent, newAttachements.getWest(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getEast(), xDiff, yDiff, "e");
+			attachements.addBranch(agent, newAttachements.getNorth(), xDiff, yDiff, "n");
+			attachements.addBranch(agent, newAttachements.getWest(), xDiff, yDiff, "w");
 			break;
 		case "w":
-			attachements.addBranch(agent, newAttachements.getEast(), xDiff, yDiff);
-			attachements.addBranch(agent, newAttachements.getSouth(), xDiff, yDiff);
-			attachements.addBranch(agent, newAttachements.getNorth(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getEast(), xDiff, yDiff, "e");
+			attachements.addBranch(agent, newAttachements.getSouth(), xDiff, yDiff, "s");
+			attachements.addBranch(agent, newAttachements.getNorth(), xDiff, yDiff, "n");
 			break;
 		default:
 			break;

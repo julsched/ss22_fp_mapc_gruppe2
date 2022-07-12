@@ -84,6 +84,24 @@ public class Attachements {
 		return toRemove;
 	}
 	
+	public void removeConnections(Connection start) {
+		RelativeCoordinate toRemove = start.getPosition();
+		attachedThings.remove(toRemove);
+		northCoordinates.remove(toRemove);
+		eastCoordinates.remove(toRemove);
+		southCoordinates.remove(toRemove);
+		westCoordinates.remove(toRemove);
+		if (!(start.getConn1() == null)) {
+			removeConnections(start.getConn1());
+		}
+		if (!(start.getConn2() == null)) {
+			removeConnections(start.getConn2());
+		}
+		if (!(start.getConn3() == null)) {
+			removeConnections(start.getConn3());
+		}
+	}
+	
 	public void rotate(String clockwise) {
 		Connection temp = north;
 		if (clockwise.equals("cw")) {
@@ -135,17 +153,34 @@ public class Attachements {
 		return result;	
 	}
 	
-	public Connection addReverseBranch(Connection myConnection, Connection myPartnersConnection, int xDiff, int yDiff) {
+	public Connection addReverseBranch(Connection myConnection, Connection myPartnersConnection, int xDiff, int yDiff, String direction) {
 		RelativeCoordinate relCo = new RelativeCoordinate(myPartnersConnection.getPosition().getX() + xDiff, myPartnersConnection.getPosition().getY() + yDiff);
+		attachedThings.add(relCo);
+		switch (direction) {
+		case "n":
+			northCoordinates.add(relCo);
+			break;
+		case "e":
+			eastCoordinates.add(relCo);
+			break;
+		case "s":
+			southCoordinates.add(relCo);
+			break;
+		case "w":
+			westCoordinates.add(relCo);
+			break;
+		default:
+			break;
+		}
 		Connection temp = new Connection(relCo, myConnection);
 		if (!(myPartnersConnection.getConn1() == null)) {
-			addBranch(temp, myPartnersConnection.getConn1(), xDiff, yDiff);
+			addBranch(temp, myPartnersConnection.getConn1(), xDiff, yDiff, direction);
 		}
 		if (!(myPartnersConnection.getConn2() == null)) {
-			addBranch(temp, myPartnersConnection.getConn2(), xDiff, yDiff);
+			addBranch(temp, myPartnersConnection.getConn2(), xDiff, yDiff, direction);
 		}
 		if (!(myPartnersConnection.getConn3() == null)) {
-			addBranch(temp, myPartnersConnection.getConn3(), xDiff, yDiff);
+			addBranch(temp, myPartnersConnection.getConn3(), xDiff, yDiff, direction);
 		}
 		if (myConnection.getConn1() == null) {
 			myConnection.setConn1(temp);
@@ -155,7 +190,7 @@ public class Attachements {
 			myConnection.setConn3(temp);
 		}
 		if (!(myPartnersConnection.getSource() == null)) {
-			return addReverseBranch(temp, myPartnersConnection.getSource(), xDiff, yDiff);
+			return addReverseBranch(temp, myPartnersConnection.getSource(), xDiff, yDiff, direction);
 		} else {
 			Connection agent = new Connection(new RelativeCoordinate(xDiff, yDiff), temp);
 			if (temp.getConn1() == null) {
@@ -169,17 +204,34 @@ public class Attachements {
 		}
 	}
 	
-	public void addBranch(Connection source, Connection branch, int xDiff, int yDiff) {
+	public void addBranch(Connection source, Connection branch, int xDiff, int yDiff, String direction) {
 		RelativeCoordinate relCo = new RelativeCoordinate(branch.getPosition().getX() + xDiff, branch.getPosition().getY() + yDiff);
 		Connection temp = new Connection(relCo, source);
+		attachedThings.add(relCo);
+		switch (direction) {
+		case "n":
+			northCoordinates.add(relCo);
+			break;
+		case "e":
+			eastCoordinates.add(relCo);
+			break;
+		case "s":
+			southCoordinates.add(relCo);
+			break;
+		case "w":
+			westCoordinates.add(relCo);
+			break;
+		default:
+			break;
+		}
 		if (!(branch.getConn1() == null)) {
-			addBranch(temp, branch.getConn1(), xDiff, yDiff);
+			addBranch(temp, branch.getConn1(), xDiff, yDiff, direction);
 		}
 		if (!(branch.getConn2() == null)) {
-			addBranch(temp, branch.getConn2(), xDiff, yDiff);
+			addBranch(temp, branch.getConn2(), xDiff, yDiff, direction);
 		}
 		if (!(branch.getConn3() == null)) {
-			addBranch(temp, branch.getConn3(), xDiff, yDiff);
+			addBranch(temp, branch.getConn3(), xDiff, yDiff, direction);
 		}
 		if (source.getConn1() == null) {
 			source.setConn1(temp);
