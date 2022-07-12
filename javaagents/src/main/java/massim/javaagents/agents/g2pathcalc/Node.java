@@ -1,22 +1,24 @@
 package massim.javaagents.agents.g2pathcalc;
 
+import java.util.*;
+
 public class Node {
 
     final int x;
     final int y;
-    final Direction initialDir;
-    int stepNum = 0;
+    final List<Direction> initialDirs;
+    int stepNum;
 
-    public Node(int x, int y, Direction initialDir, int stepNum) {
+    public Node(int x, int y, int stepNum) {
         this.x = x;
         this.y = y;
-        this.initialDir = initialDir;
+        this.initialDirs = null;
         this.stepNum = stepNum;
     }
 
-    public Node(int x, int y, Direction initialDir) {
+    public Node(int x, int y, List<Direction> initialDirs) {
         this.x = x;
         this.y = y;
-        this.initialDir = initialDir;
+        this.initialDirs = initialDirs;
     }
 }

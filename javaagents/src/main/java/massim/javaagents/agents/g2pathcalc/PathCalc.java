@@ -1,5 +1,6 @@
 package massim.javaagents.agents.g2pathcalc;
 
+import eis.iilang.*;
 import massim.javaagents.agents.g2utils.*;
 import java.util.*;
 
@@ -7,15 +8,28 @@ public class PathCalc {
 
 	private MapManagement mapManager;
 	private List<Block> attachedBlocks; // relative coordinates
+	private Role currentRole = null;
 
 	public PathCalc(MapManagement mapManager, List<Block> attachedBlocks) {
 		this.mapManager = mapManager;
 		this.attachedBlocks = attachedBlocks;
 	}
 
-	public String calculateShortestPathVision(int vision, List<RelativeCoordinate> occupiedFields,
+	public void setCurrentRole(Role role) {
+		this.currentRole = role;
+	}
+
+	public Action calculateShortestPathVision(int vision, List<RelativeCoordinate> occupiedFields,
 			Set<RelativeCoordinate> destinations) {
 		List<RelativeCoordinate> attachedBlockCoordinates = getRelativeCoordinates(attachedBlocks);
+		int speed = 1; // 
+		if (currentRole != null) { // TODO: Investigate why currentRole not set sometimes
+			speed = currentRole.getCurrentSpeed();
+		}
+		if (speed == 0) {
+			// Too many things attached, agent cannot move.
+			return null;
+		}
 
 		// Boolean array representing a map (true means field is occupied)
 		boolean[][] map = new boolean[2 * vision + 3][2 * vision + 3];
@@ -76,13 +90,38 @@ public class PathCalc {
 			for (Direction dir : Direction.values()) {
 				int newX = node.x + dir.getDx();
 				int newY = node.y + dir.getDy();
-				Direction newDir = node.initialDir == null ? dir : node.initialDir;
+				List<Direction> newDirList;
+				if (node.initialDirs == null) {
+					newDirList = new ArrayList<>();
+					newDirList.add(dir);
+				} else if (node.initialDirs.size() < speed) {
+					newDirList = new ArrayList<Direction>(node.initialDirs);
+					newDirList.add(dir);
+				} else {
+					newDirList = new ArrayList<Direction>(node.initialDirs);
+				}
 				for (RelativeCoordinate destination : destinations) {
 					int xG = destination.getX() + vision + 1;
 					int yG = destination.getY() + vision + 1;
 					// Destination reached?
 					if (newX == xG && newY == yG) {
-						return newDir.toString();
+						int steps;
+						if (newDirList.size() < speed) {
+							steps = newDirList.size();
+						} else {
+							steps = speed;
+						}
+						switch (steps) {
+							case 1:
+								return new Action("move", new Identifier(newDirList.get(0).toString()));
+							case 2:
+								return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()));
+							case 3:
+								return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()), new Identifier(newDirList.get(2).toString()));	
+							default:
+								System.out.println("Speed " + speed + " not (yet) supported by PathCalc");
+								return null;
+						}
 					}
 				}
 
@@ -90,7 +129,7 @@ public class PathCalc {
 				if (!map[newX][newY] && !discovered[newX][newY]) {
 					// Mark field as 'discovered' and add it to the queue
 					discovered[newX][newY] = true;
-					queue.add(new Node(newX, newY, newDir));
+					queue.add(new Node(newX, newY, newDirList));
 				}
 			}
 		}
@@ -99,97 +138,30 @@ public class PathCalc {
 	
 
     /**
-	 * Determines the direction of the closest destination taking into account obstacles/entities/blocks on the way
+	 * Determines the direction towards the given dispenser taking into account obstacles/entities/blocks on the way
 	 * 
-	 * @param destinations The possible destinations
+	 * @param disp The dispenser
 	 * 
-	 * @return The direction the agent should walk towards
+	 * @return The move action or null in case no path was identified
 	 */
-    public String calculateShortestPathMap(RelativeCoordinate relativeCoordinate) {
-
-
-        List<RelativeCoordinate> attachedBlocksRelative = getRelativeCoordinates(attachedBlocks);
-        RelativeCoordinate currentPos = mapManager.getPosition();
-        HashMap<String, RelativeCoordinate> mapDimensions = mapManager.analyzeMapDimensions();
-        HashMap<RelativeCoordinate, Block> blockLayer = mapManager.getBlockLayer();
-        HashMap<RelativeCoordinate, Obstacle> obstacleLayer = mapManager.getObstacleLayer();
-        HashMap<RelativeCoordinate, Entity> entityLayer = mapManager.getEntityLayer();
-
-        // Position of agent inside the map
-        int xA = currentPos.getX();
-        int yA = currentPos.getY();
-
-        // Set for keeping track of the fields that have been already analyzed
-        Set<RelativeCoordinate> discovered = new HashSet<>();
-        discovered.add(currentPos);
-
-
-        // Start of algorithm
-        Queue<Node> queue = new ArrayDeque<>();
-        queue.add(new Node(xA, yA, null));
-        while (!queue.isEmpty()) {
-            Node node = queue.poll();
-
-            // TODO: take into account that agent can rotate in order to fit on a path
-            // TODO: Enable agent to walk two steps
-
-            for (Direction dir : Direction.values()) {
-                int newX = node.x + dir.getDx();
-                int newY = node.y + dir.getDy();
-                if (newX < 0) {
-                    int x = mapDimensions.get("west").getX();
-                    if (newX < (x - 5)) {
-                        continue;
-                    }
-                } else {
-                    int x = mapDimensions.get("east").getX();
-                    if (newX > (x + 5)) {
-                        continue;
-                    }
-                }
-                if (newY < 0) {
-                    int y = mapDimensions.get("north").getY();
-                    if (newY < (y - 5)) {
-                        continue;
-                    }
-                } else {
-                    int y = mapDimensions.get("south").getY();
-                    if (newY > (y + 5)) {
-                        continue;
-                    }
-                }
-
-                // Check if the cell is occupied
-                boolean occupied = checkIfOccupied(new RelativeCoordinate(newX, newY));
-
-                // Check if attachedBlocks of agent fit into the cell's surrounding cells
-                if (!occupied) {
-                    for (RelativeCoordinate attachedBlock : attachedBlocksRelative) {
-                        RelativeCoordinate absolutePosition = new RelativeCoordinate(newX + attachedBlock.getX(), newY + attachedBlock.getY());
-                        occupied = checkIfOccupied(absolutePosition);
-                        if (occupied) {
-                            break;
-                        }
-                    }
-                }
-
-                // Is there a path in the direction and has that field not yet been analyzed?
-                if (!occupied && !discovered.contains(new RelativeCoordinate(newX, newY))) {
-                    Direction newDir = node.initialDir == null ? dir : node.initialDir;
-                        int xG = relativeCoordinate.getX();
-                        int yG = relativeCoordinate.getY();
-                        // Destination reached?
-                        if (newX == xG && newY == yG) {
-                            System.out.println("Destination: (" + newX + "|" + newY + ")");
-                            return newDir.toString();
-                        }
-                    // Mark field as 'discovered' and add it to the queue
-                    discovered.add(new RelativeCoordinate(newX, newY));
-                    queue.add(new Node(newX, newY, newDir));
-                }
-            }
-        }
-        return null;
+    public Action calculateShortestPathMap(Dispenser disp) {
+		if (disp == null || disp.getRelativeCoordinate() == null) {
+			return null;
+		}
+		RelativeCoordinate relativeCoordinate = disp.getRelativeCoordinate();
+		if(checkIfOccupied(relativeCoordinate)) {
+			return null;
+		}
+		RelativeCoordinate north = new RelativeCoordinate(relativeCoordinate.getX(), relativeCoordinate.getY() - 1);
+		RelativeCoordinate east = new RelativeCoordinate(relativeCoordinate.getX() + 1, relativeCoordinate.getY());
+		RelativeCoordinate south = new RelativeCoordinate(relativeCoordinate.getX(), relativeCoordinate.getY() + 1);
+		RelativeCoordinate west = new RelativeCoordinate(relativeCoordinate.getX() - 1, relativeCoordinate.getY());
+		Set<RelativeCoordinate> destinations = new HashSet<>();
+		destinations.add(north);
+		destinations.add(east);
+		destinations.add(south);
+		destinations.add(west);
+		return calculateShortestPathMap(destinations);
     }
 
 	/**
@@ -198,13 +170,22 @@ public class PathCalc {
 	 * 
 	 * @param destinations The possible destinations
 	 * 
-	 * @return The direction the agent should walk towards
+	 * @return The move action or null in case no path was identified
 	 */
-	public String calculateShortestPathMap(Set<RelativeCoordinate> destinations) {
+	public Action calculateShortestPathMap(Set<RelativeCoordinate> destinations) {
 		if (destinations == null || destinations.size() == 0) {
 			return null;
 		}
 
+		int speed = 1; // 
+		if (currentRole != null) { // TODO: Investigate why currentRole not set sometimes
+			speed = currentRole.getCurrentSpeed();
+		}
+		
+		if (speed == 0) {
+			// Too many things attached, agent cannot move.
+			return null;
+		}
 		List<RelativeCoordinate> attachedBlocksRelative = getRelativeCoordinates(attachedBlocks);
 		RelativeCoordinate currentPos = mapManager.getPosition();
 		HashMap<String, RelativeCoordinate> mapDimensions = mapManager.analyzeMapDimensions();
@@ -272,19 +253,45 @@ public class PathCalc {
 
 				// Is there a path in the direction and has that field not yet been analyzed?
 				if (!occupied && !discovered.contains(new RelativeCoordinate(newX, newY))) {
-					Direction newDir = node.initialDir == null ? dir : node.initialDir;
+					List<Direction> newDirList;
+					if (node.initialDirs == null) {
+						newDirList = new ArrayList<>();
+						newDirList.add(dir);
+					} else if (node.initialDirs.size() < speed) {
+						newDirList = new ArrayList<Direction>(node.initialDirs);
+						newDirList.add(dir);
+					} else {
+						newDirList = new ArrayList<Direction>(node.initialDirs);
+					}
+
 					for (RelativeCoordinate destination : destinations) {
 						int xG = destination.getX();
 						int yG = destination.getY();
 						// Destination reached?
 						if (newX == xG && newY == yG) {
 							System.out.println("Destination: (" + newX + "|" + newY + ")");
-							return newDir.toString();
+							int steps;
+							if (newDirList.size() < speed) {
+								steps = newDirList.size();
+							} else {
+								steps = speed;
+							}
+							switch (steps) {
+								case 1:
+									return new Action("move", new Identifier(newDirList.get(0).toString()));
+								case 2:
+									return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()));
+								case 3:
+									return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()), new Identifier(newDirList.get(2).toString()));
+								default:
+									System.out.println("Speed " + speed + " not (yet) supported by PathCalc");
+									return null;
+							}
 						}
 					}
 					// Mark field as 'discovered' and add it to the queue
 					discovered.add(new RelativeCoordinate(newX, newY));
-					queue.add(new Node(newX, newY, newDir));
+					queue.add(new Node(newX, newY, newDirList));
 				}
 			}
 		}
@@ -576,7 +583,7 @@ public class PathCalc {
 
 		// Start of algorithm
 		Queue<Node> queue = new ArrayDeque<>();
-		queue.add(new Node(xA, yA, null));
+		queue.add(new Node(xA, yA, 0));
 		while (!queue.isEmpty()) {
 			Node node = queue.poll();
 
@@ -626,7 +633,6 @@ public class PathCalc {
 
 				// Is there a path in the direction and has that field not yet been analyzed?
 				if (!occupied && !discovered.contains(new RelativeCoordinate(newX, newY))) {
-					Direction newDir = node.initialDir == null ? dir : node.initialDir;
 					for (RelativeCoordinate destination : destinations) {
 						int xG = destination.getX();
 						int yG = destination.getY();
@@ -638,7 +644,7 @@ public class PathCalc {
 					}
 					// Mark field as 'discovered' and add it to the queue
 					discovered.add(new RelativeCoordinate(newX, newY));
-					queue.add(new Node(newX, newY, newDir, node.stepNum + 1));
+					queue.add(new Node(newX, newY, node.stepNum + 1));
 				}
 			}
 		}
@@ -650,7 +656,7 @@ public class PathCalc {
 	 * 
 	 * @return The direction the agent should walk towards
 	 */
-	public String calculateShortestPathNextObstacle() {
+	public Action calculateShortestPathNextObstacle() {
 		Set<RelativeCoordinate> obstacles = new HashSet<>();
 		HashMap<RelativeCoordinate, Obstacle> obstacleLayer = mapManager.getObstacleLayer();
 		for (Map.Entry<RelativeCoordinate, Obstacle> entry : obstacleLayer.entrySet()) {
