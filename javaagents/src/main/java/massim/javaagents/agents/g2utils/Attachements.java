@@ -135,8 +135,59 @@ public class Attachements {
 		return result;	
 	}
 	
-	public void addBranch(Connection myConnection, Connection myPartnersConnection, int xDiff, int yDiff) {
-		
+	public Connection addReverseBranch(Connection myConnection, Connection myPartnersConnection, int xDiff, int yDiff) {
+		RelativeCoordinate relCo = new RelativeCoordinate(myPartnersConnection.getPosition().getX() + xDiff, myPartnersConnection.getPosition().getY() + yDiff);
+		Connection temp = new Connection(relCo, myConnection);
+		if (!(myPartnersConnection.getConn1() == null)) {
+			addBranch(temp, myPartnersConnection.getConn1(), xDiff, yDiff);
+		}
+		if (!(myPartnersConnection.getConn2() == null)) {
+			addBranch(temp, myPartnersConnection.getConn2(), xDiff, yDiff);
+		}
+		if (!(myPartnersConnection.getConn3() == null)) {
+			addBranch(temp, myPartnersConnection.getConn3(), xDiff, yDiff);
+		}
+		if (myConnection.getConn1() == null) {
+			myConnection.setConn1(temp);
+		} else if (myConnection.getConn2() == null) {
+			myConnection.setConn2(temp);
+		} else {
+			myConnection.setConn3(temp);
+		}
+		if (!(myPartnersConnection.getSource() == null)) {
+			return addReverseBranch(temp, myPartnersConnection.getSource(), xDiff, yDiff);
+		} else {
+			Connection agent = new Connection(new RelativeCoordinate(xDiff, yDiff), temp);
+			if (temp.getConn1() == null) {
+				temp.setConn1(agent);
+			} else if (temp.getConn2() == null) {
+				temp.setConn2(agent);
+			} else {
+				temp.setConn3(agent);
+			}
+			return agent;
+		}
+	}
+	
+	public void addBranch(Connection source, Connection branch, int xDiff, int yDiff) {
+		RelativeCoordinate relCo = new RelativeCoordinate(branch.getPosition().getX() + xDiff, branch.getPosition().getY() + yDiff);
+		Connection temp = new Connection(relCo, source);
+		if (!(branch.getConn1() == null)) {
+			addBranch(temp, branch.getConn1(), xDiff, yDiff);
+		}
+		if (!(branch.getConn2() == null)) {
+			addBranch(temp, branch.getConn2(), xDiff, yDiff);
+		}
+		if (!(branch.getConn3() == null)) {
+			addBranch(temp, branch.getConn3(), xDiff, yDiff);
+		}
+		if (source.getConn1() == null) {
+			source.setConn1(temp);
+		} else if (source.getConn2() == null) {
+			source.setConn2(temp);
+		} else {
+			source.setConn3(temp);
+		}
 	}
 
 }

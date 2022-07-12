@@ -927,11 +927,13 @@ public class AgentG2 extends Agent {
 					break;
 				}
 				attachedBlocksWithPositions.put(relCo, cell);
-				if (cell.getClass().equals("Entity") || cell.getClass().equals("Obstacle")) {
-					canRotate = false;
-				} else {
-					this.attachedBlocks.add((Block) cell);
-				}
+				if (!(cell == null)) {
+					if (cell.getClass().equals("Entity") || cell.getClass().equals("Obstacle")) {
+						canRotate = false;
+					} else {
+						this.attachedBlocks.add((Block) cell);
+					}
+				}		
 				attachements.addThing(direction, relCo);
 			case "failed_parameter":
 				break;
@@ -956,9 +958,11 @@ public class AgentG2 extends Agent {
 				}
 				canRotate = true;
 				for (Cell cell : attachedBlocks) {
-					if (cell.getClass().toString().equals("Entity") || cell.getClass().toString().equals("Obstacle")) {
-						canRotate = false;
-					}
+					if (!(cell == null)) {
+						if (cell.getClass().toString().equals("Entity") || cell.getClass().toString().equals("Obstacle")) {
+							canRotate = false;
+						}
+					}	
 				}
 				break;
 			case "rotate":
@@ -2698,16 +2702,35 @@ public class AgentG2 extends Agent {
 		return lifespan;
 	}
 	
-	public void processAttachements(Attachements attachements, RelativeCoordinate positionPartner, RelativeCoordinate connPosition, String branch) {
+	public void processAttachements(Attachements newAttachements, RelativeCoordinate positionPartner, RelativeCoordinate connPosition, String branch) {
 		int xDiff = mapManager.getPosition().getX() - positionPartner.getX();
 		int yDiff = mapManager.getPosition().getY() - positionPartner.getY();
-		Connection myConnection = this.attachements.findConnection(connectionPosition);
-		Connection myPartnersConnection = attachements.findConnection(connPosition);
-		attachements.addBranch(myConnection, myPartnersConnection, xDiff, yDiff);
+		Connection myConnection = attachements.findConnection(connectionPosition);
+		Connection myPartnersConnection = newAttachements.findConnection(connPosition);
+		Connection agent = attachements.addReverseBranch(myConnection, myPartnersConnection, xDiff, yDiff);
 		switch (branch) {
 		case "n":
-			
-			
+			attachements.addBranch(agent, newAttachements.getEast(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getSouth(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getWest(), xDiff, yDiff);
+			break;
+		case "e":
+			attachements.addBranch(agent, newAttachements.getNorth(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getSouth(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getWest(), xDiff, yDiff);
+			break;
+		case "s":
+			attachements.addBranch(agent, newAttachements.getEast(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getNorth(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getWest(), xDiff, yDiff);
+			break;
+		case "w":
+			attachements.addBranch(agent, newAttachements.getEast(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getSouth(), xDiff, yDiff);
+			attachements.addBranch(agent, newAttachements.getNorth(), xDiff, yDiff);
+			break;
+		default:
+			break;
 		}
 		
 		

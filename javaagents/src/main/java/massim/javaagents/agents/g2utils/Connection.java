@@ -81,5 +81,37 @@ public class Connection {
 		return result;
 		
 	}
+	
+	public RelativeCoordinate getPosition() {
+		return position;
+	}
+	
+	public Connection getConn1() {
+		return conn1;
+	}
+	
+	public void setConn1(Connection addition) {
+		conn1 = addition;
+	}
+	
+	public Connection getConn2() {
+		return conn2;
+	}
+	
+	public void setConn2(Connection addition) {
+		conn2 = addition;
+	}
+	
+	public Connection getConn3() {
+		return conn3;
+	}
+	
+	public void setConn3(Connection addition) {
+		conn3 = addition;
+	}
+	
+	public Connection getSource() {
+		return source;
+	}
 
 }
