@@ -87,10 +87,23 @@ public class Attachements {
 	public void removeConnections(Connection start) {
 		RelativeCoordinate toRemove = start.getPosition();
 		attachedThings.remove(toRemove);
-		northCoordinates.remove(toRemove);
-		eastCoordinates.remove(toRemove);
-		southCoordinates.remove(toRemove);
-		westCoordinates.remove(toRemove);
+		String branch = findBranch(toRemove);
+		switch (branch) {
+		case "n":
+			northCoordinates.remove(toRemove);
+			break;
+		case "e":
+			eastCoordinates.remove(toRemove);
+			break;
+		case "s":
+			southCoordinates.remove(toRemove);
+			break;
+		case "w":
+			westCoordinates.remove(toRemove);
+			break;
+		default:
+			break;
+		}
 		if (!(start.getConn1() == null)) {
 			removeConnections(start.getConn1());
 		}
@@ -100,6 +113,47 @@ public class Attachements {
 		if (!(start.getConn3() == null)) {
 			removeConnections(start.getConn3());
 		}
+	}
+	
+	public void removeConnections(RelativeCoordinate relCo) {
+		String branch = findBranch(relCo);
+		Connection toRemove = findConnection(relCo);
+		Connection lastConnection = toRemove.getSource();
+		if (!(lastConnection == null)) {
+			if (lastConnection.getConn1().equals(lastConnection)) {
+				lastConnection.setConn1(null);
+			} else if (lastConnection.getConn2().equals(lastConnection)) {
+				lastConnection.setConn2(null);
+			} else {
+				lastConnection.setConn3(null);
+			}
+		}
+		if (!(toRemove.getConn1() == null)) {
+			removeConnections(toRemove.getConn1());
+		}
+		if (!(toRemove.getConn2() == null)) {
+			removeConnections(toRemove.getConn2());
+		}
+		if (!(toRemove.getConn3() == null)) {
+			removeConnections(toRemove.getConn3());
+		}
+		attachedThings.remove(relCo);
+		switch (branch) {
+		case "n":
+			northCoordinates.remove(relCo);
+			break;
+		case "e":
+			eastCoordinates.remove(relCo);
+			break;
+		case "s":
+			southCoordinates.remove(relCo);
+			break;
+		case "w":
+			westCoordinates.remove(relCo);
+			break;
+		default:
+			break;
+		}		
 	}
 	
 	public void rotate(String clockwise) {

@@ -129,4 +129,14 @@ public class MailService {
         	rec.processAttachements(attachements, positionPartner, connPosition, branch);
         }
     }
+    
+    public void sendDisconnectedThings(String to, RelativeCoordinate toRemove) {
+    	Agent recipient = register.get(to);
+        if (recipient == null && !(recipient instanceof AgentG2)) {
+            logger.warning("Cannot deliver message to " + to + "; unknown target,");
+        } else {
+        	AgentG2 rec = (AgentG2) recipient;
+        	rec.processDisconnection(toRemove);
+        }
+    }
 }

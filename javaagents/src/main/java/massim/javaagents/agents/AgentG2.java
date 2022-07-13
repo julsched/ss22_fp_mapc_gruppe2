@@ -45,6 +45,9 @@ public class AgentG2 extends Agent {
 	private Attachements attachements;
 	private boolean canRotate = true;
 	RelativeCoordinate connectionPosition;
+	String attachedPartner;
+	int xDiff;
+	int yDiff;
 	
 	// Ende: Attachement-Analyse
 
@@ -988,12 +991,12 @@ public class AgentG2 extends Agent {
 			case "connect":
 				switch (lastActionResult) {
 				case "success":
-					String partner = (String) lastActionParams.get(0);
+					attachedPartner = (String) lastActionParams.get(0);
 					int x = Integer.parseInt((String) lastActionParams.get(1));
 					int y = Integer.parseInt((String) lastActionParams.get(1));
-					RelativeCoordinate connectionPosition = new RelativeCoordinate(x, y);
+					connectionPosition = new RelativeCoordinate(x, y);
 					String branch = attachements.findBranch(connectionPosition);
-					mailbox.sendAttachedThings(partner, attachements, mapManager.getPosition(), connectionPosition, branch);
+					mailbox.sendAttachedThings(attachedPartner, attachements, mapManager.getPosition(), connectionPosition, branch);
 					
 					// Behandlung
 					break;
@@ -1020,11 +1023,14 @@ public class AgentG2 extends Agent {
 					int yCellA = (int) lastActionParams.get(1);
 					RelativeCoordinate cellA = new RelativeCoordinate(xCellA, yCellA);
 					Connection lastCell = attachements.findConnection(cellA);
-					
+					RelativeCoordinate adjustedCoordinate = new RelativeCoordinate(xCellA - xDiff, yCellA - yDiff);
+
 					int xCellB = (int) lastActionParams.get(2);
 					int yCellB = (int) lastActionParams.get(3);
-					RelativeCoordinate CellB = new RelativeCoordinate(xCellB, yCellB);
-					Connection disconnectedCell = attachements.findConnection(CellB);
+					RelativeCoordinate cellB = new RelativeCoordinate(xCellB, yCellB);
+					Connection disconnectedCell = attachements.findConnection(cellB);
+					mailbox.sendDisconnectedThings(attachedPartner, adjustedCoordinate);
+					attachedPartner = null;					
 					attachements.removeConnections(disconnectedCell);
 					if (lastCell.getConn1().equals(disconnectedCell)) {
 						lastCell.setConn1(null);
@@ -2716,8 +2722,8 @@ public class AgentG2 extends Agent {
 	}
 	
 	public void processAttachements(Attachements newAttachements, RelativeCoordinate positionPartner, RelativeCoordinate connPosition, String branch) {
-		int xDiff = mapManager.getPosition().getX() - positionPartner.getX();
-		int yDiff = mapManager.getPosition().getY() - positionPartner.getY();
+		xDiff = mapManager.getPosition().getX() - positionPartner.getX();
+		yDiff = mapManager.getPosition().getY() - positionPartner.getY();
 		Connection myConnection = attachements.findConnection(connectionPosition);
 		Connection myPartnersConnection = newAttachements.findConnection(connPosition);
 		Connection agent = attachements.addReverseBranch(myConnection, myPartnersConnection, xDiff, yDiff, branch);
@@ -2745,10 +2751,12 @@ public class AgentG2 extends Agent {
 		default:
 			break;
 		}
-		
-		
 		connectionPosition = null;
 	}
 	
+	public void processDisconnection(RelativeCoordinate toRemove) {
+		RelativeCoordinate relCo = new RelativeCoordinate(toRemove.getX() - mapManager.getPosition().getX(), toRemove.getY() - mapManager.getPosition().getY());
+		attachements.removeConnections(relCo);
+	}
 
 }
