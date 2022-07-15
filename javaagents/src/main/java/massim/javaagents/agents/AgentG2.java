@@ -1271,13 +1271,13 @@ public class AgentG2 extends Agent {
 			if (!roleZoneFieldCandidates.contains(mapManager.getPosition())) {
 				// Calculate direction agent should move into in order to get as fast as
 				// possible to the next suitable role zone field
-				String dir = pathCalc.calculateShortestPathMap(roleZoneFieldCandidates);
-				if (dir == null) {
+				Action action = pathCalc.calculateShortestPathMap(roleZoneFieldCandidates);
+				if (action == null) {
 					say("No path towards identified role zone fields.");
 					return explorerStep();
 				} else {
 					say("Path identified. Moving towards next suitable role zone field...");
-					return move(dir);
+					return action;
 				}
 			} else {
 				say("Already on suitable role zone field");
