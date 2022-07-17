@@ -111,17 +111,14 @@ public class PathCalc {
 						} else {
 							steps = speed;
 						}
-						switch (steps) {
-							case 1:
-								return new Action("move", new Identifier(newDirList.get(0).toString()));
-							case 2:
-								return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()));
-							case 3:
-								return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()), new Identifier(newDirList.get(2).toString()));	
-							default:
-								System.out.println("Speed " + speed + " not (yet) supported by PathCalc");
-								return null;
+						if (steps == 0) {
+							return null;
 						}
+						List<Parameter> params = new ArrayList<>();
+						for (int i = 0; i < steps; i++) {
+							params.add(new Identifier(newDirList.get(i).toString()));
+						}
+						return new Action("move", params);
 					}
 				}
 
@@ -276,17 +273,14 @@ public class PathCalc {
 							} else {
 								steps = speed;
 							}
-							switch (steps) {
-								case 1:
-									return new Action("move", new Identifier(newDirList.get(0).toString()));
-								case 2:
-									return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()));
-								case 3:
-									return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()), new Identifier(newDirList.get(2).toString()));
-								default:
-									System.out.println("Speed " + speed + " not (yet) supported by PathCalc");
-									return null;
+							if (steps == 0) {
+								return null;
 							}
+							List<Parameter> params = new ArrayList<>();
+							for (int i = 0; i < steps; i++) {
+								params.add(new Identifier(newDirList.get(i).toString()));
+							}
+							return new Action("move", params);
 						}
 					}
 					// Mark field as 'discovered' and add it to the queue
