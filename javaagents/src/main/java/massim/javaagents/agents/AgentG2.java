@@ -222,7 +222,7 @@ public class AgentG2 extends Agent {
 		} else {
 			say("NO TASK!!!!!!!!!!!100");
 		}
-		if (!lastActionResult.equals("success")) {
+		if (!lastActionResult.equals("success") && !lastActionResult.equals("partial_success")) {
 			return handleError();
 		}
 		if (!mapManager.containsRolezone() && phase == 0) {
