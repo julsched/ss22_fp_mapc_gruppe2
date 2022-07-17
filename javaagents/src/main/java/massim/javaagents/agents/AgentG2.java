@@ -45,7 +45,8 @@ public class AgentG2 extends Agent {
 	private int teamSize;
 	private int simSteps;
 	private List<Role> roles = new ArrayList<>();
-	private String explorerAgent;
+	private boolean isExplorer;
+	private boolean isConstructor;
 	boolean simStartPerceptsSaved;
 
 	private int currentStep = -1;
@@ -162,10 +163,9 @@ public class AgentG2 extends Agent {
 		}
 		if (!simStartPerceptsSaved) {
 			saveSimStartPercepts(percepts);
-			if (teamSize > 1) {
-				explorerAgent = Mission.applyForExplorerMission(getName());
-			} else {
-				explorerAgent = "None";
+			isExplorer = Mission.applyForExplorerMission(getName());
+			if (!isExplorer) {
+				isConstructor = Mission.applyForConstructorMission(getName());
 			}
 			return new Action("skip");
 		}
@@ -173,8 +173,10 @@ public class AgentG2 extends Agent {
 		// must be set first, so agents knows currentStep for sorting Percepts and for
 		// having a structured console output
 		setCurrentStep(percepts);
-		if (explorerAgent.equals(getName())) {
+		if (isExplorer) {
 			say("My mission: Explorer");
+		} else if (isConstructor) {
+			say("My mission: Constructor");
 		} else {
 			say("My mission: Worker");
 		}
@@ -244,10 +246,19 @@ public class AgentG2 extends Agent {
 			phase++;
 		}
 
-		if (!currentRole.getName().equals("worker") && phase == 3) {
-			return searchRolezone("worker");
-		} else if (currentRole.getName().equals("worker") && phase == 3) {
-			return workerStep();
+		// TODO: Add explorer?
+		if (isConstructor) {
+			if (!currentRole.getName().equals("constructor") && phase == 3) {
+				return searchRolezone("constructor");
+			} else if (currentRole.getName().equals("constructor") && phase == 3) {
+				return constructorStep();
+			}
+		} else {
+			if (!currentRole.getName().equals("worker") && phase == 3) {
+				return searchRolezone("worker");
+			} else if (currentRole.getName().equals("worker") && phase == 3) {
+				return workerStep();
+			}
 		}
 		return workerStep();
 	}
@@ -1265,6 +1276,34 @@ public class AgentG2 extends Agent {
 		return explorerStep();
 	}
 
+	private Action searchGoalZone() {
+		say("Need to look for goal zone");
+		// Identify free goal zone fields
+		Set<RelativeCoordinate> goalZoneFields = pathCalc.determineGoalZoneFields();
+
+		if (!goalZoneFields.isEmpty()) {
+			say("Free goal zone fields identified");
+			// Check if agent already on a goal zone field
+			if (!goalZoneFields.contains(mapManager.getPosition())) {
+				// Calculate direction agent should move into in order to get as fast as
+				// possible to the next free goal zone field
+				Action action = pathCalc.calculateShortestPathMap(goalZoneFields);
+				if (action == null) {
+					say("No path towards identified goal zone fields.");
+					return explorerStep();
+				} else {
+					say("Path identified. Moving towards next free goal zone field...");
+					return action;
+				}
+			} else {
+				say("Already on goal zone field");
+				return null; // Wait there
+			}
+		}
+		// Explore to find a free goal zone field
+		return explorerStep();
+	}
+
 	private Action workerActionSubmitTask() {
 		if (this.getCurrentTask().isOneBlockTask())
 			return this.workerActionSubmitOneBlockTask();
@@ -2021,6 +2060,15 @@ public class AgentG2 extends Agent {
 		}
 	}
 
+	private Action constructorStep() {
+		Action action = searchGoalZone();
+		if (action != null) {
+			return action;
+		}
+		// TODO: add constructor logic
+		return new Action("skip");
+	}
+
 	private boolean nextToObstacle() {
 		for (RelativeCoordinate obstacle : obstaclesInSight) {
 			if (obstacle.isNextToAgent()) {
@@ -2197,7 +2245,7 @@ public class AgentG2 extends Agent {
 		// befragt, um einen map-Austausch einzuleiten
 
 		if ((friendlyAgents.size() == 1) && (counterMapExchange > 10) && (exchangePartner == null)
-				&& (explorerAgent.equals(getName()))) {
+				&& (isExplorer)) {
 			say("I start map exchange process");
 			exchangePartner = new RelativeCoordinate(friendlyAgents.get(0).getX(), friendlyAgents.get(0).getY());
 			mailbox.broadcastMapRequest(currentStep, getName());
@@ -2741,6 +2789,9 @@ public class AgentG2 extends Agent {
 		roles.clear();
 		attachedBlocks.clear();
 		simStartPerceptsSaved = false;
+		isExplorer = false;
+		isConstructor = false;
+		Mission.prepareForNextSimulation();
 	}
 
 	/**

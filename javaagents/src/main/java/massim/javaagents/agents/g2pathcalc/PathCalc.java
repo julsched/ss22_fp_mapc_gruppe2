@@ -478,6 +478,26 @@ public class PathCalc {
 		return goalZoneFieldCandidates;
 	}
 
+	/**
+	 * Determines non-occupied goal zone cells
+	 * 
+	 * @return The absolute coordinates of the identified goal zone cells
+	 */
+	public Set<RelativeCoordinate> determineGoalZoneFields() {
+		// First check which goal zone cells are free (no obstacle/block/entity)
+		Set<RelativeCoordinate> goalZoneFieldsFree = new HashSet<>();
+		HashMap<RelativeCoordinate, Goalzone> goalzoneLayer = mapManager.getGoalzoneLayer();
+		for (Map.Entry<RelativeCoordinate, Goalzone> entry : goalzoneLayer.entrySet()) {
+			if (entry.getValue() != null) {
+				boolean occupied = checkIfOccupied(entry.getKey());
+				if (!occupied) {
+					goalZoneFieldsFree.add(entry.getKey());
+				}
+			}
+		}
+		return goalZoneFieldsFree;
+	}
+
     /**
 	 * Determines non-occupied role zone cells which have enough space around them to fit on 
 	 * 
