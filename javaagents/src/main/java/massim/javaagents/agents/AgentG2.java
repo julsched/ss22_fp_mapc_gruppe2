@@ -59,6 +59,7 @@ public class AgentG2 extends Agent {
 	private long deadline;
 	private String lastAction;
 	private List<Object> lastActionParams = new ArrayList<>();
+	private List<Parameter> params = new ArrayList<>();
 	private String lastActionResult;
 	private RelativeCoordinate hitFrom;
 	private List<String> violations = new ArrayList<>();
@@ -172,6 +173,11 @@ public class AgentG2 extends Agent {
 		// must be set first, so agents knows currentStep for sorting Percepts and for
 		// having a structured console output
 		setCurrentStep(percepts);
+		if (explorerAgent.equals(getName())) {
+			say("My mission: Explorer");
+		} else {
+			say("My mission: Worker");
+		}
 
 		saveStepPercepts(percepts);
 
@@ -209,11 +215,15 @@ public class AgentG2 extends Agent {
 		if ((currentStep % 15) == 0) {
 			updateMapsOfKnownAgents();
 		}
+
 		say("phase: " + phase);
 		if (currentTask != null) {
 			say("!!!!!!!!!!!!!!TASK: " + currentTask.getName() + currentTask.isOneBlockTask());
 		} else {
 			say("NO TASK!!!!!!!!!!!100");
+		}
+		if (!lastActionResult.equals("success")) {
+			return handleError();
 		}
 		if (!mapManager.containsRolezone() && phase == 0) {
 			return explorerStep();
@@ -240,19 +250,6 @@ public class AgentG2 extends Agent {
 			return workerStep();
 		}
 		return workerStep();
-//		if (explorerAgent.equals(getName())) {
-//			say("My mission: I am the explorer of the team!");
-//			if (!lastActionResult.equals("success")) {
-//				return handleError();
-//			}
-//			return explorerStep();
-//		} else {
-//			say("My mission: I am just a normal worker :(");
-//			if (!lastActionResult.equals("success")) {
-//				return handleError();
-//			}
-//			return workerStep();
-//		}
 	}
 
 	private void setCurrentStep(List<Percept> percepts) {
@@ -278,6 +275,7 @@ public class AgentG2 extends Agent {
 
 		// Delete previous step percepts
 		lastActionParams.clear();
+		params.clear();
 		attachedThings.clear();
 		blocks.clear();
 		friendlyAgents.clear();
@@ -335,7 +333,6 @@ public class AgentG2 extends Agent {
 			}
 			case "lastActionParams" -> {
 				Parameter lastParams = percept.getParameters().get(0);
-				List<Parameter> params = new ArrayList<>();
 				for (int i = 0; i < ((ParameterList) lastParams).size(); i++) {
 					params.add(((ParameterList) lastParams).get(i));
 				}
@@ -1161,29 +1158,11 @@ public class AgentG2 extends Agent {
 
 	private Action handleError() {
 		say("Handle Error: " + lastAction + " - " + lastActionResult);
-		if (lastAction.equals("move") && !lastActionResult.equals("success") && lastActionParams.size() == 1) {
-			// Get direction
-			String direction = (String) lastActionParams.get(0);
-			say("I got stuck when trying to walk '" + direction + "'");
-
-			RelativeCoordinate desiredField = RelativeCoordinate.getRelativeCoordinate(direction);
-			for (RelativeCoordinate relativeCoordinate : occupiedFields) {
-				if (relativeCoordinate.equals(desiredField)) {
-					say("Reason: field towards direction '" + direction + "' is already occupied");
-					// This will ensure that agent will try all possible directions if one step
-					// after another fails due to occupied fields
-					switch (direction) {
-					case "n":
-						return move("e");
-					case "e":
-						return move("s");
-					case "s":
-						return move("w");
-					case "w":
-						return move("n");
-					}
-				}
-			}
+		if (lastActionResult.equals("failed_random")) {
+			return new Action(lastAction, params);
+		}
+		if (lastAction.equals("move") && lastActionResult.equals("failed_path")) {
+			return moveRandomly(1);
 		}
 		if (lastAction.equals("attach") && !lastActionResult.equals("success")) {
 			String direction = (String) lastActionParams.get(0);
@@ -1193,11 +1172,9 @@ public class AgentG2 extends Agent {
 		if (lastAction.equals("rotate") && !lastActionResult.equals("success")) {
 			say("Rotation was not succesful.");
 			return moveRandomly(1);
-
 		}
 		if (lastAction.equals("clear") && !lastActionResult.equals("success")) {
 			say("Last attempt to clear failed.");
-//			return new Action("skip");
 			int lastX = Integer.parseInt((String) lastActionParams.get(0));
 			int lastY = Integer.parseInt((String) lastActionParams.get(1));
 
