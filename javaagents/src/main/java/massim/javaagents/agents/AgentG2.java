@@ -218,7 +218,7 @@ public class AgentG2 extends Agent {
 			updateMapsOfKnownAgents();
 		}
 
-		if (explorerAgent.equals(getName())) {
+		if (isExplorer) {
 			say("My mission: I am the explorer of the team!");
 
 		} else {
@@ -226,7 +226,8 @@ public class AgentG2 extends Agent {
 		}
 		say("phase: " + phase);
 		if (currentTask != null) {
-			say("!!!!!!!!!!!!!!TASK: " + currentTask.getName() + currentTask.isOneBlockTask());
+			say("!!!!!!!!!!!!!!TASK: " + currentTask.getName() + " Block: "
+					+ currentTask.getRequirements().get(0).getBlockType() + currentTask.isOneBlockTask());
 		} else {
 			say("NO TASK!!!!!!!!!!!100");
 		}
@@ -251,7 +252,7 @@ public class AgentG2 extends Agent {
 		} else if (mapManager.containsGoalzone() && phase == 2) {
 			phase++;
 		}
-		if (explorerAgent.equals(getName())) {
+		if (isExplorer) {
 			say("My mission: I am the explorer of the team!");
 //			if (!lastActionResult.equals("success")) {
 //				return handleError();
@@ -1364,9 +1365,9 @@ public class AgentG2 extends Agent {
 		if (correspondingTasks.isEmpty()) {
 			return this.workerActionDetach();
 		}
-		// not on task and chooses task
-		setCurrentTask(determineCurrentTask(correspondingTasks));
-		say("my new task is: " + this.getCurrentTask().getName());
+//		// not on task and chooses task
+//		setCurrentTask(determineCurrentTask(correspondingTasks));
+//		say("my new task is: " + this.getCurrentTask().getName());
 
 		// maybe first check if working on task, if not choose task and work on it
 		if (this.attachedBlocks.size() == 0) {
@@ -1374,14 +1375,15 @@ public class AgentG2 extends Agent {
 		}
 
 		// worker is working on a task
-		if (workerIsWorkingOnTask()) {
-			// check if task is still available or achievable
-			if (this.currentStep > this.getCurrentTask().getDeadline()) {
-				workerAbortTask();
-				say("aborted my task!");
-			}
-			// handle single or multiBlockTask
-			else if (this.getCurrentTask().isOneBlockTask()) {
+//		if (workerIsWorkingOnTask()) {
+//			// check if task is still available or achievable
+//			if (this.currentStep > this.getCurrentTask().getDeadline()) {
+//				workerAbortTask();
+//				say("aborted my task!");
+//			}
+		// handle single or multiBlockTask
+		if (getCurrentTask() != null) {
+			if (this.getCurrentTask().isOneBlockTask()) {
 				return this.workerActionHandleOneBlockTask();
 			} else if (this.getCurrentTask().isMultiBlockTask()) {
 				return this.workerActionHandleMultiBlockTask();
@@ -1398,14 +1400,14 @@ public class AgentG2 extends Agent {
 //		setCurrentTask(determineCurrentTask(correspondingTasks));
 //		say("my new task is: " + this.getCurrentTask().getName());
 
-		if (this.getCurrentTask() != null) {
-			if (this.getCurrentTask().isOneBlockTask()) {
-				return this.workerActionHandleOneBlockTask();
-			}
-			if (this.getCurrentTask().isMultiBlockTask()) {
-				return this.workerActionHandleMultiBlockTask();
-			}
-		}
+//		if (this.getCurrentTask() != null) {
+//			if (this.getCurrentTask().isOneBlockTask()) {
+//				return this.workerActionHandleOneBlockTask();
+//			}
+//			if (this.getCurrentTask().isMultiBlockTask()) {
+//				return this.workerActionHandleMultiBlockTask();
+//			}
+//		}
 		return this.workerActionSearchDispenser();
 	}
 
@@ -1572,7 +1574,7 @@ public class AgentG2 extends Agent {
 		// find fastest task
 		Task fastestTask = null;
 
-		// Task fastestTask = findFastestTask();
+//		Task fastestTask = findFastestTask();
 
 		int blocksMissingForTask = 10; // @Carina einkommentieren, wenn multiblock tasks gehen
 		for (Task task : tasks) {
@@ -1594,7 +1596,7 @@ public class AgentG2 extends Agent {
 	}
 
 	/**
-	 * editor: michael
+	 * editor: carina
 	 *
 	 * finds best task, to complete in shortest time
 	 *
@@ -1603,6 +1605,64 @@ public class AgentG2 extends Agent {
 	private Task findFastestTask() {
 		// TODO Auto-generated method stub
 		// distance to dispenser, dispenser -> goalzone, end of task
+
+		// TODO actually find the fastest task to finish and not just the first task
+		// that is probably possible
+//		List<String > dispensers = nextDispenserTypeList();
+		Set<String> dispensers = nextDispenserTypeHashMap().keySet();
+//		for (String next : dispensers) {
+//			
+//		}
+		// only works for 2 block tasks yet
+		ArrayList<Boolean> knowsDispenserForFirstRequirement = new ArrayList<>();
+		for (Task t : tasks) {
+			String bType = t.getRequirements().get(0).getBlockType();
+			if (dispensers.contains(bType)) {
+				knowsDispenserForFirstRequirement.add(true);
+			} else {
+				knowsDispenserForFirstRequirement.add(false);
+			}
+		}
+		ArrayList<Boolean> knowsDispenserForSecondRequirement = new ArrayList<>();
+		for (Task t : tasks) {
+			if (t.isOneBlockTask()) {
+				knowsDispenserForSecondRequirement.add(true);
+			} else {
+				String bType = t.getRequirements().get(1).getBlockType();
+				if (dispensers.contains(bType)) {
+					knowsDispenserForSecondRequirement.add(true);
+				} else {
+					knowsDispenserForSecondRequirement.add(false);
+				}
+			}
+		}
+
+		ArrayList<Boolean> isTaskPossible = new ArrayList<>();
+		if (knowsDispenserForFirstRequirement.size() == knowsDispenserForSecondRequirement.size()) {
+			for (int i = 0; i < tasks.size(); i++) {
+				if (knowsDispenserForFirstRequirement.get(i) && knowsDispenserForSecondRequirement.get(i)) {
+					isTaskPossible.add(true);
+				} else {
+					isTaskPossible.add(false);
+				}
+			}
+		}
+
+		ArrayList<Task> possibleTasks = new ArrayList<>();
+		if (isTaskPossible.size() == tasks.size()) {
+			for (int i = 0; i < isTaskPossible.size(); i++) {
+				if (isTaskPossible.get(i)) {
+					possibleTasks.add(tasks.get(i));
+				}
+			}
+		}
+
+		// TODO: choose actual fastest Tasks
+		// right now just choose random
+		if (possibleTasks.size() > 0) {
+			Random rand = new Random();
+			return possibleTasks.get(rand.nextInt(possibleTasks.size()));
+		}
 
 		return null;
 	}
@@ -1861,15 +1921,16 @@ public class AgentG2 extends Agent {
 		System.out.println(nextDispenserTypeList);
 
 		// no current task
-		if (this.getCurrentTask() == null) { // @Carina
-			setCurrentTask(determineCurrentTask(getOneBlockTasks()));
-		}
-		if (this.getCurrentTask() == null && !nextDispenserTypeList.isEmpty()) {
-			System.out.println("no current task");
-//			say("looking for other dispensers"); //@Carina
-			disp = getNextDispenserFromType(nextDispenserTypeList.get(0));
-			say("Going to next dispenser");
-		} else if (this.getCurrentTask() != null && !nextDispenserTypeList.isEmpty()) {
+//		if (this.getCurrentTask() == null) { // @Carina
+//			setCurrentTask(determineCurrentTask(getOneBlockTasks()));
+//		}
+//		if (this.getCurrentTask() == null && !nextDispenserTypeList.isEmpty()) {
+//			System.out.println("no current task");
+////			say("looking for other dispensers"); //@Carina
+//			disp = getNextDispenserFromType(nextDispenserTypeList.get(0));
+//			say("Going to next dispenser");
+//		} else 
+		if (this.getCurrentTask() != null && !nextDispenserTypeList.isEmpty()) {
 			System.out.println("with current task");
 			for (String dispensertype : nextDispenserTypeList) {
 //				if(getCurrentTask().isOneBlockTask()) {
@@ -1910,7 +1971,8 @@ public class AgentG2 extends Agent {
 	private Action goToDispenser(Dispenser disp) {
 
 		// agent is next to Dispenser
-		say("AM I NEXT TO DISPENSER (GO TO DISPENSER)? "+ disp.getRelativeCoordinate().isNextToAgent(mapManager.getPosition()));
+		say("AM I NEXT TO DISPENSER (GO TO DISPENSER)? "
+				+ disp.getRelativeCoordinate().isNextToAgent(mapManager.getPosition()));
 		if (disp.getRelativeCoordinate().isNextToAgent(mapManager.getPosition())) {
 			RelativeCoordinate dispenserCoord = disp.getRelativeCoordinate();
 			String direction = dispenserCoord.getDirectDirection(mapManager.getPosition());
@@ -1924,6 +1986,8 @@ public class AgentG2 extends Agent {
 //				}
 //				return new Action("attach", new Identifier(direction));
 //			}
+
+			// only request Block, if there is a corresponding task for it
 			if (determineCorrespondingTasks(disp.getType()).size() != 0) {
 				return requestBlock(direction);
 			}
@@ -2000,6 +2064,28 @@ public class AgentG2 extends Agent {
 
 	// default (main) worker method
 	private Action workerStep() {
+		say("WORKERSTEP ");
+		if (workerIsWorkingOnTask()) {
+			say("I work on task "+ currentTask.getName() + " Number of Tasks I know: "+ tasks.size());
+			say("WORKING ON TASK!");
+			// check if task is still available or achievable
+			say("CURRENT STEP "+ currentStep+" DEADLINE "+ getCurrentTask().getDeadline());
+			if (currentStep > getCurrentTask().getDeadline() || !tasks.contains(currentTask)) {
+				workerAbortTask();
+				say("aborted my task!");
+				List<Task> correspTasks = determineCorrespondingTasks();
+				if (correspTasks.size() > 0) {
+					determineCurrentTask(correspTasks);
+				}
+			}
+		}
+		if (!workerIsWorkingOnTask()) { // absichtlich kein else, weil wir vorher aborten können
+			// not on task and chooses task
+			setCurrentTask(findFastestTask());
+			
+		}
+//		say("my new task is: " + getCurrentTask().getName()); // is sometimes null --> TODO find out why
+
 		// If a block has been requested in the last step, then attach this block
 		if (lastAction.equals("request") && lastActionResult.equals("success")) {
 			say("Attaching Block");
@@ -2255,8 +2341,7 @@ public class AgentG2 extends Agent {
 		// falls mindestens in Teammitglied sichtbar, wird dies nach seinem Namen
 		// befragt, um einen map-Austausch einzuleiten
 
-		if ((friendlyAgents.size() == 1) && (counterMapExchange > 10) && (exchangePartner == null)
-				&& (isExplorer)) {
+		if ((friendlyAgents.size() == 1) && (counterMapExchange > 10) && (exchangePartner == null) && (isExplorer)) {
 			say("I start map exchange process");
 			exchangePartner = new RelativeCoordinate(friendlyAgents.get(0).getX(), friendlyAgents.get(0).getY());
 			mailbox.broadcastMapRequest(currentStep, getName());
@@ -2300,8 +2385,8 @@ public class AgentG2 extends Agent {
 		}
 		return new Action("skip");
 	}
-	
-	private Action clear(String dir) { //dupliziert in Pathcalc
+
+	private Action clear(String dir) { // dupliziert in Pathcalc
 		int x = 0;
 		int y = 0;
 		switch (dir) {
@@ -2342,7 +2427,7 @@ public class AgentG2 extends Agent {
 		return "";
 	}
 
-	private Action rotateAccordingToAttachedBlock(String prefDir, String attachedBlockDir) { //dupliziert in Pathcalc
+	private Action rotateAccordingToAttachedBlock(String prefDir, String attachedBlockDir) { // dupliziert in Pathcalc
 		if (getOppositeDirection(attachedBlockDir) == prefDir) { // no Rotation necessary
 			return move(prefDir);
 		} else if (attachedBlockDir.equals(prefDir)) { // Rotation direction irrelevant
@@ -2381,8 +2466,6 @@ public class AgentG2 extends Agent {
 		}
 		return null;
 	}
-
-
 
 	private ArrayList<String> getPossibleDirs() {
 		ArrayList<String> possibleDirs = new ArrayList<String>();
@@ -2577,7 +2660,8 @@ public class AgentG2 extends Agent {
 	}
 
 	/**
-	 * Moves the agent randomly in any direction that is not occupied and has enough space for the agent's attached blocks
+	 * Moves the agent randomly in any direction that is not occupied and has enough
+	 * space for the agent's attached blocks
 	 * 
 	 * @param stepNum The number of steps the agent should move
 	 * @return The move action
@@ -2588,7 +2672,8 @@ public class AgentG2 extends Agent {
 		for (Direction dir : Direction.values()) {
 			int x = dir.getDx();
 			int y = dir.getDy();
-			RelativeCoordinate coordinate = new RelativeCoordinate(currentPosition.getX() + x, currentPosition.getY() + y);
+			RelativeCoordinate coordinate = new RelativeCoordinate(currentPosition.getX() + x,
+					currentPosition.getY() + y);
 			// Check if the cell is occupied
 			boolean occupied = pathCalc.checkIfOccupied(coordinate);
 			if (occupied) {
@@ -2596,7 +2681,8 @@ public class AgentG2 extends Agent {
 			}
 			// Check if attachedBlocks of agent fit into the cell's surrounding cells
 			for (Block attachedBlock : attachedBlocks) {
-				RelativeCoordinate absolutePosition = new RelativeCoordinate(coordinate.getX() + attachedBlock.getRelativeCoordinate().getX(),
+				RelativeCoordinate absolutePosition = new RelativeCoordinate(
+						coordinate.getX() + attachedBlock.getRelativeCoordinate().getX(),
 						coordinate.getY() + attachedBlock.getRelativeCoordinate().getY());
 				occupied = pathCalc.checkIfOccupied(absolutePosition);
 				if (occupied) {
@@ -2754,18 +2840,18 @@ public class AgentG2 extends Agent {
 			}
 			return correspondingTasks;
 		}
-//		// check if any attached block fits to a multiBlockTask // TODO @Carina-->
-//		// include if agent can handle multi block tasks
-//		for (Task task : tasks) {
-//			for (int i = 0; i < task.getRequirements().size(); i++) {
-//				for (int j = 0; j < attachedBlocks.size(); j++) {
-//					if (task.getRequirements().get(i).getBlockType().equals(attachedBlocks.get(j).getType())) {
-//						correspondingTasks.add(task);
-//						break;
-//					}
-//				}
-//			}
-//		}
+		// check if any attached block fits to a multiBlockTask // TODO @Carina-->
+		// include if agent can handle multi block tasks
+		for (Task task : tasks) {
+			for (int i = 0; i < task.getRequirements().size(); i++) {
+				for (int j = 0; j < attachedBlocks.size(); j++) {
+					if (task.getRequirements().get(i).getBlockType().equals(attachedBlocks.get(j).getType())) {
+						correspondingTasks.add(task);
+						break;
+					}
+				}
+			}
+		}
 		return correspondingTasks;
 	}
 
