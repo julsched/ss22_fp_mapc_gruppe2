@@ -22,7 +22,7 @@ public class PathCalc {
 	public Action calculateShortestPathVision(int vision, List<RelativeCoordinate> occupiedFields,
 			Set<RelativeCoordinate> destinations) {
 		List<RelativeCoordinate> attachedBlockCoordinates = getRelativeCoordinates(attachedBlocks);
-		int speed = 1; // 
+		int speed = 1; //
 		if (currentRole != null) { // TODO: Investigate why currentRole not set sometimes
 			speed = currentRole.getCurrentSpeed();
 		}
@@ -112,15 +112,18 @@ public class PathCalc {
 							steps = speed;
 						}
 						switch (steps) {
-							case 1:
-								return new Action("move", new Identifier(newDirList.get(0).toString()));
-							case 2:
-								return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()));
-							case 3:
-								return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()), new Identifier(newDirList.get(2).toString()));	
-							default:
-								System.out.println("Speed " + speed + " not (yet) supported by PathCalc");
-								return null;
+						case 1:
+							return new Action("move", new Identifier(newDirList.get(0).toString()));
+						case 2:
+							return new Action("move", new Identifier(newDirList.get(0).toString()),
+									new Identifier(newDirList.get(1).toString()));
+						case 3:
+							return new Action("move", new Identifier(newDirList.get(0).toString()),
+									new Identifier(newDirList.get(1).toString()),
+									new Identifier(newDirList.get(2).toString()));
+						default:
+							System.out.println("Speed " + speed + " not (yet) supported by PathCalc");
+							return null;
 						}
 					}
 				}
@@ -135,21 +138,21 @@ public class PathCalc {
 		}
 		return null;
 	}
-	
 
-    /**
-	 * Determines the direction towards the given dispenser taking into account obstacles/entities/blocks on the way
+	/**
+	 * Determines the direction towards the given dispenser taking into account
+	 * obstacles/entities/blocks on the way
 	 * 
 	 * @param disp The dispenser
 	 * 
 	 * @return The move action or null in case no path was identified
 	 */
-    public Action calculateShortestPathMap(Dispenser disp) {
+	public Action calculateShortestPathMap(Dispenser disp) {
 		if (disp == null || disp.getRelativeCoordinate() == null) {
 			return null;
 		}
 		RelativeCoordinate relativeCoordinate = disp.getRelativeCoordinate();
-		if(checkIfOccupied(relativeCoordinate)) {
+		if (checkIfOccupied(relativeCoordinate)) {
 			return null;
 		}
 		RelativeCoordinate north = new RelativeCoordinate(relativeCoordinate.getX(), relativeCoordinate.getY() - 1);
@@ -162,7 +165,7 @@ public class PathCalc {
 		destinations.add(south);
 		destinations.add(west);
 		return calculateShortestPathMap(destinations);
-    }
+	}
 
 	/**
 	 * Determines the direction of the closest destination taking into account
@@ -177,11 +180,11 @@ public class PathCalc {
 			return null;
 		}
 
-		int speed = 1; // 
+		int speed = 1; //
 		if (currentRole != null) { // TODO: Investigate why currentRole not set sometimes
 			speed = currentRole.getCurrentSpeed();
 		}
-		
+
 		if (speed == 0) {
 			// Too many things attached, agent cannot move.
 			return null;
@@ -277,15 +280,18 @@ public class PathCalc {
 								steps = speed;
 							}
 							switch (steps) {
-								case 1:
-									return new Action("move", new Identifier(newDirList.get(0).toString()));
-								case 2:
-									return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()));
-								case 3:
-									return new Action("move", new Identifier(newDirList.get(0).toString()), new Identifier(newDirList.get(1).toString()), new Identifier(newDirList.get(2).toString()));
-								default:
-									System.out.println("Speed " + speed + " not (yet) supported by PathCalc");
-									return null;
+							case 1:
+								return new Action("move", new Identifier(newDirList.get(0).toString()));
+							case 2:
+								return new Action("move", new Identifier(newDirList.get(0).toString()),
+										new Identifier(newDirList.get(1).toString()));
+							case 3:
+								return new Action("move", new Identifier(newDirList.get(0).toString()),
+										new Identifier(newDirList.get(1).toString()),
+										new Identifier(newDirList.get(2).toString()));
+							default:
+								System.out.println("Speed " + speed + " not (yet) supported by PathCalc");
+								return null;
 							}
 						}
 					}
@@ -298,69 +304,312 @@ public class PathCalc {
 		return null;
 	}
 
-	public String calculateShortestPathManhattan(Set<RelativeCoordinate> destinations) {
-    	if (destinations == null || destinations.size() == 0) {
-            return null;
-        }
-        
-    	RelativeCoordinate destination = getClosestDestManhattan(destinations);
-    	if(destination == null) {
-    		return null;
-    	}
-    	RelativeCoordinate currentPos = mapManager.getPosition();
-		// Position of agent inside the map
-		int xA = currentPos.getX();
-		int yA = currentPos.getY();
-		
-		int xdest = destination.getX();
-		int ydest = destination.getY();
-		
-		int xDist = xdest - xA;
-		int yDist = ydest - yA;
-		if(xDist!= 0) {
-			if(xDist < 1) {
-				return "w";
-			}else {
-				return "e";
+	public Action calculateShortestPathManhattan(Set<RelativeCoordinate> destinations) {
+		if (destinations == null || destinations.size() == 0) {
+			System.out.println("NO DESTINATIONS!");
+			return null;
+		}
+
+		int speed = 1; //
+		if (currentRole != null) { // TODO: Investigate why currentRole not set sometimes
+			speed = currentRole.getCurrentSpeed();
+		}
+
+		if (speed == 0) {
+			// Too many things attached, agent cannot move.
+			System.out.println("TOO MANY THINGS ATTACHED, CANT MOVE");
+			return null;
+		}
+		// Calculate Dir(s) to go to
+		// Add Dir to go to to List
+		// Walk all steps you can
+
+		RelativeCoordinate pos = mapManager.getPosition();
+		ArrayList<String> directions = new ArrayList<>();
+		HashMap<RelativeCoordinate, Obstacle> obstacles = mapManager.getObstacleLayer();
+		System.out.println("CALCULATING SHORTEST MANHATTAN");
+		for (int i = 1; i <= speed; i++) {
+			RelativeCoordinate destination = getClosestDestAnyPosManhattan(pos, destinations);
+			if (destination == null) {
+				System.out.println("GET CLOSEST ANY POS IS NULL");
+				break;
 			}
-		}if (yDist !=0) {
-			if(yDist <1) {
-				return "n";
-			}else {
-				return "s";
+
+			// Position of agent inside the map
+			int xA = pos.getX();
+			int yA = pos.getY();
+
+			int xdest = destination.getX();
+			int ydest = destination.getY();
+
+			int xDist = xdest - xA;
+			int yDist = ydest - yA;
+
+			if (xDist == 0 && yDist == 0) { // already at destination
+				System.out.println("ALREADY AT DESTINATION");
+				break;
+			}
+
+			String dir = "";
+			if (xDist != 0) {
+				if (xDist < 1) {
+					dir = "w";
+
+				} else {
+					dir = "e";
+				}
+			}
+			if (yDist != 0) {
+				if (yDist < 1) {
+					dir = "n";
+				} else {
+					dir = "s";
+				}
+			}
+
+			pos = pos.getCoordAfterWalkingInDir(dir);
+			System.out.println("DIR IDENTIFIED: " + dir);
+			// if one block attached, always make sure, agent drags it behind him
+			if (attachedBlocks.size() == 1) {
+				System.out.println("ONE BLOCK ATTACHED MAYBE ROTATE");
+				String attachedBlockDir = getBlockDir(attachedBlocks.get(0));
+				if (getOppositeDirection(attachedBlockDir) != dir) {
+					System.out.println("NOT DRAGGING BLOCK!");
+					if (directions.size() == 0) { // if agent needs to rotate now, rotate
+						System.out.println("NEED TO ROTATE NOW!");
+						RelativeCoordinate blockPos = pos.getCoordAfterWalkingInDir(getOppositeDirection(dir)).getCoordAfterWalkingInDir(getOppositeDirection(dir));
+						if (obstacles.containsKey(blockPos) && obstacles.get(blockPos) != null) { // if rotation is blocked, clear
+																					// so rotation is possible
+							System.out.println("CANT ROTATE NOW; CLEAR FIRST: " + getOppositeDirection(dir));
+//							return clear(pos.getDirectDirection());
+							return clear(getOppositeDirection(dir));
+						}
+						System.out.println("ROTATING! dir "+dir+ " block: "+attachedBlockDir);
+						return rotateAccordingToAttachedBlock(dir, attachedBlockDir);
+					}
+					break;
+				}
+			}
+
+			if (obstacles.containsKey(pos) && obstacles.get(pos) != null) {
+				System.out.println("DESTINATION IS OCCUPIED");
+				if (directions.size() == 0) { // if agent needs to clear now, clear
+					System.out.println("NOW CLEARING IN DIR " + dir);
+					Action action = new Action("clear", new Numeral(xdest), new Numeral(ydest));
+					System.out.println("ACTION: " + action + "CLEARING ( " + xdest + " | " + ydest + " )");
+					System.out.println("I AM HERE  " + mapManager.getPosition());
+					return clear(dir);
+				}
+				break;
+			}
+			System.out.println("ADDING DIR");
+			directions.add(dir);
+		}
+
+		int steps = speed;
+
+		if (directions.size() <= speed) {
+			steps = directions.size();
+		}
+		System.out.println("NOW SWITCHING STEPS " + steps);
+		switch (steps) {
+		case 1:
+			return new Action("move", new Identifier(directions.get(0)));
+		case 2:
+			return new Action("move", new Identifier(directions.get(0)), new Identifier(directions.get(1)));
+		case 3:
+			return new Action("move", new Identifier(directions.get(0)), new Identifier(directions.get(1)),
+					new Identifier(directions.get(2)));
+		default:
+			System.out.println("Speed " + speed + " not (yet) supported by PathCalc");
+			return null;
+		}
+
+	}
+
+	private Action clear(String dir) {
+		int x = 0;
+		int y = 0;
+		switch (dir) {
+		case ("n"): {
+			x = 0;
+			y = -1;
+			break;
+		}
+		case ("e"): {
+			x = 1;
+			y = 0;
+			break;
+		}
+		case ("s"): {
+			x = 0;
+			y = 1;
+			break;
+		}
+		case ("w"): {
+			x = -1;
+			y = 0;
+			break;
+		}
+//		default: {
+//			return new Action("skip");
+//		}
+		}
+		return new Action("clear", new Numeral(x), new Numeral(y));
+	}
+
+	/**
+	 * Determines the direction towards the given dispenser
+	 * 
+	 * @param disp The dispenser
+	 * 
+	 * @return The move action or null in case no path was identified
+	 */
+	public Action calculateShortestPathManhattan(Dispenser disp) {
+		if (disp == null || disp.getRelativeCoordinate() == null) {
+			return null;
+		}
+		RelativeCoordinate relativeCoordinate = disp.getRelativeCoordinate();
+		if (checkIfOccupied(relativeCoordinate)) {
+			return null;
+		}
+		RelativeCoordinate north = new RelativeCoordinate(relativeCoordinate.getX(), relativeCoordinate.getY() - 1);
+		RelativeCoordinate east = new RelativeCoordinate(relativeCoordinate.getX() + 1, relativeCoordinate.getY());
+		RelativeCoordinate south = new RelativeCoordinate(relativeCoordinate.getX(), relativeCoordinate.getY() + 1);
+		RelativeCoordinate west = new RelativeCoordinate(relativeCoordinate.getX() - 1, relativeCoordinate.getY());
+		Set<RelativeCoordinate> destinations = new HashSet<>();
+		destinations.add(north);
+		destinations.add(east);
+		destinations.add(south);
+		destinations.add(west);
+		return calculateShortestPathManhattan(destinations);
+	}
+
+	private Action rotateAccordingToAttachedBlock(String prefDir, String attachedBlockDir) {
+		String rotationDir = "";
+		if (attachedBlockDir.equals(prefDir)) { // Rotation direction irrelevant
+			rotationDir = "cw";
+		} else {
+			switch (prefDir) {
+			case ("n"): {
+				if (attachedBlockDir.equals("e")) {
+					rotationDir = "cw";
+				} else {
+					rotationDir = "ccw";
+				}
+				break;
+			}
+			case ("e"): {
+				if (attachedBlockDir.equals("s")) {
+					rotationDir = "cw";
+				} else {
+					rotationDir = "ccw";
+				}
+				break;
+			}
+			case ("s"): {
+				if (attachedBlockDir.equals("w")) {
+					rotationDir = "cw";
+				} else {
+					rotationDir = "ccw";
+				}
+				break;
+			}
+			case ("w"): {
+				if (attachedBlockDir.equals("n")) {
+					rotationDir = "cw";
+				} else {
+					rotationDir = "ccw";
+
+				}
+				break;
+			}
+			}
+
+		}
+		System.out.println("ROTATING "+ rotationDir);
+		return new Action("rotate", new Identifier(rotationDir));
+
+	}
+
+	/**
+	 * Returns the opposite direction
+	 * 
+	 * @param direction Direction for which opposite direction is required
+	 * @return The opposite direction
+	 */
+	private String getOppositeDirection(String direction) {
+		switch (direction) {
+		case "n":
+			return "s";
+		case "e":
+			return "w";
+		case "s":
+			return "n";
+		case "w":
+			return "e";
+		case "cw":
+			return "ccw";
+		case "ccw":
+			return "cw";
+		default:
+			return null;
+		}
+	}
+
+	private String getBlockDir(Block b) {
+		if ((attachedBlocks.size() == 1)) {
+			if (b.distanceFromAgent() == 1) {
+				return b.getDirectDirection();
 			}
 		}
-       
-    	return "";
-    }
+		return "";
+	}
 
-	private RelativeCoordinate getClosestDestManhattan(Set<RelativeCoordinate> destinations) {
-		 int shortestDist = -1;
-	        RelativeCoordinate destination = null;
-	        for(RelativeCoordinate dest : destinations) {
-	        	if (shortestDist == -1) {
-	        		shortestDist = manhattanDistFromCurrentPos(dest);
-	        	}else {
-	        		int dist = manhattanDistFromCurrentPos(dest);
-	        		if (dist < shortestDist) {
-	        			shortestDist = dist;
-	        			destination = dest;
-	        		}
-	        	}
-	        	
-	        }
-	        return destination;
+	private RelativeCoordinate getClosestDestAnyPosManhattan(RelativeCoordinate pos,
+			Set<RelativeCoordinate> destinations) {
+		if (pos != null && destinations != null && destinations.size() != 0) {
+			int shortestDist = -1;
+			RelativeCoordinate destination = null;
+			for (RelativeCoordinate dest : destinations) {
+				if (shortestDist == -1) {
+					shortestDist = manhattanDistFromPos(pos, dest);
+				} else {
+					int dist = manhattanDistFromPos(pos, dest);
+					if (dist < shortestDist) {
+						shortestDist = dist;
+						destination = dest;
+					}
+				}
+
+			}
+			return destination;
+		} else {
+			return null;
+		}
+	}
+
+	private RelativeCoordinate getClosestDestCurrentPosManhattan(Set<RelativeCoordinate> destinations) {
+		RelativeCoordinate currentPos = mapManager.getPosition();
+		return getClosestDestAnyPosManhattan(currentPos, destinations);
+	}
+
+	private int manhattanDistFromPos(RelativeCoordinate pos, RelativeCoordinate goalCoord) {
+		if (pos != null && goalCoord != null) {
+			// start Position
+			int xA = pos.getX();
+			int yA = pos.getY();
+
+			int x = goalCoord.getX();
+			int y = goalCoord.getY();
+			return Math.abs(xA - x) + Math.abs(yA - y);
+		}
+		return -1;
 	}
 
 	private int manhattanDistFromCurrentPos(RelativeCoordinate coord) {
 		RelativeCoordinate currentPos = mapManager.getPosition();
-		// Position of agent inside the map
-		int xA = currentPos.getX();
-		int yA = currentPos.getY();
-
-		int x = coord.getX();
-		int y = coord.getY();
-		return Math.abs(xA-x) + Math.abs(yA-y);
+		return manhattanDistFromPos(currentPos, coord);
 	}
 
 	/**
@@ -438,8 +687,9 @@ public class PathCalc {
 		return coordinatesAbsolute;
 	}
 
-    /**
-	 * Determines non-occupied goal zone cells which have enough space around them for the task to be submitted
+	/**
+	 * Determines non-occupied goal zone cells which have enough space around them
+	 * for the task to be submitted
 	 * 
 	 * @param currentTask The task to be submitted
 	 * 
@@ -458,22 +708,24 @@ public class PathCalc {
 			}
 		}
 		// Check which ones of the free goal zone fields have enough space around
-		// them to submit the current task (surrounding fields do not have to be goal zone fields)
+		// them to submit the current task (surrounding fields do not have to be goal
+		// zone fields)
 		Set<RelativeCoordinate> goalZoneFieldCandidates = new HashSet<>();
 		for (RelativeCoordinate goalZoneField : goalZoneFieldsFree) {
 			// TODO: Adjust for multi-block tasks
-            boolean enoughSpace = true;
-            for (TaskRequirement requirement : currentTask.getRequirements()) {
-                RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getRelativeCoordinate().getX(),
-					goalZoneField.getY() + requirement.getRelativeCoordinate().getY());
-                if (checkIfOccupied(fieldToBeChecked)) { // if (!goalZoneFieldsFree.contains(fieldToBeChecked)) {}
-                    enoughSpace = false;
-                    break;
-                }
-            }
-            if (enoughSpace) {
-                goalZoneFieldCandidates.add(goalZoneField);
-            }
+			boolean enoughSpace = true;
+			for (TaskRequirement requirement : currentTask.getRequirements()) {
+				RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(
+						goalZoneField.getX() + requirement.getRelativeCoordinate().getX(),
+						goalZoneField.getY() + requirement.getRelativeCoordinate().getY());
+				if (checkIfOccupied(fieldToBeChecked)) { // if (!goalZoneFieldsFree.contains(fieldToBeChecked)) {}
+					enoughSpace = false;
+					break;
+				}
+			}
+			if (enoughSpace) {
+				goalZoneFieldCandidates.add(goalZoneField);
+			}
 			RelativeCoordinate requirement = currentTask.getRequirements().get(0).getRelativeCoordinate();
 			RelativeCoordinate fieldToBeChecked = new RelativeCoordinate(goalZoneField.getX() + requirement.getX(),
 					goalZoneField.getY() + requirement.getY());
@@ -484,8 +736,9 @@ public class PathCalc {
 		return goalZoneFieldCandidates;
 	}
 
-    /**
-	 * Determines non-occupied role zone cells which have enough space around them to fit on 
+	/**
+	 * Determines non-occupied role zone cells which have enough space around them
+	 * to fit on
 	 * 
 	 * 
 	 * @return The absolute coordinates of the identified role zone cells
@@ -498,11 +751,11 @@ public class PathCalc {
 			if (entry.getValue() != null) {
 //				boolean occupied = checkIfOccupied(entry.getKey());
 //				if (!occupied) {
-					roleZoneFieldCandidates.add(entry.getKey());
+				roleZoneFieldCandidates.add(entry.getKey());
 //				}
 			}
 		}
-		
+
 //		Set<RelativeCoordinate> roleZoneFieldCandidates = new HashSet<>();
 //		for (RelativeCoordinate goalZoneField : goalZoneFieldsFree) {
 //			// TODO: Adjust for multi-block tasks
@@ -528,7 +781,7 @@ public class PathCalc {
 		return roleZoneFieldCandidates;
 //		return mapManager.getOnlyRoleZoneCoords();
 	}
-	
+
 	/**
 	 * Determines dispensers of the required type
 	 * 

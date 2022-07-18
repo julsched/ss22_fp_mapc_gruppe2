@@ -209,6 +209,13 @@ public class AgentG2 extends Agent {
 		if ((currentStep % 15) == 0) {
 			updateMapsOfKnownAgents();
 		}
+
+		if (explorerAgent.equals(getName())) {
+			say("My mission: I am the explorer of the team!");
+
+		} else {
+			say("I am just a normal Worker :(");
+		}
 		say("phase: " + phase);
 		if (currentTask != null) {
 			say("!!!!!!!!!!!!!!TASK: " + currentTask.getName() + currentTask.isOneBlockTask());
@@ -232,6 +239,15 @@ public class AgentG2 extends Agent {
 			return explorerStep();
 		} else if (mapManager.containsGoalzone() && phase == 2) {
 			phase++;
+		}
+		if (explorerAgent.equals(getName())) {
+			say("My mission: I am the explorer of the team!");
+//			if (!lastActionResult.equals("success")) {
+//				return handleError();
+//			}
+			return explorerStep();
+		} else {
+			say("I am just a normal Worker :(");
 		}
 
 		if (!currentRole.getName().equals("worker") && phase == 3) {
@@ -471,14 +487,13 @@ public class AgentG2 extends Agent {
 				for (int i = 0; i < ((ParameterList) paramRequirements).size(); i++) {
 					params.add(((ParameterList) paramRequirements).get(i));
 				}
-				
+
 				// Remove if-statement once agent can handle multi-block tasks
 				if (params.size() > 1) {
 					say("Task " + name + " has more than one block. Ignore.");
 					break;
 				}
-				
-				
+
 				List<TaskRequirement> requirements = new ArrayList<>();
 				for (Parameter param : params) {
 					Parameter paramCoordinateX = ((Function) param).getParameters().get(0);
@@ -1243,6 +1258,7 @@ public class AgentG2 extends Agent {
 				// Calculate direction agent should move into in order to get as fast as
 				// possible to the next suitable goal zone field
 				Action action = pathCalc.calculateShortestPathMap(goalZoneFieldCandidates);
+//				Action action = pathCalc.calculateShortestPathManhattan(goalZoneFieldCandidates);
 				if (action == null) {
 					say("No path towards identified goal zone fields.");
 					return explorerStep();
@@ -1271,13 +1287,14 @@ public class AgentG2 extends Agent {
 			if (!roleZoneFieldCandidates.contains(mapManager.getPosition())) {
 				// Calculate direction agent should move into in order to get as fast as
 				// possible to the next suitable role zone field
-				String dir = pathCalc.calculateShortestPathMap(roleZoneFieldCandidates);
-				if (dir == null) {
+				Action action = pathCalc.calculateShortestPathMap(roleZoneFieldCandidates);
+//				Action action = pathCalc.calculateShortestPathManhattan(roleZoneFieldCandidates);
+				if (action == null) {
 					say("No path towards identified role zone fields.");
 					return explorerStep();
 				} else {
 					say("Path identified. Moving towards next suitable role zone field...");
-					return move(dir);
+					return action;
 				}
 			} else {
 				say("Already on suitable role zone field");
@@ -1890,6 +1907,7 @@ public class AgentG2 extends Agent {
 	private Action goToDispenser(Dispenser disp) {
 
 		// agent is next to Dispenser
+		say("AM I NEXT TO DISPENSER (GO TO DISPENSER)? "+ disp.getRelativeCoordinate().isNextToAgent(mapManager.getPosition()));
 		if (disp.getRelativeCoordinate().isNextToAgent(mapManager.getPosition())) {
 			RelativeCoordinate dispenserCoord = disp.getRelativeCoordinate();
 			String direction = dispenserCoord.getDirectDirection(mapManager.getPosition());
@@ -1916,6 +1934,7 @@ public class AgentG2 extends Agent {
 		}
 		// Move towards dispenser
 		Action action = pathCalc.calculateShortestPathMap(disp);
+//		Action action = pathCalc.calculateShortestPathManhattan(disp);
 		if (action == null) {
 			say("No path towards dispenser.");
 			return explorerStep();
@@ -1946,12 +1965,16 @@ public class AgentG2 extends Agent {
 					} else {
 						// Suitable loose block identified, add its surrounding cells as destinations
 						RelativeCoordinate currentPosition = mapManager.getPosition();
-						RelativeCoordinate absoluteCoordinate = new RelativeCoordinate(currentPosition.getX() + coordinate.getX(),
-							currentPosition.getY() + coordinate.getY());
-						RelativeCoordinate north = new RelativeCoordinate(absoluteCoordinate.getX(), absoluteCoordinate.getY() - 1);
-						RelativeCoordinate east = new RelativeCoordinate(absoluteCoordinate.getX() + 1, absoluteCoordinate.getY());
-						RelativeCoordinate south = new RelativeCoordinate(absoluteCoordinate.getX(), absoluteCoordinate.getY() + 1);
-						RelativeCoordinate west = new RelativeCoordinate(absoluteCoordinate.getX() - 1, absoluteCoordinate.getY());
+						RelativeCoordinate absoluteCoordinate = new RelativeCoordinate(
+								currentPosition.getX() + coordinate.getX(), currentPosition.getY() + coordinate.getY());
+						RelativeCoordinate north = new RelativeCoordinate(absoluteCoordinate.getX(),
+								absoluteCoordinate.getY() - 1);
+						RelativeCoordinate east = new RelativeCoordinate(absoluteCoordinate.getX() + 1,
+								absoluteCoordinate.getY());
+						RelativeCoordinate south = new RelativeCoordinate(absoluteCoordinate.getX(),
+								absoluteCoordinate.getY() + 1);
+						RelativeCoordinate west = new RelativeCoordinate(absoluteCoordinate.getX() - 1,
+								absoluteCoordinate.getY());
 						if (!pathCalc.checkIfOccupied(north)) {
 							destinations.add(north);
 						}
@@ -1969,6 +1992,7 @@ public class AgentG2 extends Agent {
 			}
 		}
 		return pathCalc.calculateShortestPathMap(destinations);
+//		return pathCalc.calculateShortestPathManhattan(destinations);
 	}
 
 	// default (main) worker method
@@ -2264,8 +2288,39 @@ public class AgentG2 extends Agent {
 		}
 		return new Action("skip");
 	}
+	
+	private Action clear(String dir) { //dupliziert in Pathcalc
+		int x = 0;
+		int y = 0;
+		switch (dir) {
+		case ("n"): {
+			x = 0;
+			y = -1;
+			break;
+		}
+		case ("e"): {
+			x = 1;
+			y = 0;
+			break;
+		}
+		case ("s"): {
+			x = 0;
+			y = 1;
+			break;
+		}
+		case ("w"): {
+			x = -1;
+			y = 0;
+			break;
+		}
+//		default: {
+//			return new Action("skip");
+//		}
+		}
+		return new Action("clear", new Numeral(x), new Numeral(y));
+	}
 
-	private String getBlockDir(Block b) {
+	private String getBlockDir(Block b) { // maybe put in pathcalc
 		if ((attachedBlocks.size() == 1)) {
 			if (b.distanceFromAgent() == 1) {
 				say("attachedBlock direction " + b.getDirectDirection());
@@ -2275,7 +2330,7 @@ public class AgentG2 extends Agent {
 		return "";
 	}
 
-	private Action rotateAccordingToAttachedBlock(String prefDir, String attachedBlockDir) {
+	private Action rotateAccordingToAttachedBlock(String prefDir, String attachedBlockDir) { //dupliziert in Pathcalc
 		if (getOppositeDirection(attachedBlockDir) == prefDir) { // no Rotation necessary
 			return move(prefDir);
 		} else if (attachedBlockDir.equals(prefDir)) { // Rotation direction irrelevant
@@ -2315,37 +2370,7 @@ public class AgentG2 extends Agent {
 		return null;
 	}
 
-	private Action clear(String prefDir) {
-		say("clearing " + prefDir);
-		int x = 0;
-		int y = 0;
-		switch (prefDir) {
-		case ("n"): {
-			x = 0;
-			y = -1;
-			break;
-		}
-		case ("e"): {
-			x = 1;
-			y = 0;
-			break;
-		}
-		case ("s"): {
-			x = 0;
-			y = 1;
-			break;
-		}
-		case ("w"): {
-			x = -1;
-			y = 0;
-			break;
-		}
-//		default: {
-//			return new Action("skip");
-//		}
-		}
-		return new Action("clear", new Numeral(x), new Numeral(y));
-	}
+
 
 	private ArrayList<String> getPossibleDirs() {
 		ArrayList<String> possibleDirs = new ArrayList<String>();
