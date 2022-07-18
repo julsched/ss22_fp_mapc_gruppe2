@@ -2553,13 +2553,36 @@ public class AgentG2 extends Agent {
 	}
 
 	/**
-	 * Moves the agent randomly in any directions
+	 * Moves the agent randomly in any direction that is not occupied and has enough space for the agent's attached blocks
 	 * 
 	 * @param stepNum The number of steps the agent should move
 	 * @return The move action
 	 */
 	private Action moveRandomly(int stepNum) {
-		List<String> allowedDirections = new ArrayList<String>(Arrays.asList("n", "e", "s", "w"));
+		RelativeCoordinate currentPosition = mapManager.getPosition();
+		List<String> allowedDirections = new ArrayList<>();
+		for (Direction dir : Direction.values()) {
+			int x = dir.getDx();
+			int y = dir.getDy();
+			RelativeCoordinate coordinate = new RelativeCoordinate(currentPosition.getX() + x, currentPosition.getY() + y);
+			// Check if the cell is occupied
+			boolean occupied = pathCalc.checkIfOccupied(coordinate);
+			if (occupied) {
+				continue;
+			}
+			// Check if attachedBlocks of agent fit into the cell's surrounding cells
+			for (Block attachedBlock : attachedBlocks) {
+				RelativeCoordinate absolutePosition = new RelativeCoordinate(coordinate.getX() + attachedBlock.getRelativeCoordinate().getX(),
+						coordinate.getY() + attachedBlock.getRelativeCoordinate().getY());
+				occupied = pathCalc.checkIfOccupied(absolutePosition);
+				if (occupied) {
+					break;
+				}
+			}
+			if (!occupied) {
+				allowedDirections.add(dir.toString());
+			}
+		}
 		return moveRandomly(stepNum, allowedDirections);
 	}
 
@@ -2572,7 +2595,12 @@ public class AgentG2 extends Agent {
 	 */
 	private Action moveRandomly(int stepNum, List<String> allowedDirections) {
 		if (allowedDirections == null || allowedDirections.isEmpty()) {
-			return new Action("skip");
+			Direction obstacleDir = mapManager.getAnyAdjacentObstacle();
+			if (obstacleDir != null) {
+				return new Action("clear", new Numeral(obstacleDir.getDx()), new Numeral(obstacleDir.getDy()));
+			} else {
+				return new Action("skip");
+			}
 		}
 		Random rand = new Random();
 		List<String> randomDirections = new ArrayList<>();
@@ -2581,7 +2609,12 @@ public class AgentG2 extends Agent {
 			randomDirections.add(randomDirection);
 		}
 
-		switch (stepNum) {
+		if (stepNum > 2) { // TODO: expand
+			say("Warning: moveRandomly() does not yet support steps > 2");
+			stepNum = 2;
+		}
+
+		switch (stepNum) { // TODO: expand
 		case 1 -> {
 			String direction = randomDirections.get(0);
 			say("Moving one step randomly...");
@@ -2592,10 +2625,19 @@ public class AgentG2 extends Agent {
 			String direction2 = randomDirections.get(1);
 			if (oppositeDirections(direction1, direction2)) {
 				allowedDirections.remove(direction2);
-				direction2 = allowedDirections.get(rand.nextInt(allowedDirections.size()));
+				if (allowedDirections.size() > 0) {
+					direction2 = allowedDirections.get(rand.nextInt(allowedDirections.size()));
+				} else {
+					direction2 = null;
+				}
 			}
-			say("Moving two steps randomly...");
-			return new Action("move", new Identifier(direction1), new Identifier(direction2));
+			if (direction2 != null) {
+				say("Moving two steps randomly...");
+				return new Action("move", new Identifier(direction1), new Identifier(direction2));
+			} else {
+				say("Moving one step randomly...");
+				return new Action("move", new Identifier(direction1));
+			}
 		}
 		default -> {
 			return new Action("skip");

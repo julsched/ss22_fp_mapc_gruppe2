@@ -659,7 +659,7 @@ public class PathCalc {
 	 */
 	public Dispenser getClosestDispenser(String dispenserType) {
 		Set<Dispenser> dispensers = determineDispenserCandidates(dispenserType);
-		if (dispensers.size() == 0) {
+		if (dispensers == null || dispensers.size() == 0) {
 			return null; // Error - no dispenser of required type found
 		}
 		List<RelativeCoordinate> attachedBlocksRelative = getRelativeCoordinates(attachedBlocks);

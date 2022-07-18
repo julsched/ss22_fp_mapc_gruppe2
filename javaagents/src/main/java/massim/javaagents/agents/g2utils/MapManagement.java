@@ -2,6 +2,8 @@ package massim.javaagents.agents.g2utils;
 
 import java.util.*;
 
+import massim.javaagents.agents.g2pathcalc.Direction;
+
 public class MapManagement {
 	
 	private HashMap<RelativeCoordinate, Block> blockLayer;
@@ -700,10 +702,22 @@ public class MapManagement {
 	public boolean containsDispenser() {
 		return containsDispenser;
 	}
-	
 
 	public Set<RelativeCoordinate> getOnlyRoleZoneCoords() {
 		return onlyRoleZoneCoords;
 	}
-	
+
+	public Direction getAnyAdjacentObstacle() {
+		for (Direction dir : Direction.values()) {
+			int x = dir.getDx();
+			int y = dir.getDy();
+			RelativeCoordinate coordinate = new RelativeCoordinate(currentPosition.getX() + x, currentPosition.getY() + y);
+			// Check if cell is occupied by an obstacle
+			Obstacle obstacle = obstacleLayer.get(coordinate);
+			if (obstacle != null) {
+				return dir;
+			}
+		}
+		return null;
+	}
 }
