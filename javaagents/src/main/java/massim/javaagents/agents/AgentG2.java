@@ -1753,15 +1753,17 @@ public class AgentG2 extends Agent {
 		int b2distance = this.pathCalc.calcStepsToNextDispenser("b2");
 		int b3distance = this.pathCalc.calcStepsToNextDispenser("b3");
 
-		// not found / not in config -> -1 => +9999 steps
+		// not found / not in config -> -1/-2 => +9999 steps
 
 		int maxValue = 9999;
 
-		if (b1distance == -1)
+		if (b0distance == -1 || b0distance == -2)
+			b0distance = maxValue;
+		if (b1distance == -1 || b1distance == -2)
 			b1distance = maxValue;
-		if (b2distance == -1)
+		if (b2distance == -1 || b2distance == -2)
 			b2distance = maxValue;
-		if (b3distance == -1)
+		if (b3distance == -1 || b3distance == -2)
 			b3distance = maxValue;
 
 		HashMap<String, Integer> map = new HashMap<String, Integer>();
@@ -1817,27 +1819,12 @@ public class AgentG2 extends Agent {
 	 * @return Dispenser
 	 */
 	private Dispenser getNextDispenserFromType(String dispenserType) {
-		List<Dispenser> dispenserCandidates = new ArrayList<>();
-		HashMap<RelativeCoordinate, Dispenser> dispenserLayer = mapManager.getDispenserLayer();
-		for (Map.Entry<RelativeCoordinate, Dispenser> entry : dispenserLayer.entrySet()) {
-			if (entry.getValue() != null) {
-				if (entry.getValue().getType().equals(dispenserType)) {
-					dispenserCandidates.add(entry.getValue());
-				}
-			}
-		}
+		Dispenser dispenser = pathCalc.getClosestDispenser(dispenserType);
 
-		for (Dispenser disp : dispenserCandidates) {
-			if (disp.isCloserThan(dispenserCandidates.get(0)))
-				dispenserCandidates.set(0, disp);
-		}
-
-		if (dispenserCandidates.isEmpty()) {
+		if (dispenser == null) {
 			say("could not find a dispenser with type: " + dispenserType);
 			return null;
 		}
-
-		Dispenser dispenser = dispenserCandidates.get(0);
 
 		return dispenser;
 	}
@@ -1852,22 +1839,23 @@ public class AgentG2 extends Agent {
 	 */
 	private Action workerActionSearchDispenser() {
 		Dispenser disp = null;
+		List<String> nextDispenserTypeList = this.nextDispenserTypeList();
 
 		System.out.println("workerActionSearchDispenser");
-		System.out.println(this.nextDispenserTypeList());
+		System.out.println(nextDispenserTypeList);
 
 		// no current task
 		if (this.getCurrentTask() == null) { // @Carina
 			setCurrentTask(determineCurrentTask(getOneBlockTasks()));
 		}
-		if (this.getCurrentTask() == null && !this.nextDispenserTypeList().isEmpty()) {
+		if (this.getCurrentTask() == null && !nextDispenserTypeList.isEmpty()) {
 			System.out.println("no current task");
 //			say("looking for other dispensers"); //@Carina
-			disp = getNextDispenserFromType(this.nextDispenserTypeList().get(0));
+			disp = getNextDispenserFromType(nextDispenserTypeList.get(0));
 			say("Going to next dispenser");
-		} else if (this.getCurrentTask() != null && !this.nextDispenserTypeList().isEmpty()) {
+		} else if (this.getCurrentTask() != null && !nextDispenserTypeList.isEmpty()) {
 			System.out.println("with current task");
-			for (String dispensertype : this.nextDispenserTypeList()) {
+			for (String dispensertype : nextDispenserTypeList) {
 //				if(getCurrentTask().isOneBlockTask()) {
 				String taskBlockType = getCurrentTask().getRequirements().get(0).getBlockType();
 				if (taskBlockType.equals(dispensertype)) {

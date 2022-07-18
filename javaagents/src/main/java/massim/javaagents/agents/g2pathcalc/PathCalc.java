@@ -39,38 +39,27 @@ public class PathCalc {
 
 		// Fill fields surrounding the vision zone with 'true'
 		map[0][vision + 1] = true;
-		// System.out.println("map[" + 0 + "][" + (vision + 1) + "] = true");
 		map[2 * vision + 2][vision + 1] = true;
-		// System.out.println("map[" + (2 * vision + 2) + "][" + (vision + 1) + "] =
-		// true");
 		map[vision + 1][0] = true;
-		// System.out.println("map[" + (vision + 1) + "][" + 0 + "] = true");
 		map[vision + 1][2 * vision + 2] = true;
-		// System.out.println("map[" + (vision + 1) + "][" + (2 * vision + 2) + "] =
-		// true");
 		for (int n = 0; n < (2 * vision + 3); n++) {
 			if (n != 0 && n != (vision + 1) && n != (2 * vision + 2)) {
 				int range = Math.abs((vision + 1) - n);
 				for (int x = 1; x <= range; x++) {
 					map[x][n] = true;
-					// System.out.println("map[" + x + "][" + n + "] = true");
 				}
 				for (int x = (2 * vision + 1); x > (2 * vision + 1 - range); x--) {
 					map[x][n] = true;
-					// System.out.println("map[" + x + "][" + n + "] = true");
 				}
 			}
 		}
 
 		// Fill occupied fields inside the vision zone with 'true'
-		// System.out.println("Occupied fields:");
 		for (RelativeCoordinate field : occupiedFields) {
 			if (!attachedBlockCoordinates.contains(field)) {
 				int x = field.getX();
 				int y = field.getY();
 				map[x + vision + 1][y + vision + 1] = true;
-				// System.out.println("map[" + (x + vision + 1) + "][" + (y + vision + 1) + "] =
-				// true");
 			}
 		}
 
@@ -186,9 +175,6 @@ public class PathCalc {
 		List<RelativeCoordinate> attachedBlocksRelative = getRelativeCoordinates(attachedBlocks);
 		RelativeCoordinate currentPos = mapManager.getPosition();
 		HashMap<String, RelativeCoordinate> mapDimensions = mapManager.analyzeMapDimensions();
-		HashMap<RelativeCoordinate, Block> blockLayer = mapManager.getBlockLayer();
-		HashMap<RelativeCoordinate, Obstacle> obstacleLayer = mapManager.getObstacleLayer();
-		HashMap<RelativeCoordinate, Entity> entityLayer = mapManager.getEntityLayer();
 
 		// Position of agent inside the map
 		int xA = currentPos.getX();
@@ -205,7 +191,6 @@ public class PathCalc {
 			Node node = queue.poll();
 
 			// TODO: take into account that agent can rotate in order to fit on a path
-			// TODO: Enable agent to walk two steps
 
 			for (Direction dir : Direction.values()) {
 				int newX = node.x + dir.getDx();
@@ -550,13 +535,13 @@ public class PathCalc {
 	 * 
 	 * @return The absolute coordinates of the identified dispensers
 	 */
-	public Set<RelativeCoordinate> determineDispenserCandidates(String dispenserType) {
-		Set<RelativeCoordinate> dispenserCandidates = new HashSet<>();
+	public Set<Dispenser> determineDispenserCandidates(String dispenserType) {
+		Set<Dispenser> dispenserCandidates = new HashSet<>();
 		HashMap<RelativeCoordinate, Dispenser> dispenserLayer = mapManager.getDispenserLayer();
 		for (Map.Entry<RelativeCoordinate, Dispenser> entry : dispenserLayer.entrySet()) {
 			if (entry.getValue() != null) {
 				if (entry.getValue().getType().equals(dispenserType)) {
-					dispenserCandidates.add(entry.getKey());
+					dispenserCandidates.add(entry.getValue());
 				}
 			}
 		}
@@ -572,16 +557,17 @@ public class PathCalc {
 	 * @return The number of steps
 	 */
 	public int calcStepsToNextDispenser(String dispenserType) {
-		Set<RelativeCoordinate> destinations = determineDispenserCandidates(dispenserType);
-		if (destinations == null || destinations.size() == 0) {
+		Set<Dispenser> dispensers = determineDispenserCandidates(dispenserType);
+		Set<RelativeCoordinate> destinations = new HashSet<>();
+		for (Dispenser dispenser : dispensers) {
+			destinations.add(dispenser.getRelativeCoordinate());
+		}
+		if (destinations.size() == 0) {
 			return -1; // Error - no dispenser of required type found
 		}
 		List<RelativeCoordinate> attachedBlocksRelative = getRelativeCoordinates(attachedBlocks);
 		RelativeCoordinate currentPos = mapManager.getPosition();
 		HashMap<String, RelativeCoordinate> mapDimensions = mapManager.analyzeMapDimensions();
-		HashMap<RelativeCoordinate, Block> blockLayer = mapManager.getBlockLayer();
-		HashMap<RelativeCoordinate, Obstacle> obstacleLayer = mapManager.getObstacleLayer();
-		HashMap<RelativeCoordinate, Entity> entityLayer = mapManager.getEntityLayer();
 
 		if (destinations.contains(currentPos)) {
 			return 0;
@@ -602,7 +588,6 @@ public class PathCalc {
 			Node node = queue.poll();
 
 			// TODO: take into account that agent can rotate in order to fit on a path
-			// TODO: Enable agent to walk two steps
 
 			for (Direction dir : Direction.values()) {
 				int newX = node.x + dir.getDx();
@@ -652,7 +637,6 @@ public class PathCalc {
 						int yG = destination.getY();
 						// Destination reached?
 						if (newX == xG && newY == yG) {
-							System.out.println("Closest: (" + newX + "|" + newY + ")");
 							return node.stepNum + 1;
 						}
 					}
@@ -663,6 +647,113 @@ public class PathCalc {
 			}
 		}
 		return -2; // Error - no path found
+	}
+
+		/**
+	 * Determines the closest dispenser of the specified type taking into account
+	 * obstacles/entities/blocks on the way
+	 * 
+	 * @param dispenserType The type of the dispenser
+	 * 
+	 * @return The dispenser or null in case no dispenser was identified
+	 */
+	public Dispenser getClosestDispenser(String dispenserType) {
+		Set<Dispenser> dispensers = determineDispenserCandidates(dispenserType);
+		if (dispensers.size() == 0) {
+			return null; // Error - no dispenser of required type found
+		}
+		List<RelativeCoordinate> attachedBlocksRelative = getRelativeCoordinates(attachedBlocks);
+		RelativeCoordinate currentPos = mapManager.getPosition();
+		HashMap<String, RelativeCoordinate> mapDimensions = mapManager.analyzeMapDimensions();
+
+		for (Dispenser dispenser : dispensers) {
+			if (dispenser.getRelativeCoordinate().equals(currentPos)) {
+				return dispenser;
+			}
+		}
+
+		// Position of agent inside the map
+		int xA = currentPos.getX();
+		int yA = currentPos.getY();
+
+		// Set for keeping track of the fields that have been already analyzed
+		Set<RelativeCoordinate> discovered = new HashSet<>();
+		discovered.add(currentPos);
+
+		// Start of algorithm
+		Queue<Node> queue = new ArrayDeque<>();
+		queue.add(new Node(xA, yA, null));
+		while (!queue.isEmpty()) {
+			Node node = queue.poll();
+
+			// TODO: take into account that agent can rotate in order to fit on a path
+
+			for (Direction dir : Direction.values()) {
+				int newX = node.x + dir.getDx();
+				int newY = node.y + dir.getDy();
+				if (newX < 0) {
+					int x = mapDimensions.get("west").getX();
+					if (newX < (x - 5)) {
+						continue;
+					}
+				} else {
+					int x = mapDimensions.get("east").getX();
+					if (newX > (x + 5)) {
+						continue;
+					}
+				}
+				if (newY < 0) {
+					int y = mapDimensions.get("north").getY();
+					if (newY < (y - 5)) {
+						continue;
+					}
+				} else {
+					int y = mapDimensions.get("south").getY();
+					if (newY > (y + 5)) {
+						continue;
+					}
+				}
+
+				// Check if the cell is occupied
+				boolean occupied = checkIfOccupied(new RelativeCoordinate(newX, newY));
+
+				// Check if attachedBlocks of agent fit into the cell's surrounding cells
+				if (!occupied) {
+					for (RelativeCoordinate attachedBlock : attachedBlocksRelative) {
+						RelativeCoordinate absolutePosition = new RelativeCoordinate(newX + attachedBlock.getX(),
+								newY + attachedBlock.getY());
+						occupied = checkIfOccupied(absolutePosition);
+						if (occupied) {
+							break;
+						}
+					}
+				}
+
+				// Is there a path in the direction and has that field not yet been analyzed?
+				if (!occupied && !discovered.contains(new RelativeCoordinate(newX, newY))) {
+					List<Direction> newDirList;
+					if (node.initialDirs == null) {
+						newDirList = new ArrayList<>();
+						newDirList.add(dir);
+					} else {
+						newDirList = new ArrayList<Direction>(node.initialDirs);
+					}
+
+					for (Dispenser dispenser : dispensers) {
+						int xG = dispenser.getRelativeCoordinate().getX();
+						int yG = dispenser.getRelativeCoordinate().getY();
+						// Destination reached?
+						if (newX == xG && newY == yG) {
+							return dispenser;
+						}
+					}
+					// Mark field as 'discovered' and add it to the queue
+					discovered.add(new RelativeCoordinate(newX, newY));
+					queue.add(new Node(newX, newY, newDirList));
+				}
+			}
+		}
+		return null;
 	}
 
 	/**
