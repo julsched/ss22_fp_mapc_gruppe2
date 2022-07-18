@@ -45,7 +45,8 @@ public class AgentG2 extends Agent {
 	private int teamSize;
 	private int simSteps;
 	private List<Role> roles = new ArrayList<>();
-	private String explorerAgent;
+	private boolean isExplorer;
+	private boolean isConstructor;
 	boolean simStartPerceptsSaved;
 
 	private int currentStep = -1;
@@ -59,6 +60,7 @@ public class AgentG2 extends Agent {
 	private long deadline;
 	private String lastAction;
 	private List<Object> lastActionParams = new ArrayList<>();
+	private List<Parameter> params = new ArrayList<>();
 	private String lastActionResult;
 	private RelativeCoordinate hitFrom;
 	private List<String> violations = new ArrayList<>();
@@ -161,10 +163,9 @@ public class AgentG2 extends Agent {
 		}
 		if (!simStartPerceptsSaved) {
 			saveSimStartPercepts(percepts);
-			if (teamSize > 1) {
-				explorerAgent = Mission.applyForExplorerMission(getName());
-			} else {
-				explorerAgent = "None";
+			isExplorer = Mission.applyForExplorerMission(getName());
+			if (!isExplorer) {
+				isConstructor = Mission.applyForConstructorMission(getName());
 			}
 			return new Action("skip");
 		}
@@ -172,6 +173,13 @@ public class AgentG2 extends Agent {
 		// must be set first, so agents knows currentStep for sorting Percepts and for
 		// having a structured console output
 		setCurrentStep(percepts);
+		if (isExplorer) {
+			say("My mission: Explorer");
+		} else if (isConstructor) {
+			say("My mission: Constructor");
+		} else {
+			say("My mission: Worker");
+		}
 
 		saveStepPercepts(percepts);
 
@@ -222,6 +230,9 @@ public class AgentG2 extends Agent {
 		} else {
 			say("NO TASK!!!!!!!!!!!100");
 		}
+		if (!lastActionResult.equals("success") && !lastActionResult.equals("partial_success")) {
+			return handleError();
+		}
 		if (!mapManager.containsRolezone() && phase == 0) {
 			return explorerStep();
 		} else if (mapManager.containsRolezone() && phase == 0) {
@@ -250,25 +261,21 @@ public class AgentG2 extends Agent {
 			say("I am just a normal Worker :(");
 		}
 
-		if (!currentRole.getName().equals("worker") && phase == 3) {
-			return searchRolezone("worker");
-		} else if (currentRole.getName().equals("worker") && phase == 3) {
-			return workerStep();
+		// TODO: Add explorer?
+		if (isConstructor) {
+			if (!currentRole.getName().equals("constructor") && phase == 3) {
+				return searchRolezone("constructor");
+			} else if (currentRole.getName().equals("constructor") && phase == 3) {
+				return constructorStep();
+			}
+		} else {
+			if (!currentRole.getName().equals("worker") && phase == 3) {
+				return searchRolezone("worker");
+			} else if (currentRole.getName().equals("worker") && phase == 3) {
+				return workerStep();
+			}
 		}
 		return workerStep();
-//		if (explorerAgent.equals(getName())) {
-//			say("My mission: I am the explorer of the team!");
-//			if (!lastActionResult.equals("success")) {
-//				return handleError();
-//			}
-//			return explorerStep();
-//		} else {
-//			say("My mission: I am just a normal worker :(");
-//			if (!lastActionResult.equals("success")) {
-//				return handleError();
-//			}
-//			return workerStep();
-//		}
 	}
 
 	private void setCurrentStep(List<Percept> percepts) {
@@ -294,6 +301,7 @@ public class AgentG2 extends Agent {
 
 		// Delete previous step percepts
 		lastActionParams.clear();
+		params.clear();
 		attachedThings.clear();
 		blocks.clear();
 		friendlyAgents.clear();
@@ -351,7 +359,6 @@ public class AgentG2 extends Agent {
 			}
 			case "lastActionParams" -> {
 				Parameter lastParams = percept.getParameters().get(0);
-				List<Parameter> params = new ArrayList<>();
 				for (int i = 0; i < ((ParameterList) lastParams).size(); i++) {
 					params.add(((ParameterList) lastParams).get(i));
 				}
@@ -1176,29 +1183,11 @@ public class AgentG2 extends Agent {
 
 	private Action handleError() {
 		say("Handle Error: " + lastAction + " - " + lastActionResult);
-		if (lastAction.equals("move") && !lastActionResult.equals("success") && lastActionParams.size() == 1) {
-			// Get direction
-			String direction = (String) lastActionParams.get(0);
-			say("I got stuck when trying to walk '" + direction + "'");
-
-			RelativeCoordinate desiredField = RelativeCoordinate.getRelativeCoordinate(direction);
-			for (RelativeCoordinate relativeCoordinate : occupiedFields) {
-				if (relativeCoordinate.equals(desiredField)) {
-					say("Reason: field towards direction '" + direction + "' is already occupied");
-					// This will ensure that agent will try all possible directions if one step
-					// after another fails due to occupied fields
-					switch (direction) {
-					case "n":
-						return move("e");
-					case "e":
-						return move("s");
-					case "s":
-						return move("w");
-					case "w":
-						return move("n");
-					}
-				}
-			}
+		if (lastActionResult.equals("failed_random")) {
+			return new Action(lastAction, params);
+		}
+		if (lastAction.equals("move") && lastActionResult.equals("failed_path")) {
+			return moveRandomly(1);
 		}
 		if (lastAction.equals("attach") && !lastActionResult.equals("success")) {
 			String direction = (String) lastActionParams.get(0);
@@ -1208,11 +1197,9 @@ public class AgentG2 extends Agent {
 		if (lastAction.equals("rotate") && !lastActionResult.equals("success")) {
 			say("Rotation was not succesful.");
 			return moveRandomly(1);
-
 		}
 		if (lastAction.equals("clear") && !lastActionResult.equals("success")) {
 			say("Last attempt to clear failed.");
-//			return new Action("skip");
 			int lastX = Integer.parseInt((String) lastActionParams.get(0));
 			int lastY = Integer.parseInt((String) lastActionParams.get(1));
 
@@ -1302,6 +1289,34 @@ public class AgentG2 extends Agent {
 			}
 		}
 		// Explore to find a suitable role zone field
+		return explorerStep();
+	}
+
+	private Action searchGoalZone() {
+		say("Need to look for goal zone");
+		// Identify free goal zone fields
+		Set<RelativeCoordinate> goalZoneFields = pathCalc.determineGoalZoneFields();
+
+		if (!goalZoneFields.isEmpty()) {
+			say("Free goal zone fields identified");
+			// Check if agent already on a goal zone field
+			if (!goalZoneFields.contains(mapManager.getPosition())) {
+				// Calculate direction agent should move into in order to get as fast as
+				// possible to the next free goal zone field
+				Action action = pathCalc.calculateShortestPathMap(goalZoneFields);
+				if (action == null) {
+					say("No path towards identified goal zone fields.");
+					return explorerStep();
+				} else {
+					say("Path identified. Moving towards next free goal zone field...");
+					return action;
+				}
+			} else {
+				say("Already on goal zone field");
+				return null; // Wait there
+			}
+		}
+		// Explore to find a free goal zone field
 		return explorerStep();
 	}
 
@@ -1754,15 +1769,17 @@ public class AgentG2 extends Agent {
 		int b2distance = this.pathCalc.calcStepsToNextDispenser("b2");
 		int b3distance = this.pathCalc.calcStepsToNextDispenser("b3");
 
-		// not found / not in config -> -1 => +9999 steps
+		// not found / not in config -> -1/-2 => +9999 steps
 
 		int maxValue = 9999;
 
-		if (b1distance == -1)
+		if (b0distance == -1 || b0distance == -2)
+			b0distance = maxValue;
+		if (b1distance == -1 || b1distance == -2)
 			b1distance = maxValue;
-		if (b2distance == -1)
+		if (b2distance == -1 || b2distance == -2)
 			b2distance = maxValue;
-		if (b3distance == -1)
+		if (b3distance == -1 || b3distance == -2)
 			b3distance = maxValue;
 
 		HashMap<String, Integer> map = new HashMap<String, Integer>();
@@ -1818,27 +1835,12 @@ public class AgentG2 extends Agent {
 	 * @return Dispenser
 	 */
 	private Dispenser getNextDispenserFromType(String dispenserType) {
-		List<Dispenser> dispenserCandidates = new ArrayList<>();
-		HashMap<RelativeCoordinate, Dispenser> dispenserLayer = mapManager.getDispenserLayer();
-		for (Map.Entry<RelativeCoordinate, Dispenser> entry : dispenserLayer.entrySet()) {
-			if (entry.getValue() != null) {
-				if (entry.getValue().getType().equals(dispenserType)) {
-					dispenserCandidates.add(entry.getValue());
-				}
-			}
-		}
+		Dispenser dispenser = pathCalc.getClosestDispenser(dispenserType);
 
-		for (Dispenser disp : dispenserCandidates) {
-			if (disp.isCloserThan(dispenserCandidates.get(0)))
-				dispenserCandidates.set(0, disp);
-		}
-
-		if (dispenserCandidates.isEmpty()) {
+		if (dispenser == null) {
 			say("could not find a dispenser with type: " + dispenserType);
 			return null;
 		}
-
-		Dispenser dispenser = dispenserCandidates.get(0);
 
 		return dispenser;
 	}
@@ -1853,22 +1855,23 @@ public class AgentG2 extends Agent {
 	 */
 	private Action workerActionSearchDispenser() {
 		Dispenser disp = null;
+		List<String> nextDispenserTypeList = this.nextDispenserTypeList();
 
 		System.out.println("workerActionSearchDispenser");
-		System.out.println(this.nextDispenserTypeList());
+		System.out.println(nextDispenserTypeList);
 
 		// no current task
 		if (this.getCurrentTask() == null) { // @Carina
 			setCurrentTask(determineCurrentTask(getOneBlockTasks()));
 		}
-		if (this.getCurrentTask() == null && !this.nextDispenserTypeList().isEmpty()) {
+		if (this.getCurrentTask() == null && !nextDispenserTypeList.isEmpty()) {
 			System.out.println("no current task");
 //			say("looking for other dispensers"); //@Carina
-			disp = getNextDispenserFromType(this.nextDispenserTypeList().get(0));
+			disp = getNextDispenserFromType(nextDispenserTypeList.get(0));
 			say("Going to next dispenser");
-		} else if (this.getCurrentTask() != null && !this.nextDispenserTypeList().isEmpty()) {
+		} else if (this.getCurrentTask() != null && !nextDispenserTypeList.isEmpty()) {
 			System.out.println("with current task");
-			for (String dispensertype : this.nextDispenserTypeList()) {
+			for (String dispensertype : nextDispenserTypeList) {
 //				if(getCurrentTask().isOneBlockTask()) {
 				String taskBlockType = getCurrentTask().getRequirements().get(0).getBlockType();
 				if (taskBlockType.equals(dispensertype)) {
@@ -2068,6 +2071,15 @@ public class AgentG2 extends Agent {
 		}
 	}
 
+	private Action constructorStep() {
+		Action action = searchGoalZone();
+		if (action != null) {
+			return action;
+		}
+		// TODO: add constructor logic
+		return new Action("skip");
+	}
+
 	private boolean nextToObstacle() {
 		for (RelativeCoordinate obstacle : obstaclesInSight) {
 			if (obstacle.isNextToAgent()) {
@@ -2244,7 +2256,7 @@ public class AgentG2 extends Agent {
 		// befragt, um einen map-Austausch einzuleiten
 
 		if ((friendlyAgents.size() == 1) && (counterMapExchange > 10) && (exchangePartner == null)
-				&& (explorerAgent.equals(getName()))) {
+				&& (isExplorer)) {
 			say("I start map exchange process");
 			exchangePartner = new RelativeCoordinate(friendlyAgents.get(0).getX(), friendlyAgents.get(0).getY());
 			mailbox.broadcastMapRequest(currentStep, getName());
@@ -2565,13 +2577,36 @@ public class AgentG2 extends Agent {
 	}
 
 	/**
-	 * Moves the agent randomly in any directions
+	 * Moves the agent randomly in any direction that is not occupied and has enough space for the agent's attached blocks
 	 * 
 	 * @param stepNum The number of steps the agent should move
 	 * @return The move action
 	 */
 	private Action moveRandomly(int stepNum) {
-		List<String> allowedDirections = new ArrayList<String>(Arrays.asList("n", "e", "s", "w"));
+		RelativeCoordinate currentPosition = mapManager.getPosition();
+		List<String> allowedDirections = new ArrayList<>();
+		for (Direction dir : Direction.values()) {
+			int x = dir.getDx();
+			int y = dir.getDy();
+			RelativeCoordinate coordinate = new RelativeCoordinate(currentPosition.getX() + x, currentPosition.getY() + y);
+			// Check if the cell is occupied
+			boolean occupied = pathCalc.checkIfOccupied(coordinate);
+			if (occupied) {
+				continue;
+			}
+			// Check if attachedBlocks of agent fit into the cell's surrounding cells
+			for (Block attachedBlock : attachedBlocks) {
+				RelativeCoordinate absolutePosition = new RelativeCoordinate(coordinate.getX() + attachedBlock.getRelativeCoordinate().getX(),
+						coordinate.getY() + attachedBlock.getRelativeCoordinate().getY());
+				occupied = pathCalc.checkIfOccupied(absolutePosition);
+				if (occupied) {
+					break;
+				}
+			}
+			if (!occupied) {
+				allowedDirections.add(dir.toString());
+			}
+		}
 		return moveRandomly(stepNum, allowedDirections);
 	}
 
@@ -2584,7 +2619,12 @@ public class AgentG2 extends Agent {
 	 */
 	private Action moveRandomly(int stepNum, List<String> allowedDirections) {
 		if (allowedDirections == null || allowedDirections.isEmpty()) {
-			return new Action("skip");
+			Direction obstacleDir = mapManager.getAnyAdjacentObstacle();
+			if (obstacleDir != null) {
+				return new Action("clear", new Numeral(obstacleDir.getDx()), new Numeral(obstacleDir.getDy()));
+			} else {
+				return new Action("skip");
+			}
 		}
 		Random rand = new Random();
 		List<String> randomDirections = new ArrayList<>();
@@ -2593,7 +2633,12 @@ public class AgentG2 extends Agent {
 			randomDirections.add(randomDirection);
 		}
 
-		switch (stepNum) {
+		if (stepNum > 2) { // TODO: expand
+			say("Warning: moveRandomly() does not yet support steps > 2");
+			stepNum = 2;
+		}
+
+		switch (stepNum) { // TODO: expand
 		case 1 -> {
 			String direction = randomDirections.get(0);
 			say("Moving one step randomly...");
@@ -2604,10 +2649,19 @@ public class AgentG2 extends Agent {
 			String direction2 = randomDirections.get(1);
 			if (oppositeDirections(direction1, direction2)) {
 				allowedDirections.remove(direction2);
-				direction2 = allowedDirections.get(rand.nextInt(allowedDirections.size()));
+				if (allowedDirections.size() > 0) {
+					direction2 = allowedDirections.get(rand.nextInt(allowedDirections.size()));
+				} else {
+					direction2 = null;
+				}
 			}
-			say("Moving two steps randomly...");
-			return new Action("move", new Identifier(direction1), new Identifier(direction2));
+			if (direction2 != null) {
+				say("Moving two steps randomly...");
+				return new Action("move", new Identifier(direction1), new Identifier(direction2));
+			} else {
+				say("Moving one step randomly...");
+				return new Action("move", new Identifier(direction1));
+			}
 		}
 		default -> {
 			return new Action("skip");
@@ -2789,6 +2843,9 @@ public class AgentG2 extends Agent {
 		roles.clear();
 		attachedBlocks.clear();
 		simStartPerceptsSaved = false;
+		isExplorer = false;
+		isConstructor = false;
+		Mission.prepareForNextSimulation();
 	}
 
 	/**
