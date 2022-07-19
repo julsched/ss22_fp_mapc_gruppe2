@@ -48,10 +48,9 @@ public class MailService {
 
         Agent recipient = register.get(to);
 
-        if(recipient == null) {
+        if (recipient == null) {
             logger.warning("Cannot deliver message to " + to + "; unknown target,");
-        }
-        else{
+        } else {
             recipient.handleMessage(message, from);
         }
     }
@@ -116,6 +115,16 @@ public class MailService {
         } else {
         	AgentG2 rec = (AgentG2) recipient;
         	rec.updateMap(mapManager, knownAgents);
+        }
+    }
+    
+    public void sendBlockMatrix(String[][] blockMatrix, RelativeCoordinate connection, RelativeCoordinate position, String to, String from) {
+    	Agent recipient = register.get(to);
+        if (recipient == null && !(recipient instanceof AgentG2)) {
+            logger.warning("Cannot deliver message to " + to + "; unknown target,");
+        } else {
+        	AgentG2 rec = (AgentG2) recipient;
+        	rec.handleBlockMatrix(blockMatrix, connection, position);
         }
     }
 }

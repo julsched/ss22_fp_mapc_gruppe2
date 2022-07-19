@@ -66,11 +66,17 @@ public class Task {
 	 */
 	public String[][] createBlockMatrix(){
 		String[][] matrix = new String[5][5];
-		for (int i =0; i< this.requirements.size(); i++) {
-			matrix
-				[this.requirements.get(i).getRelativeCoordinate().getX()+2]
-				[this.requirements.get(i).getRelativeCoordinate().getY()-1] 
+		for (int i = 0; i < this.requirements.size(); i++) {
+			// zur Überführung in die Matrix verschieben wir den Koordinatenursprung um (2,2)
+			int x = this.requirements.get(i).getRelativeCoordinate().getX();
+			int y = this.requirements.get(i).getRelativeCoordinate().getY();
+			if (x > -3 && x < 3 && y > -3 && y <3) {
+				matrix
+				[this.requirements.get(i).getRelativeCoordinate().getX() + 2]
+				[this.requirements.get(i).getRelativeCoordinate().getY() - 1] 
 						= this.requirements.get(i).getBlockType();
+			}
+			
 			//matrix[X][Y]
 		}
 		/*test for a noob

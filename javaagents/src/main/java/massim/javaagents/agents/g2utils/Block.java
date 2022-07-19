@@ -45,14 +45,44 @@ public class Block extends Cell {
     
     public String[][] createBlockMatrix(){
 		String[][] matrix = new String[5][5];
+		matrix[2][2] = this.getType();
 
 		if (!this.isConnected()) {
-			matrix[2][2] = this.getType();
 			return matrix;
+		} else {
+			if (isConnectedN()) {
+				String[][] temp = getBlockNorth().getBlockMatrix();
+				for (int i = 0; i < 4; i++) {
+					for (int j = 0; j < 5; j++) {
+						matrix[i + 1][j] = temp[i][j];
+					}	
+				}
+			}
+			if (isConnectedS()) {
+				String[][] temp = getBlockNorth().getBlockMatrix();
+				for (int i = 1; i < 4; i++) {
+					for (int j = 0; j < 5; j++) {
+						matrix[i + 1][j] = temp[i][j];
+					}	
+				}
+			}
+			if (isConnectedE()) {
+				String[][] temp = getBlockNorth().getBlockMatrix();
+				for (int i = 0; i < 4; i++) {
+					for (int j = 0; j < 4; j++) {
+						matrix[i][j + 1] = temp[i][j];
+					}	
+				}
+			}
+			if (isConnectedW()) {
+				String[][] temp = getBlockNorth().getBlockMatrix();
+				for (int i = 1; i < 4; i++) {
+					for (int j = 1; j < 5; j++) {
+						matrix[i][j - 1] = temp[i][j];
+					}	
+				}
+			}
 		}
-
-		// todo matrix for each block iot determine connected neighbors
-
 
 		return matrix;		
 	}

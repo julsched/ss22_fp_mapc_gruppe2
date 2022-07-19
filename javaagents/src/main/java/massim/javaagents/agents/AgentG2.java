@@ -73,6 +73,9 @@ public class AgentG2 extends Agent {
 	private List<Task> tasks = new ArrayList<>();
 	private List<Norm> norms = new ArrayList<>();
 	// Blocks that might(!) be directly attached to the agent (right next to agent)
+	
+	private boolean rotationPossible = true;
+	private RelativeCoordinate connection;
 	private List<Block> attachedBlocks = new ArrayList<>();
 
 	private MapManagement mapManager;
@@ -89,10 +92,8 @@ public class AgentG2 extends Agent {
 
 	private ArrayList<RelativeCoordinate> friendlyAgents = new ArrayList<RelativeCoordinate>();
 	private HashSet<String> knownAgents = new HashSet<String>();
-	private HashMap<RelativeCoordinate, Cell> map = new HashMap<RelativeCoordinate, Cell>(); // see map
 //	private RelativeCoordinate currentPos = new RelativeCoordinate(0, 0); // TODO delete if currentAbsolutePos works.
 	private Orientation orientation = Orientation.NORTH;
-	private HashMap<RelativeCoordinate, Cell> attachedBlocksWithPositions = new HashMap<>();
 	private String roleName = ""; // TODO -> automatisch aktualisieren, wenn Rolle geändert wird
 
 	private String lastMoveDir = "";
@@ -126,6 +127,7 @@ public class AgentG2 extends Agent {
 		super(name, mailbox);
 		this.mapManager = new MapManagement(currentStep);
 		this.pathCalc = new PathCalc(mapManager, attachedBlocks);
+		this.assembledBlockMatrix = new String[5][5];
 	}
 
 	@Override
@@ -134,11 +136,15 @@ public class AgentG2 extends Agent {
 
 	@Override
 	public void handleMessage(Percept message, String sender) {
-		if (message.equals(new Percept("Revoke friendship"))) {
+		String content = ((Identifier) message.getParameters().get(0)).getValue();
+		switch (content) {
+		case "Revoke friendship":
 			knownAgents.remove(sender);
-		}
-		if (message.equals(new Percept("worker")) || message.equals(new Percept("constructor"))
-				|| message.equals(new Percept("explorer")) || message.equals(new Percept("digger"))) {
+			break;
+		case "worker":
+		case "constructor":
+		case "explorer":
+		case "digger":
 			if (message.getParameters().size() > 0) {
 				String str = ((Identifier) message.getParameters().get(0)).getValue(); // TODO @Daniel --> wenn
 																						// "explorer" --> Array out of
@@ -148,6 +154,9 @@ public class AgentG2 extends Agent {
 				}
 				rolesOfAgents.put(getName(), Role.getRole(roles, str));
 			}
+			break;
+		default:
+			break;
 		}
 	}
 
@@ -980,27 +989,47 @@ public class AgentG2 extends Agent {
 			case "success":
 				String direction = (String) this.lastActionParams.get(0);
 				RelativeCoordinate pos;
-				Cell cell;
+				Block block;
+				HashMap<RelativeCoordinate, Block> blockLayer;
 				switch (direction) {
 				case "n":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() + 1);
-					cell = this.map.get(pos);
-					this.attachedBlocksWithPositions.put(pos, cell);
+					blockLayer = mapManager.getBlockLayer();
+					if (!(blockLayer.get(pos) == null)) {
+						this.assembledBlockMatrix[2][3] = blockLayer.get(pos).getType();
+					} else {
+						say("I am connected to an entity or obstacle");
+						rotationPossible = false;
+					}
 					break;
 				case "s":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() - 1);
-					cell = this.map.get(pos);
-					this.attachedBlocksWithPositions.put(pos, cell);
+					blockLayer = mapManager.getBlockLayer();
+					if (!(blockLayer.get(pos) == null)) {
+						this.assembledBlockMatrix[2][1] = blockLayer.get(pos).getType();
+					} else {
+						say("I am connected to an entity or obstacle");
+						rotationPossible = false;
+					}
 					break;
 				case "e":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX() + 1, mapManager.getPosition().getY());
-					cell = this.map.get(pos);
-					this.attachedBlocksWithPositions.put(pos, cell);
-					break;
+					blockLayer = mapManager.getBlockLayer();
+					if (!(blockLayer.get(pos) == null)) {
+						this.assembledBlockMatrix[3][2] = blockLayer.get(pos).getType();
+					} else {
+						say("I am connected to an entity or obstacle");
+						rotationPossible = false;
+					}
 				case "w":
 					pos = new RelativeCoordinate(mapManager.getPosition().getX() - 1, mapManager.getPosition().getY());
-					cell = this.map.get(pos);
-					this.attachedBlocksWithPositions.put(pos, cell);
+					blockLayer = mapManager.getBlockLayer();
+					if (!(blockLayer.get(pos) == null)) {
+						this.assembledBlockMatrix[1][2] = blockLayer.get(pos).getType();
+					} else {
+						say("I am connected to an entity or obstacle");
+						rotationPossible = false;
+					}
 					break;
 				}
 			case "failed_parameter":
@@ -1019,27 +1048,18 @@ public class AgentG2 extends Agent {
 			switch (lastActionResult) {
 			case "success":
 				String direction = (String) this.lastActionParams.get(0);
-				RelativeCoordinate pos;
 				switch (direction) {
 				case "n":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() - 1);
-					// this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks
-					// contains relative coordinates
+					this.assembledBlockMatrix[2][3] = null;
 					break;
 				case "s":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX(), mapManager.getPosition().getY() + 1);
-					// this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks
-					// contains relative coordinates
+					this.assembledBlockMatrix[2][1] = null;
 					break;
 				case "e":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX() + 1, mapManager.getPosition().getY());
-					// this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks
-					// contains relative coordinates
+					this.assembledBlockMatrix[3][2] = null;
 					break;
 				case "w":
-					pos = new RelativeCoordinate(mapManager.getPosition().getX() - 1, mapManager.getPosition().getY());
-					// this.attachedBlocks.remove(pos); // Does not work atm because attachedBlocks
-					// contains relative coordinates
+					this.assembledBlockMatrix[1][2] = null;
 					break;
 				default:
 					break;
@@ -1050,19 +1070,23 @@ public class AgentG2 extends Agent {
 				case "success":
 					String rot = (String) this.lastActionParams.get(0);
 					HashMap<RelativeCoordinate, Cell> temp = new HashMap<RelativeCoordinate, Cell>();
+					String[][] tempMatrix = new String[5][5];
 					if (rot.equals("cw")) {
 						Orientation.changeOrientation(orientation, true);
-						for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
-							Cell cell = this.attachedBlocksWithPositions.get(key);
-							temp.put(new RelativeCoordinate(key.getY(), -key.getX()), cell);
+						for (int i = 0; i < 5; i++) {
+							for (int j = 0; j < 5; j++) {
+								tempMatrix[-i + 4][j] = this.assembledBlockMatrix[i][j];
+							}
 						}
 					} else {
 						Orientation.changeOrientation(orientation, false);
-						for (RelativeCoordinate key : this.attachedBlocksWithPositions.keySet()) {
-							Cell cell = this.attachedBlocksWithPositions.get(key);
-							temp.put(new RelativeCoordinate(-key.getY(), key.getX()), cell);
+						for (int i = 0; i < 5; i++) {
+							for (int j = 0; j < 5; j++) {
+								tempMatrix[j][-i + 4] = this.assembledBlockMatrix[i][j];
+							}
 						}
 					}
+					this.assembledBlockMatrix = tempMatrix;
 				case "failed_parameter":
 					// Fehlerbehandlung
 					break;
@@ -1076,7 +1100,11 @@ public class AgentG2 extends Agent {
 			case "connect":
 				switch (lastActionResult) {
 				case "success":
-					// Behandlung
+					String partner = (String) this.lastActionParams.get(0);
+					int x = (Integer) this.lastActionParams.get(1);
+					int y = (Integer) this.lastActionParams.get(2);
+					connection = new RelativeCoordinate(x + mapManager.getPosition().getX(), y + mapManager.getPosition().getY());
+					mailbox.sendBlockMatrix(this.assembledBlockMatrix, connection, mapManager.getPosition(), partner, this.getName());
 					break;
 				case "failed_parameter":
 					// Fehlerbehandlung
@@ -1318,6 +1346,7 @@ public class AgentG2 extends Agent {
 
 		if (!checkIfTaskComplete(this.getCurrentTask())) {
 			// todo
+			String[][] blockMatrix = currentTask.getBlockMatrix();
 		}
 		say("Task '" + this.getCurrentTask().getName() + "' is complete");
 		return submit(this.getCurrentTask());
@@ -3004,5 +3033,47 @@ public class AgentG2 extends Agent {
 		}
 
 		return lifespan;
+	}
+	
+	public void handleBlockMatrix(String[][] blockMatrix, RelativeCoordinate conn, RelativeCoordinate pos) {
+		if (!(connection == null)) {
+			Block ownBlock = mapManager.getBlockLayer().get(connection);
+			Block newBlock = mapManager.getBlockLayer().get(conn);
+			int xDiff = connection.getX() - conn.getX();
+			int yDiff = connection.getY() - conn.getY();
+			if (xDiff == 0) {
+				if (yDiff == 1) {
+					ownBlock.setBlockWest(newBlock);
+					newBlock.setBlockEast(ownBlock);
+				} else {
+					ownBlock.setBlockEast(newBlock);
+					newBlock.setBlockWest(ownBlock);
+				}
+			} else {
+				if (xDiff == 1) {
+					ownBlock.setBlockNorth(newBlock);
+					newBlock.setBlockSouth(ownBlock);
+				} else {
+					ownBlock.setBlockSouth(newBlock);
+					newBlock.setBlockNorth(ownBlock);
+				}			
+			}
+			xDiff = mapManager.getPosition().getX() - pos.getX();
+			yDiff = mapManager.getPosition().getY() - pos.getY();
+			if (xDiff < 0) {
+				if (yDiff < 0) {
+					for (int i = 0; i < (5 + xDiff); i++) {
+						for (int j = 0; j < (5 + yDiff); j++) {
+							this.assembledBlockMatrix[i + xDiff][j + yDiff] = blockMatrix[i][j];
+						}
+					}
+				} else {
+					
+				}
+			} else {
+				
+			}
+		}
+		
 	}
 }
