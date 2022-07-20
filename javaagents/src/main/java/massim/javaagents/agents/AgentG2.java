@@ -119,6 +119,8 @@ public class AgentG2 extends Agent {
 	private HashMap<String, Integer> attachedBlockTypeMap;
 	private Task currentTask;
 	private String[][] assembledBlockMatrix;
+	private String constructor;
+	private String myWorker;
 
 	/**
 	 * Constructor.
@@ -144,6 +146,8 @@ public class AgentG2 extends Agent {
 		case "Revoke friendship":
 			knownAgents.remove(sender);
 			break;
+		case "I am your constructor":
+			this.constructor = sender;
 		case "worker":
 		case "constructor":
 		case "explorer":
@@ -1352,7 +1356,35 @@ public class AgentG2 extends Agent {
 
 		if (!checkIfTaskComplete(this.getCurrentTask())) {
 			// todo
-			String[][] blockMatrix = currentTask.getBlockMatrix();
+			String[][] blockMatrixTask = currentTask.getBlockMatrix();
+			String blockInTask = blockMatrixTask[2][1];
+			String blockAttached = this.assembledBlockMatrix[2][1];
+			if (!blockInTask.equals(blockAttached)) {
+				say("Detach block on wrong position for multi block task!");
+				return new Action("detach", new Identifier("s"));
+			}
+			blockInTask = blockMatrixTask[3][2];
+			blockAttached = this.assembledBlockMatrix[3][2];
+			if (!blockInTask.equals(blockAttached)) {
+				say("Detach block on wrong position for multi block task!");
+				return new Action("detach", new Identifier("e"));
+			}
+			blockInTask = blockMatrixTask[2][3];
+			blockAttached = this.assembledBlockMatrix[2][3];
+			if (!blockInTask.equals(blockAttached)) {
+				say("Detach block on wrong position for multi block task!");
+				return new Action("detach", new Identifier("n"));
+			}
+			blockInTask = blockMatrixTask[1][2];
+			blockAttached = this.assembledBlockMatrix[1][2];
+			if (!blockInTask.equals(blockAttached)) {
+				say("Detach block on wrong position for multi block task!");
+				return new Action("detach", new Identifier("w"));
+			}
+			if (constructor == null) {
+				mailbox.broadcastRequestForConstructor(mapManager.getPosition(), this.getName());
+				
+			}
 		}
 		say("Task '" + this.getCurrentTask().getName() + "' is complete");
 		return submit(this.getCurrentTask());
@@ -3105,6 +3137,15 @@ public class AgentG2 extends Agent {
 			connectionIn = null;
 			connectionPartner = null;
 			sentBlockMatrix = null;
+		}
+	}
+	
+	public void handleRequestForConstructor(String from, RelativeCoordinate position) {
+		if (currentRole.equals("constructor") ) {
+			// TODO:
+			// auf Basis von Position/Aufgabe etc. entshceiden, ob man unterstützt
+			//  Wenn ja: zur entsprechenden Goalzone gehen
+			mailbox.sendMessage(new Percept("I am your constructor"), from, this.getName());
 		}
 	}
 }
