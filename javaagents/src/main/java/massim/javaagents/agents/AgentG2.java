@@ -76,6 +76,9 @@ public class AgentG2 extends Agent {
 	
 	private boolean rotationPossible = true;
 	private RelativeCoordinate connection;
+	private RelativeCoordinate connectionIn;
+	private String[][] sentBlockMatrix;
+	private RelativeCoordinate connectionPartner;
 	private List<Block> attachedBlocks = new ArrayList<>();
 
 	private MapManagement mapManager;
@@ -226,6 +229,9 @@ public class AgentG2 extends Agent {
 		if ((currentStep % 15) == 0) {
 			updateMapsOfKnownAgents();
 		}
+		
+		// attachedBlocks updaten
+		updateAttachedBlocks();
 
 		say("phase: " + phase);
 		if (currentTask != null) {
@@ -3036,11 +3042,17 @@ public class AgentG2 extends Agent {
 	}
 	
 	public void handleBlockMatrix(String[][] blockMatrix, RelativeCoordinate conn, RelativeCoordinate pos) {
+		this.connectionIn = conn;
+		this.sentBlockMatrix = blockMatrix;
+		this.connectionPartner = pos;
+	}
+	
+	private void updateAttachedBlocks() {
 		if (!(connection == null)) {
 			Block ownBlock = mapManager.getBlockLayer().get(connection);
-			Block newBlock = mapManager.getBlockLayer().get(conn);
-			int xDiff = connection.getX() - conn.getX();
-			int yDiff = connection.getY() - conn.getY();
+			Block newBlock = mapManager.getBlockLayer().get(connectionIn);
+			int xDiff = connection.getX() - connectionIn.getX();
+			int yDiff = connection.getY() - connectionIn.getY();
 			if (xDiff == 0) {
 				if (yDiff == 1) {
 					ownBlock.setBlockWest(newBlock);
@@ -3058,22 +3070,41 @@ public class AgentG2 extends Agent {
 					newBlock.setBlockNorth(ownBlock);
 				}			
 			}
-			xDiff = mapManager.getPosition().getX() - pos.getX();
-			yDiff = mapManager.getPosition().getY() - pos.getY();
+			xDiff = mapManager.getPosition().getX() - connectionPartner.getX();
+			yDiff = mapManager.getPosition().getY() - connectionPartner.getY();
 			if (xDiff < 0) {
 				if (yDiff < 0) {
 					for (int i = 0; i < (5 + xDiff); i++) {
 						for (int j = 0; j < (5 + yDiff); j++) {
-							this.assembledBlockMatrix[i + xDiff][j + yDiff] = blockMatrix[i][j];
+							this.assembledBlockMatrix[i - xDiff][j - yDiff] = sentBlockMatrix[i][j];
 						}
 					}
 				} else {
-					
+					for (int i = 0; i < (5 + xDiff); i++) {
+						for (int j = (0 + yDiff); j < 5; j++) {
+							this.assembledBlockMatrix[i - xDiff][j - yDiff] = sentBlockMatrix[i][j];
+						}
+					}
 				}
 			} else {
-				
+				if (yDiff < 0) {
+					for (int i = (0 + xDiff); i < 5; i++) {
+						for (int j = 0; j < (5 + yDiff); j++) {
+							this.assembledBlockMatrix[i - xDiff][j - yDiff] = sentBlockMatrix[i][j];
+						}
+					}
+				} else {
+					for (int i = (0 + xDiff); i < 5; i++) {
+						for (int j = (0 + yDiff); j < 5; j++) {
+							this.assembledBlockMatrix[i - xDiff][j - yDiff] = sentBlockMatrix[i][j];
+						}
+					}
+				}
 			}
+			connection = null;
+			connectionIn = null;
+			connectionPartner = null;
+			sentBlockMatrix = null;
 		}
-		
 	}
 }
