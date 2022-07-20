@@ -119,7 +119,9 @@ public class AgentG2 extends Agent {
 	private HashMap<String, Integer> attachedBlockTypeMap;
 	private Task currentTask;
 	private String[][] assembledBlockMatrix;
+	private boolean searchForConstructor = true;
 	private String constructor;
+	private boolean constructorReady = false;
 	private String myWorker;
 
 	/**
@@ -149,6 +151,10 @@ public class AgentG2 extends Agent {
 			break;
 		case "I am your constructor":
 			this.constructor = sender;
+			mailbox.broadcast(new Percept("Abort search for constructor"), this.getName());
+			break;
+		case "Abort search for constructor":
+			searchForConstructor = false;
 		case "worker":
 		case "constructor":
 		case "explorer":
@@ -170,6 +176,8 @@ public class AgentG2 extends Agent {
 
 	@Override
 	public Action step() {
+		
+		searchForConstructor = true;
 
 		List<Percept> percepts = getPercepts();
 		if (simSteps != 0 && currentStep == simSteps - 1) {
@@ -1358,6 +1366,12 @@ public class AgentG2 extends Agent {
 		if (!checkIfTaskComplete(this.getCurrentTask())) {
 			// todo
 			String[][] blockMatrixTask = currentTask.getBlockMatrix();
+			ArrayList<RelativeCoordinate> missingBlocks = this.findMissingBlocks(blockMatrixTask);
+			RelativeCoordinate blockPos = missingBlocks.get(0);
+			String type = blockMatrixTask[blockPos.getX()][blockPos.getY()];
+			if (constructor == null) {
+				mailbox.broadcastRequestForConstructor(new RelativeCoordinate(mapManager.getPosition().getX() + blockPos.getX() - 2, mapManager.getPosition().getY() + blockPos.getY() - 2), type, this.getName());	
+			}
 			String blockInTask = blockMatrixTask[2][1];
 			String blockAttached = this.assembledBlockMatrix[2][1];
 			if (!blockInTask.equals(blockAttached)) {
@@ -1382,9 +1396,10 @@ public class AgentG2 extends Agent {
 				say("Detach block on wrong position for multi block task!");
 				return new Action("detach", new Identifier("w"));
 			}
-			if (constructor == null) {
-				mailbox.broadcastRequestForConstructor(mapManager.getPosition(), this.getName());
-				
+			if (!constructorReady) {
+				return new Action("skip");
+			} else {
+				// informiere partner koordinaten und gebe selbst korrekte Action aus
 			}
 		}
 		say("Task '" + this.getCurrentTask().getName() + "' is complete");
@@ -3141,12 +3156,26 @@ public class AgentG2 extends Agent {
 		}
 	}
 	
-	public void handleRequestForConstructor(String from, RelativeCoordinate position) {
-		if (currentRole.equals("constructor") ) {
+	public void handleRequestForConstructor(String from, RelativeCoordinate position, String type) {
+		if (currentRole.equals("constructor") && searchForConstructor) {
 			// TODO:
-			// auf Basis von Position/Aufgabe etc. entshceiden, ob man unterstützt
+			// auf Basis von Position/Aufgabe etc. entscheiden, ob man unterstützt
 			//  Wenn ja: zur entsprechenden Goalzone gehen
+			// an Position muss Block type befestigt werden
 			mailbox.sendMessage(new Percept("I am your constructor"), from, this.getName());
+			myWorker = from;
 		}
+	}
+	
+	private ArrayList<RelativeCoordinate> findMissingBlocks(String[][] taskMatrix) {
+		ArrayList<RelativeCoordinate> result = new ArrayList<RelativeCoordinate>();
+		for (int i = 0; i < 5; i++) {
+			for (int j = 0; j < 5; j++) {
+				if (!(this.assembledBlockMatrix[i][j].equals(taskMatrix[i][j]))) {
+					result.add(new RelativeCoordinate(i, j));
+				}
+			}
+		}
+		return result;
 	}
 }

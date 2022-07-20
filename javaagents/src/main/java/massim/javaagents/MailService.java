@@ -74,11 +74,11 @@ public class MailService {
                 .forEach(ag -> requestMap(ag, sender, currentStep));
     }
     
-    public void broadcastRequestForConstructor(RelativeCoordinate position, String sender) {
+    public void broadcastRequestForConstructor(RelativeCoordinate position, String type, String sender) {
         agentsByTeam.get(teamForAgent.get(sender)).stream()
                 .map(Agent::getName)
                 .filter(ag -> !ag.equals(sender))
-                .forEach(ag -> requestConstructor(ag, sender, position));
+                .forEach(ag -> requestConstructor(ag, sender, position, type));
     }
     
     private void requestMap(String to, String from, int currentStep){
@@ -93,7 +93,7 @@ public class MailService {
         }
     }
     
-    private void requestConstructor(String to, String from, RelativeCoordinate position) {
+    private void requestConstructor(String to, String from, RelativeCoordinate position,String type) {
     	
     	Agent recipient = register.get(to);
 
@@ -101,7 +101,7 @@ public class MailService {
             logger.warning("Cannot deliver message to " + to + "; unknown target,");
         } else {
         	AgentG2 rec = (AgentG2) recipient;
-        	rec.handleRequestForConstructor(from, position);
+        	rec.handleRequestForConstructor(from, position, type);
         }
         
     }
