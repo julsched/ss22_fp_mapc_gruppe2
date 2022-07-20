@@ -141,7 +141,8 @@ public class AgentG2 extends Agent {
 
 	@Override
 	public void handleMessage(Percept message, String sender) {
-		String content = ((Identifier) message.getParameters().get(0)).getValue();
+		String content = message.toProlog();
+		say("Message is: " + content);
 		switch (content) {
 		case "Revoke friendship":
 			knownAgents.remove(sender);
